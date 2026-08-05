@@ -1,0 +1,10 @@
+.git
+.github
+.devcontainer
+build/
+datasets/
+compile_commands.json
+**/.cache
+**/*.bag
+**/*.mcap
+**/*.db3
