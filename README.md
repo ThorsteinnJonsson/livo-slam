@@ -11,7 +11,8 @@ Nothing else is installed on the host. All builds run inside the container.
 
 ## Getting started
 
-Open the repository in VS Code and run **Dev Containers: Reopen in Container**. This might take a few minutes to set up the first time.
+Open the repository in VS Code and run **Dev Containers: Reopen in Container**.
+This might take a few minutes to set up the first time.
 
 Then, in the container terminal:
 
@@ -20,7 +21,9 @@ cmake --preset relwithdebinfo
 cmake --build --preset relwithdebinfo
 ctest --preset relwithdebinfo
 ```
-Replace the preset with `release` or `debug` as needed. Alternatively, you can build using the VS Code task with `F7`.
+
+Replace the preset with `release` or `debug` as needed. Alternatively, you can
+build using the VS Code task with `F7`.
 
 The first configure clones and builds the dependencies and takes a few minutes.
 
@@ -35,7 +38,6 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 
 In VS Code, F5 builds and launches under the debugger.
 
-
 ## Packaged image
 
 ```bash
@@ -45,10 +47,9 @@ docker run --rm livo-slam:runtime livo_slam
 
 ## Formatting
 
-| Files | Tool |
-|---|---|
-| `.h`, `.cpp` | `clang-format-22` |
-| `CMakeLists.txt`, `.cmake` | `cmakefmt` |
+| Files                      | Tool              |
+| -------------------------- | ----------------- |
+| `.h`, `.cpp`               | `clang-format-22` |
+| `CMakeLists.txt`, `.cmake` | `cmakefmt`        |
 
-Both run on save in the container. 
-
+Both run on save in the container.
