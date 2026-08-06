@@ -1,7 +1,7 @@
 build/
 compile_commands.json
 .cache/
-.claude/settings.local.json
+.claude/*
 
 # Bind-mounted into the container at /data. Contents are never committed.
 datasets/*
