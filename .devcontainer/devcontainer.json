@@ -1,0 +1,42 @@
+{
+  "name": "livo-slam",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "dev",
+    "args": {
+      "USER_UID": "1000",
+      "USER_GID": "1000"
+    }
+  },
+  "remoteUser": "dev",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "mounts": [
+    "source=${localWorkspaceFolder}/datasets,target=/data,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.claude,target=/home/dev/.claude,type=bind,consistency=cached"
+  ],
+  // host networking for DDS discovery against ROS nodes on the host, host ipc so
+  // FastDDS can use its shared memory transport instead of falling back to UDP.
+  "runArgs": ["--network=host", "--ipc=host"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-vscode.cmake-tools",
+        "ms-azuretools.vscode-docker",
+        "cmakefmt.vscode-cmakefmt",
+        "vadimcn.vscode-lldb",
+        "esbenp.prettier-vscode",
+        "docker.docker"
+      ],
+      "settings": {
+        "clangd.path": "/usr/bin/clangd-22",
+        "clangd.arguments": [
+          "--compile-commands-dir=/workspace/build/relwithdebinfo"
+        ],
+        "C_Cpp.intelliSenseEngine": "disabled"
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+build/
+compile_commands.json
+.cache/
+.claude/*
+
+# Bind-mounted into the container at /data. Contents are never committed.
+datasets/*
+!datasets/.gitkeep
