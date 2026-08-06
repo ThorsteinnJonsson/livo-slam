@@ -68,6 +68,7 @@ WORKDIR /workspace
 # -------------------------------------------------------------- build --------
 FROM dev AS build
 
+ARG ROS_DISTRO
 ARG INSTALL_PREFIX
 
 USER root
@@ -75,11 +76,16 @@ WORKDIR /src
 COPY . .
 
 # FetchContent downloads and ccache live on cache mounts so an image rebuild does
-# not refetch and recompile every dependency.
+# not refetch and recompile every dependency. setup.bash has to be sourced here:
+# RUN uses a non-interactive shell, which never reads the dev user's .bashrc, so
+# ROS would not be on CMAKE_PREFIX_PATH.
 RUN --mount=type=cache,target=/cache/fetchcontent,sharing=locked \
     --mount=type=cache,target=/cache/ccache,sharing=locked \
-    CCACHE_DIR=/cache/ccache \
-    cmake --preset release -DFETCHCONTENT_BASE_DIR=/cache/fetchcontent \
+    source /opt/ros/${ROS_DISTRO}/setup.bash \
+ && CCACHE_DIR=/cache/ccache \
+    cmake --preset release \
+      -DFETCHCONTENT_BASE_DIR=/cache/fetchcontent \
+      -DLIVO_SLAM_BUILD_TESTS=OFF \
  && cmake --build --preset release \
  && cmake --install build/release --prefix ${INSTALL_PREFIX}
 
