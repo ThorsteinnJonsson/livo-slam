@@ -27,7 +27,8 @@
         "ms-azuretools.vscode-docker",
         "cmakefmt.vscode-cmakefmt",
         "vadimcn.vscode-lldb",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "docker.docker"
       ],
       "settings": {
         "clangd.path": "/usr/bin/clangd-22",

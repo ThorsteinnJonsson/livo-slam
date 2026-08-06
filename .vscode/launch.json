@@ -5,7 +5,6 @@
       "name": "livo_slam",
       "type": "lldb",
       "request": "launch",
-      // Follows whichever preset CMake Tools has active.
       "program": "${command:cmake.launchTargetPath}",
       "args": [],
       "cwd": "${workspaceFolder}",
