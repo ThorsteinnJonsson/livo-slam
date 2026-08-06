@@ -28,7 +28,7 @@
       ],
       "settings": {
         "clangd.path": "/usr/bin/clangd-22",
-        "clangd.arguments": ["--compile-commands-dir=/workspace/build/debug"],
+        "clangd.arguments": ["--compile-commands-dir=/workspace/build/relwithdebinfo"],
         "C_Cpp.intelliSenseEngine": "disabled",
         "editor.formatOnSave": true
       }

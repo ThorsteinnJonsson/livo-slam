@@ -29,14 +29,16 @@ target_compile_options(
             -Wnon-virtual-dtor
             -Wold-style-cast)
 
-add_executable(livo_slam src/main.cpp)
+
+add_library(livo_slam_lib STATIC src/livo_slam_node.cpp)
+target_include_directories(livo_slam_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(
-  livo_slam
-  PRIVATE livo_slam_warnings
-          rclcpp::rclcpp
-          ${sensor_msgs_TARGETS}
-          Eigen3::Eigen
-          Sophus::Sophus)
+  livo_slam_lib
+  PUBLIC rclcpp::rclcpp ${sensor_msgs_TARGETS} Eigen3::Eigen Sophus::Sophus
+  PRIVATE livo_slam_warnings)
+
+add_executable(livo_slam src/main.cpp)
+target_link_libraries(livo_slam PRIVATE livo_slam_lib livo_slam_warnings)
 
 install(TARGETS livo_slam RUNTIME DESTINATION bin)
 
