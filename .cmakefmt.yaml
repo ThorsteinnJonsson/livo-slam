@@ -1,0 +1,5 @@
+format:
+  # Lowercasing commands would rewrite FetchContent_Declare as
+  # fetchcontent_declare. Valid CMake, since commands are case-insensitive, but
+  # it does not match how the upstream docs spell them.
+  command_case: unchanged

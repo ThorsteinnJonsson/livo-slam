@@ -20,15 +20,15 @@ find_package(sensor_msgs REQUIRED)
 add_library(livo_slam_warnings INTERFACE)
 target_compile_options(
   livo_slam_warnings
-  INTERFACE -Wall
-            -Wextra
-            -Wpedantic
-            -Wshadow
-            -Wconversion
-            -Wsign-conversion
-            -Wnon-virtual-dtor
-            -Wold-style-cast)
-
+  INTERFACE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+    -Wconversion
+    -Wsign-conversion
+    -Wnon-virtual-dtor
+    -Wold-style-cast)
 
 add_library(livo_slam_lib STATIC src/livo_slam_node.cpp)
 target_include_directories(livo_slam_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
