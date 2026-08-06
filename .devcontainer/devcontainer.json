@@ -28,7 +28,8 @@
         "llvm-vs-code-extensions.vscode-clangd",
         "ms-vscode.cmake-tools",
         "ms-azuretools.vscode-docker",
-        "cmakefmt.vscode-cmakefmt"
+        "cmakefmt.vscode-cmakefmt",
+        "vadimcn.vscode-lldb"
       ],
       "settings": {
         "[cmake]": {

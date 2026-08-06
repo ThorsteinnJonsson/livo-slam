@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "livo_slam",
+      "type": "lldb",
+      "request": "launch",
+      // Follows whichever preset CMake Tools has active.
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build"
+    },
+    {
+      "name": "livo_slam_tests",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.buildDirectory}/tests/livo_slam_tests",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build"
+    }
+  ]
+}
