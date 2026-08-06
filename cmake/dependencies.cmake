@@ -24,13 +24,10 @@ set(Eigen3_DIR "${eigen_BINARY_DIR}" CACHE PATH "" FORCE)
 FetchContent_Declare(
   sophus
   GIT_REPOSITORY https://github.com/strasdat/Sophus.git
-  GIT_TAG 1.22.10
+  GIT_TAG 1.24.6
   GIT_SHALLOW TRUE
   SYSTEM)
 set(BUILD_SOPHUS_TESTS OFF CACHE BOOL "" FORCE)
-set(BUILD_SOPHUS_EXAMPLES OFF CACHE BOOL "" FORCE)
-# Avoids a hard dependency on fmt, which we do not otherwise need.
-set(SOPHUS_USE_BASIC_LOGGING ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(sophus)
 
 if(LIVO_SLAM_BUILD_TESTS)
