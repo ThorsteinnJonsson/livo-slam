@@ -6,8 +6,25 @@
       "type": "shell",
       // cmake.buildDirectory resolves to the active preset's build dir.
       "command": "cmake --build ${command:cmake.buildDirectory}",
-      "group": { "kind": "build", "isDefault": true },
-      "problemMatcher": ["$gcc"]
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      // $gcc comes from the cpptools extension, which we do not install. CMake
+      // passes absolute source paths, so diagnostics carry them too.
+      "problemMatcher": {
+        "owner": "cpp",
+        "source": "clang",
+        "fileLocation": "absolute",
+        "pattern": {
+          "regexp": "^(.*?):(\\d+):(\\d+):\\s+(?:fatal\\s+)?(error|warning|note):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
     }
   ]
 }
