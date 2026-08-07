@@ -41,7 +41,7 @@ LivoSlamNode::LivoSlamNode() : Node("livo_slam"), pipeline_(ReadConfig()) {
 }
 
 PipelineConfig LivoSlamNode::ReadConfig() {
-  const InitParams defaults;
+  const ImuInitParams defaults;
 
   PipelineConfig config;
   config.init.window_size = static_cast<std::size_t>(declare_parameter<int64_t>(

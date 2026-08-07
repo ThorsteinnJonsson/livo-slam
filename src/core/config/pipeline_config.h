@@ -1,11 +1,11 @@
 #pragma once
 
-#include "core/imu/imu_initializer.h"
+#include "core/config/init_params.h"
 
 namespace livo_slam {
 
 struct PipelineConfig {
-  InitParams init;
+  ImuInitParams init;
 };
 
 }  // namespace livo_slam

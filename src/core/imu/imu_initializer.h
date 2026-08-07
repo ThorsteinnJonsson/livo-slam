@@ -6,18 +6,12 @@
 #include <span>
 #include <vector>
 
+#include "core/config/init_params.h"
 #include "core/types/imu_sample.h"
 
 namespace livo_slam {
 
 enum class InitStatus { kCollecting, kNotStationary, kInitialized };
-
-struct InitParams {
-  std::size_t window_size = 200;
-  double gravity_magnitude = 9.81;
-  double max_accel_var = 0.05;
-  double max_gyro_var = 0.01;
-};
 
 struct InitResult {
   InitStatus status = InitStatus::kCollecting;
@@ -35,7 +29,7 @@ struct InitResult {
 
 class ImuInitializer {
  public:
-  explicit ImuInitializer(InitParams params);
+  explicit ImuInitializer(ImuInitParams params);
 
   void Add(std::span<const ImuSample> samples);
 
@@ -43,7 +37,7 @@ class ImuInitializer {
   const std::optional<InitResult>& init_result() const { return init_result_; }
 
  private:
-  InitParams params_;
+  ImuInitParams params_;
 
   InitStatus status_ = InitStatus::kCollecting;
   std::optional<InitResult>

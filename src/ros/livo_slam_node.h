@@ -7,9 +7,9 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <thread>
 
+#include "core/config/pipeline_config.h"
 #include "core/pipeline/livo_pipeline.h"
 #include "core/pipeline/measurement_buffer.h"
-#include "core/pipeline/pipeline_config.h"
 
 namespace livo_slam {
 

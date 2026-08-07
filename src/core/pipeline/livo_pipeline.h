@@ -1,7 +1,7 @@
 #pragma once
 
+#include "core/config/pipeline_config.h"
 #include "core/imu/imu_initializer.h"
-#include "core/pipeline/pipeline_config.h"
 #include "core/types/measure_group.h"
 
 namespace livo_slam {

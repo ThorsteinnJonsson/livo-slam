@@ -30,7 +30,7 @@ MeanVar ComputeMeanVar(std::span<const ImuSample> samples, Accessor get) {
 }
 
 InitResult InitializeStatic(std::span<const ImuSample> window,
-                            const InitParams& params) {
+                            const ImuInitParams& params) {
   InitResult result;
   result.status = InitStatus::kNotStationary;
   result.window_size = window.size();
@@ -63,7 +63,7 @@ InitResult InitializeStatic(std::span<const ImuSample> window,
 
 }  // namespace
 
-ImuInitializer::ImuInitializer(InitParams params) : params_(params) {
+ImuInitializer::ImuInitializer(ImuInitParams params) : params_(params) {
   window_.reserve(params_.window_size);
 }
 
