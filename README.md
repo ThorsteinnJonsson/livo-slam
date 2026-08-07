@@ -50,12 +50,3 @@ Topics come from `config/livo_slam.yaml`:
 docker build --target runtime -t livo-slam:runtime .
 docker run --rm livo-slam:runtime livo_slam
 ```
-
-## Formatting
-
-| Files                      | Tool              |
-| -------------------------- | ----------------- |
-| `.h`, `.cpp`               | `clang-format-22` |
-| `CMakeLists.txt`, `.cmake` | `cmakefmt`        |
-
-Both run on save in the container.
