@@ -2,13 +2,13 @@
 
 #include <condition_variable>
 #include <deque>
-#include <mutex>
 #include <optional>
 
 #include "core/types/cloud.h"
 #include "core/types/image_frame.h"
 #include "core/types/imu_sample.h"
 #include "core/types/measure_group.h"
+#include "core/util/mutex.h"
 
 namespace livo_slam {
 
@@ -30,17 +30,17 @@ class MeasurementBuffer {
   void Shutdown();
 
  private:
-  bool CanFormGroup() const;
-  MeasureGroup FormGroup();
+  bool CanFormGroup() const REQUIRES(mutex_);
+  MeasureGroup FormGroup() REQUIRES(mutex_);
 
  private:
-  mutable std::mutex mutex_;
+  mutable Mutex mutex_;
   std::condition_variable cv_;
-  bool shutdown_ = false;
+  bool shutdown_ GUARDED_BY(mutex_) = false;
 
-  std::deque<ImuSample> imu_;
-  std::deque<Cloud> clouds_;
-  std::deque<ImageFrame> images_;
+  std::deque<ImuSample> imu_ GUARDED_BY(mutex_);
+  std::deque<Cloud> clouds_ GUARDED_BY(mutex_);
+  std::deque<ImageFrame> images_ GUARDED_BY(mutex_);
 };
 
 }  // namespace livo_slam

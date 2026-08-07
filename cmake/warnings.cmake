@@ -9,4 +9,6 @@ target_compile_options(
     -Wconversion
     -Wsign-conversion
     -Wnon-virtual-dtor
-    -Wold-style-cast)
+    -Wold-style-cast
+    -Wthread-safety
+    -Werror=thread-safety)

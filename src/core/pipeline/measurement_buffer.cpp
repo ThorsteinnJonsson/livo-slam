@@ -14,7 +14,7 @@ constexpr std::size_t kMaxImages = 50;
 
 void MeasurementBuffer::PushImu(ImuSample sample) {
   {
-    const std::lock_guard lock(mutex_);
+    const MutexLock lock(mutex_);
     imu_.push_back(std::move(sample));
     if (imu_.size() > kMaxImu) {
       imu_.pop_front();
@@ -25,7 +25,7 @@ void MeasurementBuffer::PushImu(ImuSample sample) {
 
 void MeasurementBuffer::PushCloud(Cloud cloud) {
   {
-    const std::lock_guard lock(mutex_);
+    const MutexLock lock(mutex_);
     clouds_.push_back(std::move(cloud));
     if (clouds_.size() > kMaxClouds) {
       clouds_.pop_front();
@@ -36,7 +36,7 @@ void MeasurementBuffer::PushCloud(Cloud cloud) {
 
 void MeasurementBuffer::PushImage(ImageFrame image) {
   {
-    const std::lock_guard lock(mutex_);
+    const MutexLock lock(mutex_);
     images_.push_back(std::move(image));
     if (images_.size() > kMaxImages) {
       images_.pop_front();
@@ -46,8 +46,10 @@ void MeasurementBuffer::PushImage(ImageFrame image) {
 }
 
 std::optional<MeasureGroup> MeasurementBuffer::PopMeasureGroup() {
-  std::unique_lock lock(mutex_);
-  cv_.wait(lock, [this] { return shutdown_ || CanFormGroup(); });
+  MutexLock lock(mutex_);
+  while (!shutdown_ && !CanFormGroup()) {
+    cv_.wait(lock.native());
+  }
   if (!CanFormGroup()) {
     return std::nullopt;
   }
@@ -56,7 +58,7 @@ std::optional<MeasureGroup> MeasurementBuffer::PopMeasureGroup() {
 
 void MeasurementBuffer::Shutdown() {
   {
-    const std::lock_guard lock(mutex_);
+    const MutexLock lock(mutex_);
     shutdown_ = true;
   }
   cv_.notify_all();
