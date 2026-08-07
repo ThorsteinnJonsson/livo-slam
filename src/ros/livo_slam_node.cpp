@@ -44,10 +44,6 @@ LivoSlamNode::~LivoSlamNode() { buffer_.Shutdown(); }
 void LivoSlamNode::Run() {
   while (const auto group = buffer_.PopMeasureGroup()) {
     pipeline_.Process(*group);
-    RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
-                         "group pts=%zu imu=%zu span=%.3f s",
-                         group->cloud.points.size(), group->imu.size(),
-                         group->cloud.end_time - group->cloud.start_time);
   }
 }
 
