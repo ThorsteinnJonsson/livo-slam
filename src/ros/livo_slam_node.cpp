@@ -2,7 +2,6 @@
 
 #include <rclcpp/qos.hpp>
 #include <string>
-#include <thread>
 
 #include "ros/conversions.h"
 
@@ -34,17 +33,22 @@ LivoSlamNode::LivoSlamNode() : Node("livo_slam") {
         CameraCallback(msg);
       });
 
-  std::thread([this] {
-    while (auto g = buffer_.PopMeasureGroup()) {
-      RCLCPP_INFO(get_logger(),
-                  "group pts=%zu imu=%zu start=%.4f end=%.4f span=%.4f",
-                  g->cloud.points.size(), g->imu.size(), g->cloud.start_time,
-                  g->cloud.end_time, g->cloud.end_time - g->cloud.start_time);
-    }
-  }).detach();
+  worker_ = std::jthread([this] { Run(); });
 
   RCLCPP_INFO(get_logger(), "subscribed to %s, %s, %s", imu_topic.c_str(),
               lidar_topic.c_str(), camera_topic.c_str());
+}
+
+LivoSlamNode::~LivoSlamNode() { buffer_.Shutdown(); }
+
+void LivoSlamNode::Run() {
+  while (const auto group = buffer_.PopMeasureGroup()) {
+    pipeline_.Process(*group);
+    RCLCPP_INFO_THROTTLE(get_logger(), *get_clock(), 1000,
+                         "group pts=%zu imu=%zu span=%.3f s",
+                         group->cloud.points.size(), group->imu.size(),
+                         group->cloud.end_time - group->cloud.start_time);
+  }
 }
 
 void LivoSlamNode::ImuCallback(

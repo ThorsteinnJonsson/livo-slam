@@ -1,7 +1,9 @@
-#include "livo_pipeline.h"
+#include "core/pipeline/livo_pipeline.h"
 
 namespace livo_slam {
 
-LivoPipeline::LivoPipeline() {}
+LivoPipeline::LivoPipeline() = default;
+
+void LivoPipeline::Process(const MeasureGroup&) {}
 
 }  // namespace livo_slam
