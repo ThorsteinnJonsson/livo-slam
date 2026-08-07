@@ -1,7 +1,7 @@
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 
-#include "livo_slam_node.h"
+#include "ros/livo_slam_node.h"
 
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);

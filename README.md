@@ -33,10 +33,16 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 ## Run
 
 ```bash
-./build/relwithdebinfo/livo_slam # Or debug/release
+./build/relwithdebinfo/src/livo_slam # Or debug/release
 ```
 
 In VS Code, F5 builds and launches under the debugger.
+
+Topics come from `config/livo_slam.yaml`:
+
+```bash
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+```
 
 ## Packaged image
 
@@ -44,12 +50,3 @@ In VS Code, F5 builds and launches under the debugger.
 docker build --target runtime -t livo-slam:runtime .
 docker run --rm livo-slam:runtime livo_slam
 ```
-
-## Formatting
-
-| Files                      | Tool              |
-| -------------------------- | ----------------- |
-| `.h`, `.cpp`               | `clang-format-22` |
-| `CMakeLists.txt`, `.cmake` | `cmakefmt`        |
-
-Both run on save in the container.

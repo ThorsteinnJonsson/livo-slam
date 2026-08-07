@@ -6,7 +6,11 @@
       "type": "lldb",
       "request": "launch",
       "program": "${command:cmake.launchTargetPath}",
-      "args": [],
+      "args": [
+        "--ros-args",
+        "--params-file",
+        "${workspaceFolder}/config/livo_slam.yaml"
+      ],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "build"
     },
