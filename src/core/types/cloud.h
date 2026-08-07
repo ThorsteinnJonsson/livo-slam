@@ -8,7 +8,7 @@ namespace livo_slam {
 struct Point {
   Eigen::Vector3d position = Eigen::Vector3d::Zero();
   float intensity = 0.0F;
-  double time_offset = 0.0;
+  double timestamp = 0.0;
 };
 
 struct Cloud {

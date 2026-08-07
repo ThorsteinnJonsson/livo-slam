@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <vector>
 
 #include "core/types/cloud.h"
@@ -12,7 +11,7 @@ namespace livo_slam {
 struct MeasureGroup {
   Cloud cloud;
   std::vector<ImuSample> imu;
-  std::optional<ImageFrame> image;
+  ImageFrame image;
 };
 
 }  // namespace livo_slam

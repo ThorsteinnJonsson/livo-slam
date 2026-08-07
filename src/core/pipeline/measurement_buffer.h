@@ -37,9 +37,10 @@ class MeasurementBuffer {
   mutable Mutex mutex_;
   std::condition_variable cv_;
   bool shutdown_ GUARDED_BY(mutex_) = false;
+  std::optional<double> last_cut_time_ GUARDED_BY(mutex_);
 
   std::deque<ImuSample> imu_ GUARDED_BY(mutex_);
-  std::deque<Cloud> clouds_ GUARDED_BY(mutex_);
+  std::deque<Point> points_ GUARDED_BY(mutex_);
   std::deque<ImageFrame> images_ GUARDED_BY(mutex_);
 };
 

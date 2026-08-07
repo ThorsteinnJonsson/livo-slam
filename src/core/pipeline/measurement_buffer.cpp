@@ -1,13 +1,14 @@
 #include "core/pipeline/measurement_buffer.h"
 
 #include <cstddef>
+#include <iterator>
 #include <utility>
 
 namespace livo_slam {
 namespace {
 
 constexpr std::size_t kMaxImu = 4000;
-constexpr std::size_t kMaxClouds = 50;
+constexpr std::size_t kMaxPoints = 1000000;
 constexpr std::size_t kMaxImages = 50;
 
 }  // namespace
@@ -16,7 +17,7 @@ void MeasurementBuffer::PushImu(ImuSample sample) {
   {
     const MutexLock lock(mutex_);
     imu_.push_back(std::move(sample));
-    if (imu_.size() > kMaxImu) {
+    while (imu_.size() > kMaxImu) {
       imu_.pop_front();
     }
   }
@@ -26,9 +27,10 @@ void MeasurementBuffer::PushImu(ImuSample sample) {
 void MeasurementBuffer::PushCloud(Cloud cloud) {
   {
     const MutexLock lock(mutex_);
-    clouds_.push_back(std::move(cloud));
-    if (clouds_.size() > kMaxClouds) {
-      clouds_.pop_front();
+    points_.insert(points_.end(), std::make_move_iterator(cloud.points.begin()),
+                   std::make_move_iterator(cloud.points.end()));
+    while (points_.size() > kMaxPoints) {
+      points_.pop_front();
     }
   }
   cv_.notify_one();
@@ -38,7 +40,7 @@ void MeasurementBuffer::PushImage(ImageFrame image) {
   {
     const MutexLock lock(mutex_);
     images_.push_back(std::move(image));
-    if (images_.size() > kMaxImages) {
+    while (images_.size() > kMaxImages) {
       images_.pop_front();
     }
   }
@@ -65,26 +67,35 @@ void MeasurementBuffer::Shutdown() {
 }
 
 bool MeasurementBuffer::CanFormGroup() const {
-  return !clouds_.empty() && !imu_.empty() &&
-         imu_.back().timestamp >= clouds_.front().end_time;
+  if (images_.empty() || points_.empty() || imu_.empty()) {
+    return false;
+  }
+  const double image_time = images_.front().timestamp;
+  return points_.front().timestamp <= image_time &&
+         points_.back().timestamp >= image_time &&
+         imu_.back().timestamp >= image_time;
 }
 
 MeasureGroup MeasurementBuffer::FormGroup() {
   MeasureGroup group;
-  group.cloud = std::move(clouds_.front());
-  clouds_.pop_front();
+  group.image = std::move(images_.front());
+  images_.pop_front();
 
-  while (!imu_.empty() && imu_.front().timestamp <= group.cloud.end_time) {
+  const double image_time = group.image.timestamp;
+  group.cloud.start_time = last_cut_time_.value_or(points_.front().timestamp);
+  group.cloud.end_time = image_time;
+
+  while (!points_.empty() && points_.front().timestamp <= image_time) {
+    group.cloud.points.push_back(points_.front());
+    points_.pop_front();
+  }
+
+  while (!imu_.empty() && imu_.front().timestamp <= image_time) {
     group.imu.push_back(std::move(imu_.front()));
     imu_.pop_front();
   }
 
-  while (!images_.empty() &&
-         images_.front().timestamp <= group.cloud.end_time) {
-    group.image = std::move(images_.front());
-    images_.pop_front();
-  }
-
+  last_cut_time_ = image_time;
   return group;
 }
 
