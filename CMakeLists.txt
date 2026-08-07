@@ -13,27 +13,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(LIVO_SLAM_BUILD_TESTS "Build the test suite" ON)
 
 include(cmake/dependencies.cmake)
+include(cmake/warnings.cmake)
 
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-add_library(livo_slam_warnings INTERFACE)
-target_compile_options(
-  livo_slam_warnings
-  INTERFACE
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Wshadow
-    -Wconversion
-    -Wsign-conversion
-    -Wnon-virtual-dtor
-    -Wold-style-cast)
-
 add_subdirectory(src)
-
-add_executable(livo_slam src/main.cpp)
-target_link_libraries(livo_slam PRIVATE livo_slam_ros_lib livo_slam_warnings)
 
 install(TARGETS livo_slam RUNTIME DESTINATION bin)
 
