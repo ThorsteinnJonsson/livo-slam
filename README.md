@@ -33,7 +33,7 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 ## Run
 
 ```bash
-./build/relwithdebinfo/livo_slam # Or debug/release
+./build/relwithdebinfo/src/livo_slam # Or debug/release
 ```
 
 In VS Code, F5 builds and launches under the debugger.
