@@ -12,6 +12,11 @@ class LivoSlamNode : public rclcpp::Node {
  public:
   LivoSlamNode();
 
+  LivoSlamNode(const LivoSlamNode&) = delete;
+  LivoSlamNode& operator=(const LivoSlamNode&) = delete;
+  LivoSlamNode(LivoSlamNode&&) = delete;
+  LivoSlamNode& operator=(LivoSlamNode&&) = delete;
+
  private:
   void ImuCallback(const sensor_msgs::msg::Imu::SharedPtr msg);
   void LidarCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
