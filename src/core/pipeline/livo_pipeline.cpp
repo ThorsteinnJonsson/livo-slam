@@ -2,6 +2,8 @@
 
 #include <print>
 
+#include "core/estimator/initial_estimate.h"
+
 namespace livo_slam {
 
 LivoPipeline::LivoPipeline(PipelineConfig config)
@@ -16,10 +18,7 @@ void LivoPipeline::Process(const MeasureGroup& group) {
       imu_initializer_.Add(imu);
       if (imu_initializer_.status() == InitStatus::kInitialized) {
         const auto init_result = *imu_initializer_.init_result();
-        estimate_.state.rotation = init_result.rotation;
-        estimate_.state.gravity = init_result.gravity;
-        estimate_.state.gyro_bias = init_result.gyro_bias;
-        estimate_.timestamp = init_result.timestamp;
+        estimate_ = MakeInitialEstimate(init_result, config_.initial);
         std::println(
             "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
             init_result.timestamp, init_result.accel_mean_norm,
