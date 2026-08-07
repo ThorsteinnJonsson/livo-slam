@@ -9,3 +9,6 @@ Datasets to check:
 Goals
 
 - Multi-lidar, multi-camera
+
+- Refactor IMU initializer
+- Co-located tests

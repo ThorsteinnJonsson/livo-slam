@@ -10,25 +10,30 @@ LivoPipeline::LivoPipeline() : imu_initializer_(InitParams{}) {}
 void LivoPipeline::Process(const MeasureGroup& group) {
   const auto& [image, cloud, imu] = group;
 
-  std::println("imu={} | image={}x{} {} t={:.4f} | points={} cloud span={:.4f}",
-               imu.size(), image.width, image.height, image.encoding,
-               image.timestamp, cloud.points.size(),
-               cloud.end_time - cloud.start_time);
-
-  if (imu_initializer_.status() != InitStatus::kInitialized) {
-    const InitResult result = imu_initializer_.Add(imu);
-    if (result.status != InitStatus::kInitialized) {
-      std::println("imu init: window={} accel_var={:.5f} gyro_var={:.5f}",
-                   result.window_size, result.max_accel_var,
-                   result.max_gyro_var);
-      return;
+  switch (imu_initializer_.status()) {
+    case InitStatus::kCollecting: {
+      const InitResult result = imu_initializer_.Add(imu);
+      if (result.status != InitStatus::kInitialized) {
+        return;
+      }
+      initial_ = result;
+      std::println(
+          "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
+          result.timestamp, result.accel_mean_norm, result.gyro_bias.x(),
+          result.gyro_bias.y(), result.gyro_bias.z());
+      break;
     }
-    initial_ = result;
-    std::println(
-        "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
-        result.timestamp, result.accel_mean_norm, result.gyro_bias.x(),
-        result.gyro_bias.y(), result.gyro_bias.z());
-    return;
+    case InitStatus::kNotStationary: {
+      break;
+    }
+    case InitStatus::kInitialized: {
+      std::println(
+          "imu={} | image={}x{} {} t={:.4f} | points={} cloud span={:.4f}",
+          imu.size(), image.width, image.height, image.encoding,
+          image.timestamp, cloud.points.size(),
+          cloud.end_time - cloud.start_time);
+      break;
+    }
   }
 
   // If IMU initialized
