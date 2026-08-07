@@ -18,6 +18,7 @@ class LivoPipeline {
 
  private:
   ImuInitializer imu_initializer_;
+  InitResult initial_;
   //   enum ImuInitialization {
   //     kNotInitialized,
   //     kInProgress,

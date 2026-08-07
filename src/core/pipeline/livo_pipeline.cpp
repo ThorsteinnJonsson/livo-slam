@@ -15,7 +15,21 @@ void LivoPipeline::Process(const MeasureGroup& group) {
                image.timestamp, cloud.points.size(),
                cloud.end_time - cloud.start_time);
 
-  // IMU initialization
+  if (imu_initializer_.status() != InitStatus::kInitialized) {
+    const InitResult result = imu_initializer_.Add(imu);
+    if (result.status != InitStatus::kInitialized) {
+      std::println("imu init: window={} accel_var={:.5f} gyro_var={:.5f}",
+                   result.window_size, result.max_accel_var,
+                   result.max_gyro_var);
+      return;
+    }
+    initial_ = result;
+    std::println(
+        "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
+        result.timestamp, result.accel_mean_norm, result.gyro_bias.x(),
+        result.gyro_bias.y(), result.gyro_bias.z());
+    return;
+  }
 
   // If IMU initialized
   //   IMU
