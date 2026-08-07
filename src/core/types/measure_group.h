@@ -9,9 +9,9 @@
 namespace livo_slam {
 
 struct MeasureGroup {
+  ImageFrame image;
   Cloud cloud;
   std::vector<ImuSample> imu;
-  ImageFrame image;
 };
 
 }  // namespace livo_slam

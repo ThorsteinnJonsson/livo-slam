@@ -7,6 +7,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <thread>
 
+#include "core/config/pipeline_config.h"
 #include "core/pipeline/livo_pipeline.h"
 #include "core/pipeline/measurement_buffer.h"
 
@@ -28,6 +29,8 @@ class LivoSlamNode : public rclcpp::Node {
   void CameraCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
 
   void Run();
+
+  PipelineConfig ReadConfig();
 
  private:
   MeasurementBuffer buffer_;

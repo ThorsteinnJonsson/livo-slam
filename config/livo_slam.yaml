@@ -3,3 +3,9 @@
     imu_topic: /imu/imu
     lidar_topic: /os1_cloud_node1/points
     camera_topic: /left/image_raw
+
+    # Pipeline config
+    imu_init.window_size: 200
+    imu_init.gravity_magnitude: 9.81
+    imu_init.max_accel_var: 0.05
+    imu_init.max_gyro_var: 0.01
