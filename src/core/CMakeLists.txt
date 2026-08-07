@@ -1,4 +1,4 @@
-add_library(livo_slam_core_lib STATIC pipeline.cpp)
+add_library(livo_slam_core_lib STATIC livo_pipeline.cpp)
 
 target_include_directories(livo_slam_core_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
 

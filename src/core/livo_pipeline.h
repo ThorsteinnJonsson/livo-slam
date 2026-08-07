@@ -1,9 +1,9 @@
 
 namespace livo_slam {
 
-class LivoSlamPipeline {
+class LivoPipeline {
  public:
-  LivoSlamPipeline();
+  LivoPipeline();
 };
 
 }  // namespace livo_slam
