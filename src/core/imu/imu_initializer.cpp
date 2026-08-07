@@ -32,6 +32,7 @@ MeanVar ComputeMeanVar(std::span<const ImuSample> samples, Accessor get) {
 InitResult InitializeStatic(std::span<const ImuSample> window,
                             const InitParams& params) {
   InitResult result;
+  result.status = InitStatus::kNotStationary;
   result.window_size = window.size();
   if (window.empty()) {
     return result;
@@ -56,7 +57,7 @@ InitResult InitializeStatic(std::span<const ImuSample> window,
   result.gravity = Eigen::Vector3d(0.0, 0.0, -params.gravity_magnitude);
   result.gyro_bias = gyro.mean;
   result.timestamp = window.back().timestamp;
-  result.ok = true;
+  result.status = InitStatus::kInitialized;
   return result;
 }
 
@@ -68,22 +69,32 @@ ImuInitializer::ImuInitializer(InitParams params) : params_(params) {
 
 InitResult ImuInitializer::Add(std::span<const ImuSample> samples) {
   InitResult result;
+  if (status_ == InitStatus::kInitialized) {
+    result.status = InitStatus::kInitialized;
+    return result;
+  }
+
   result.window_size = window_.size();
 
   for (const ImuSample& sample : samples) {
     window_.push_back(sample);
     if (window_.size() < params_.window_size) {
+      result.status = InitStatus::kCollecting;
       result.window_size = window_.size();
       continue;
     }
 
     result = InitializeStatic(window_, params_);
-    if (result.ok) {
+    if (result.status == InitStatus::kInitialized) {
+      status_ = InitStatus::kInitialized;
+      window_.clear();
+      window_.shrink_to_fit();
       return result;
     }
     window_.erase(window_.begin());
   }
 
+  status_ = result.status;
   return result;
 }
 

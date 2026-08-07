@@ -10,6 +10,8 @@
 
 namespace livo_slam {
 
+enum class InitStatus { kCollecting, kNotStationary, kInitialized };
+
 struct InitParams {
   std::size_t window_size = 200;
   double gravity_magnitude = 9.81;
@@ -18,7 +20,7 @@ struct InitParams {
 };
 
 struct InitResult {
-  bool ok = false;
+  InitStatus status = InitStatus::kCollecting;
 
   Sophus::SO3d rotation;
   Eigen::Vector3d gravity = Eigen::Vector3d::Zero();
@@ -37,8 +39,11 @@ class ImuInitializer {
 
   InitResult Add(std::span<const ImuSample> samples);
 
+  InitStatus status() const { return status_; }
+
  private:
   InitParams params_;
+  InitStatus status_ = InitStatus::kCollecting;
   std::vector<ImuSample> window_;
 };
 
