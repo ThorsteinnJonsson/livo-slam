@@ -11,20 +11,18 @@ void LivoPipeline::Process(const MeasureGroup& group) {
   const auto& [image, cloud, imu] = group;
 
   switch (imu_initializer_.status()) {
-    case InitStatus::kCollecting: {
-      const InitResult result = imu_initializer_.Add(imu);
-      if (result.status != InitStatus::kInitialized) {
-        return;
-      }
-      initial_ = result;
-      std::println(
-          "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
-          result.timestamp, result.accel_mean_norm, result.gyro_bias.x(),
-          result.gyro_bias.y(), result.gyro_bias.z());
-      break;
-    }
+    case InitStatus::kCollecting:
     case InitStatus::kNotStationary: {
-      break;
+      imu_initializer_.Add(imu);
+      if (imu_initializer_.status() == InitStatus::kInitialized) {
+        const auto init_result = *imu_initializer_.init_result();
+        std::println(
+            "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
+            init_result.timestamp, init_result.accel_mean_norm,
+            init_result.gyro_bias.x(), init_result.gyro_bias.y(),
+            init_result.gyro_bias.z());
+      }
+      return;
     }
     case InitStatus::kInitialized: {
       std::println(

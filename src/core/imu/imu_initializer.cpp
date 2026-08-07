@@ -67,13 +67,12 @@ ImuInitializer::ImuInitializer(InitParams params) : params_(params) {
   window_.reserve(params_.window_size);
 }
 
-InitResult ImuInitializer::Add(std::span<const ImuSample> samples) {
-  InitResult result;
+void ImuInitializer::Add(std::span<const ImuSample> samples) {
   if (status_ == InitStatus::kInitialized) {
-    result.status = InitStatus::kInitialized;
-    return result;
+    return;
   }
 
+  InitResult result;
   result.window_size = window_.size();
 
   for (const ImuSample& sample : samples) {
@@ -87,15 +86,15 @@ InitResult ImuInitializer::Add(std::span<const ImuSample> samples) {
     result = InitializeStatic(window_, params_);
     if (result.status == InitStatus::kInitialized) {
       status_ = InitStatus::kInitialized;
+      init_result_ = result;
       window_.clear();
       window_.shrink_to_fit();
-      return result;
+      return;
     }
     window_.erase(window_.begin());
   }
 
   status_ = result.status;
-  return result;
 }
 
 }  // namespace livo_slam

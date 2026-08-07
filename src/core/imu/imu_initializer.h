@@ -37,13 +37,18 @@ class ImuInitializer {
  public:
   explicit ImuInitializer(InitParams params);
 
-  InitResult Add(std::span<const ImuSample> samples);
+  void Add(std::span<const ImuSample> samples);
 
   InitStatus status() const { return status_; }
+  std::optional<InitResult> init_result() const { return init_result_; }
 
  private:
   InitParams params_;
+
   InitStatus status_ = InitStatus::kCollecting;
+  std::optional<InitResult>
+      init_result_;  // Only filled when status == InitStatus::kInitialized
+
   std::vector<ImuSample> window_;
 };
 

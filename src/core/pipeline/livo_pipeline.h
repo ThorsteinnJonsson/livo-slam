@@ -18,7 +18,6 @@ class LivoPipeline {
 
  private:
   ImuInitializer imu_initializer_;
-  InitResult initial_;
 };
 
 }  // namespace livo_slam
