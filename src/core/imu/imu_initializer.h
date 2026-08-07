@@ -40,7 +40,7 @@ class ImuInitializer {
   void Add(std::span<const ImuSample> samples);
 
   InitStatus status() const { return status_; }
-  std::optional<InitResult> init_result() const { return init_result_; }
+  const std::optional<InitResult>& init_result() const { return init_result_; }
 
  private:
   InitParams params_;
