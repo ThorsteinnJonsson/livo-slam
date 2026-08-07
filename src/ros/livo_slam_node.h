@@ -6,6 +6,8 @@
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include "core/pipeline/measurement_buffer.h"
+
 namespace livo_slam {
 
 class LivoSlamNode : public rclcpp::Node {
@@ -18,11 +20,13 @@ class LivoSlamNode : public rclcpp::Node {
   LivoSlamNode& operator=(LivoSlamNode&&) = delete;
 
  private:
-  void ImuCallback(const sensor_msgs::msg::Imu::SharedPtr msg);
-  void LidarCallback(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
-  void CameraCallback(const sensor_msgs::msg::Image::SharedPtr msg);
+  void ImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr& msg);
+  void LidarCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg);
+  void CameraCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
 
  private:
+  MeasurementBuffer buffer_;
+
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr camera_sub_;

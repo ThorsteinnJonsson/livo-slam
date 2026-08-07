@@ -24,11 +24,11 @@ void MeasurementBuffer::PushImu(ImuSample sample) {
   cv_.notify_one();
 }
 
-void MeasurementBuffer::PushCloud(Cloud cloud) {
+void MeasurementBuffer::PushPoints(std::vector<Point> points) {
   {
     const MutexLock lock(mutex_);
-    points_.insert(points_.end(), std::make_move_iterator(cloud.points.begin()),
-                   std::make_move_iterator(cloud.points.end()));
+    points_.insert(points_.end(), std::make_move_iterator(points.begin()),
+                   std::make_move_iterator(points.end()));
     while (points_.size() > kMaxPoints) {
       points_.pop_front();
     }

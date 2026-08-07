@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <deque>
 #include <optional>
+#include <vector>
 
 #include "core/types/cloud.h"
 #include "core/types/image_frame.h"
@@ -22,7 +23,7 @@ class MeasurementBuffer {
   MeasurementBuffer& operator=(MeasurementBuffer&&) = delete;
 
   void PushImu(ImuSample sample);
-  void PushCloud(Cloud cloud);
+  void PushPoints(std::vector<Point> points);
   void PushImage(ImageFrame image);
 
   std::optional<MeasureGroup> PopMeasureGroup();
