@@ -1,13 +1,14 @@
 #pragma once
 
 #include "core/imu/imu_initializer.h"
+#include "core/pipeline/pipeline_config.h"
 #include "core/types/measure_group.h"
 
 namespace livo_slam {
 
 class LivoPipeline {
  public:
-  LivoPipeline();
+  explicit LivoPipeline(PipelineConfig config);
 
   LivoPipeline(const LivoPipeline&) = delete;
   LivoPipeline& operator=(const LivoPipeline&) = delete;
@@ -17,6 +18,7 @@ class LivoPipeline {
   void Process(const MeasureGroup& group);
 
  private:
+  PipelineConfig config_;
   ImuInitializer imu_initializer_;
 };
 

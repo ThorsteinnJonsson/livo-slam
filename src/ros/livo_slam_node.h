@@ -9,6 +9,7 @@
 
 #include "core/pipeline/livo_pipeline.h"
 #include "core/pipeline/measurement_buffer.h"
+#include "core/pipeline/pipeline_config.h"
 
 namespace livo_slam {
 
@@ -28,6 +29,8 @@ class LivoSlamNode : public rclcpp::Node {
   void CameraCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
 
   void Run();
+
+  PipelineConfig ReadConfig();
 
  private:
   MeasurementBuffer buffer_;

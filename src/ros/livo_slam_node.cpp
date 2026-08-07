@@ -1,5 +1,6 @@
 #include "ros/livo_slam_node.h"
 
+#include <cstdint>
 #include <rclcpp/qos.hpp>
 #include <string>
 
@@ -7,7 +8,7 @@
 
 namespace livo_slam {
 
-LivoSlamNode::LivoSlamNode() : Node("livo_slam") {
+LivoSlamNode::LivoSlamNode() : Node("livo_slam"), pipeline_(ReadConfig()) {
   const auto imu_topic =
       declare_parameter<std::string>("imu_topic", "/imu/imu");
   const auto lidar_topic =
@@ -37,6 +38,21 @@ LivoSlamNode::LivoSlamNode() : Node("livo_slam") {
 
   RCLCPP_INFO(get_logger(), "subscribed to %s, %s, %s", imu_topic.c_str(),
               lidar_topic.c_str(), camera_topic.c_str());
+}
+
+PipelineConfig LivoSlamNode::ReadConfig() {
+  const InitParams defaults;
+
+  PipelineConfig config;
+  config.init.window_size = static_cast<std::size_t>(declare_parameter<int64_t>(
+      "imu_init.window_size", static_cast<int64_t>(defaults.window_size)));
+  config.init.gravity_magnitude = declare_parameter<double>(
+      "imu_init.gravity_magnitude", defaults.gravity_magnitude);
+  config.init.max_accel_var = declare_parameter<double>(
+      "imu_init.max_accel_var", defaults.max_accel_var);
+  config.init.max_gyro_var =
+      declare_parameter<double>("imu_init.max_gyro_var", defaults.max_gyro_var);
+  return config;
 }
 
 LivoSlamNode::~LivoSlamNode() { buffer_.Shutdown(); }

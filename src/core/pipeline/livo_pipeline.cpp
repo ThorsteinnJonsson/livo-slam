@@ -4,8 +4,8 @@
 
 namespace livo_slam {
 
-// TODO: Get initializer params from file
-LivoPipeline::LivoPipeline() : imu_initializer_(InitParams{}) {}
+LivoPipeline::LivoPipeline(PipelineConfig config)
+    : config_(config), imu_initializer_(config_.init) {}
 
 void LivoPipeline::Process(const MeasureGroup& group) {
   const auto& [image, cloud, imu] = group;

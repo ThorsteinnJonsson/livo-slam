@@ -1,4 +1,4 @@
-Datasets to check:
+## Datasets to check:
 
 - Check https://huggingface.co/datasets/DapengFeng/MCAP. mcap versions of
   datasets used by FAST-LIVO2
@@ -6,9 +6,10 @@ Datasets to check:
 - Oxford Osprey
 - Cavers dataset
 
-Goals
+## Goals
 
 - Multi-lidar, multi-camera
 
-- Refactor IMU initializer
+## TODO
+
 - Co-located tests
