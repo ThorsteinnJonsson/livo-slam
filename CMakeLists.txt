@@ -21,6 +21,7 @@ find_package(sensor_msgs REQUIRED)
 add_subdirectory(src)
 
 install(TARGETS livo_slam RUNTIME DESTINATION bin)
+install(DIRECTORY config/ DESTINATION config)
 
 if(LIVO_SLAM_BUILD_TESTS)
   enable_testing()

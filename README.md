@@ -38,6 +38,12 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 
 In VS Code, F5 builds and launches under the debugger.
 
+Topics come from `config/livo_slam.yaml`:
+
+```bash
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+```
+
 ## Packaged image
 
 ```bash

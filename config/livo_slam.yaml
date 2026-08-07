@@ -1,0 +1,5 @@
+/**:
+  ros__parameters:
+    imu_topic: /imu/imu
+    lidar_topic: /os1_cloud_node1/points
+    camera_topic: /left/image_raw
