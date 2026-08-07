@@ -5,3 +5,7 @@ Datasets to check:
 - Oxford Spires
 - Oxford Osprey
 - Cavers dataset
+
+Goals
+
+- Multi-lidar, multi-camera
