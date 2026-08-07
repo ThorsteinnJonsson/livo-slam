@@ -1,9 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <rclcpp/rclcpp.hpp>
 
-#include "livo_slam_node.h"
+#include "ros/livo_slam_node.h"
 
 TEST(LivoSlamNode, ConstructsWithExpectedName) {
   rclcpp::init(0, nullptr);
