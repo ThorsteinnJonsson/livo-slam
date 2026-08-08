@@ -70,7 +70,13 @@ void LivoPipeline::Process(const MeasureGroup& group) {
       }
       const auto propagation_result =
           Propagate(estimate_, imu_samples, image.timestamp, config_.imu_noise);
-      (void)propagation_result;
+      estimate_ = propagation_result.estimate;
+
+      std::println(
+          "  propagated p=[{:.4f} {:.4f} {:.4f}] v=[{:.4f} {:.4f} {:.4f}]",
+          estimate_.state.position.x(), estimate_.state.position.y(),
+          estimate_.state.position.z(), estimate_.state.velocity.x(),
+          estimate_.state.velocity.y(), estimate_.state.velocity.z());
 
       //   Lidar
       //   Lidar backward propagation, (deskew points based on image time)
