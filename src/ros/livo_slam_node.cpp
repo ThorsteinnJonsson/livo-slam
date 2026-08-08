@@ -17,19 +17,19 @@ LivoSlamNode::LivoSlamNode() : Node("livo_slam"), pipeline_(ReadConfig()) {
       declare_parameter<std::string>("camera_topic", "/left/image_raw");
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-      imu_topic, rclcpp::SensorDataQoS().keep_last(2000),
+      imu_topic, rclcpp::QoS(rclcpp::KeepLast(2000)).reliable(),
       [this](const sensor_msgs::msg::Imu::ConstSharedPtr& msg) {
         ImuCallback(msg);
       });
 
   lidar_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
-      lidar_topic, rclcpp::SensorDataQoS(),
+      lidar_topic, rclcpp::QoS(rclcpp::KeepLast(50)).reliable(),
       [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg) {
         LidarCallback(msg);
       });
 
   camera_sub_ = create_subscription<sensor_msgs::msg::Image>(
-      camera_topic, rclcpp::SensorDataQoS(),
+      camera_topic, rclcpp::QoS(rclcpp::KeepLast(50)).reliable(),
       [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
         CameraCallback(msg);
       });
