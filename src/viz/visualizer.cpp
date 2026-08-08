@@ -82,7 +82,7 @@ void Visualizer::LogCloud(const Cloud& cloud) {
   }
 
   impl_->rec.log("world/cloud", rerun::Points3D(positions)
-                                    .with_colors(rerun::Color(200, 40, 40))
+                                    .with_colors(rerun::Color(255, 255, 255))
                                     .with_radii(0.05F));
 }
 
