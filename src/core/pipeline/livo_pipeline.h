@@ -7,6 +7,11 @@
 
 namespace livo_slam {
 
+struct ProcessResult {
+  Estimate estimate;
+  Cloud cloud_world;
+};
+
 class LivoPipeline {
  public:
   explicit LivoPipeline(PipelineConfig config);
@@ -16,7 +21,7 @@ class LivoPipeline {
   LivoPipeline(LivoPipeline&&) = delete;
   LivoPipeline& operator=(LivoPipeline&&) = delete;
 
-  void Process(const MeasureGroup& group);
+  ProcessResult Process(const MeasureGroup& group);
 
  private:
   PipelineConfig config_;

@@ -44,6 +44,25 @@ Topics come from `config/livo_slam.yaml`:
 ./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
 ```
 
+## Visualization
+
+Rerun runs entirely inside the container. Start the viewer, then the node:
+
+```bash
+rerun --serve-web --port 9876 --web-viewer-port 9090 &
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+```
+
+Open `http://127.0.0.1:9090` in a browser on the host. The devcontainer uses host
+networking, so no port mapping is needed.
+
+Logged entities: `world/imu` (pose and axes), `world/trajectory`, `world/cloud`.
+Timelines: `group` and `sensor_time`.
+
+To turn it off, set `viz.enabled: false` in the config, or build with
+`-DLIVO_SLAM_ENABLE_RERUN=OFF`, which drops the dependency entirely and compiles the
+visualizer as no-ops.
+
 ## Packaged image
 
 ```bash

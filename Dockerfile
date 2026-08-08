@@ -21,6 +21,8 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 ARG CMAKEFMT_VERSION=1.7.0
 ARG CMAKEFMT_SHA256=49b243c307187d5f377b7401882631cb0a10484da6b3f05ab15a55c41986ae05
+ARG RERUN_VERSION=0.35.0
+ARG RERUN_SHA256=c08ac43ed5b287494704bd9777a23d871f9cd25c493bdcad9f5184291b5ecc13
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -54,6 +56,15 @@ RUN wget -qO /tmp/cmakefmt.tar.gz \
      && install -m 0755 "/tmp/cmakefmt-${CMAKEFMT_VERSION}-x86_64-unknown-linux-gnu/cmakefmt" \
      /usr/local/bin/cmakefmt \
      && rm -rf /tmp/cmakefmt*
+
+# Rerun viewer. Serves the web viewer itself (rerun --serve-web), so nothing is
+# fetched from app.rerun.io and no viewer is needed on the host.
+RUN wget -qO /usr/local/bin/rerun \
+     "https://github.com/rerun-io/rerun/releases/download/${RERUN_VERSION}/rerun-cli-${RERUN_VERSION}-x86_64-unknown-linux-gnu" \
+     && echo "${RERUN_SHA256}  /usr/local/bin/rerun" | sha256sum -c - \
+     && chmod 0755 /usr/local/bin/rerun
+
+ENV RERUN_ANALYTICS=disabled
 
 # Ubuntu 24.04 ships a stock "ubuntu" account already sitting on uid 1000, which
 # collides with the host uid we want the dev user to own.
@@ -120,6 +131,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      && install -d -o ${USERNAME} -g ${USERNAME} /data
 
 COPY --from=build ${INSTALL_PREFIX} ${INSTALL_PREFIX}
+COPY --from=dev /usr/local/bin/rerun /usr/local/bin/rerun
+
+ENV RERUN_ANALYTICS=disabled
 
 ENV PATH=${INSTALL_PREFIX}/bin:${PATH} \
      LD_LIBRARY_PATH=${INSTALL_PREFIX}/lib:${LD_LIBRARY_PATH}

@@ -1,4 +1,5 @@
 add_subdirectory(core)
+add_subdirectory(viz)
 add_subdirectory(ros)
 
 add_executable(livo_slam main.cpp)

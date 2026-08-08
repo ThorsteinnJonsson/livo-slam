@@ -10,7 +10,7 @@ namespace livo_slam {
 LivoPipeline::LivoPipeline(PipelineConfig config)
     : config_(config), imu_initializer_(config_.init) {}
 
-void LivoPipeline::Process(const MeasureGroup& group) {
+ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
   const auto& [image, cloud, imu_samples] = group;
 
   switch (imu_initializer_.status()) {
@@ -53,7 +53,7 @@ void LivoPipeline::Process(const MeasureGroup& group) {
                      estimate_.covariance(kIdxGyroBias, kIdxGyroBias),
                      estimate_.covariance(kIdxAccelBias, kIdxAccelBias));
       }
-      return;
+      return {estimate_, {}};
     }
     case InitStatus::kInitialized: {
       std::println(
@@ -66,7 +66,7 @@ void LivoPipeline::Process(const MeasureGroup& group) {
       //   IMU forward propagation, for state and cov to image time.
       if (imu_samples.size() < 2) {
         std::println("Too few IMU samples to propagate");
-        return;
+        return {estimate_, {}};
       }
       const auto propagation_result =
           Propagate(estimate_, imu_samples, image.timestamp, config_.imu_noise);
@@ -96,6 +96,13 @@ void LivoPipeline::Process(const MeasureGroup& group) {
       break;
     }
   }
+
+  Cloud cloud_world = cloud;
+  for (Point& point : cloud_world.points) {
+    point.position =
+        estimate_.state.rotation * point.position + estimate_.state.position;
+  }
+  return {estimate_, std::move(cloud_world)};
 }
 
 }  // namespace livo_slam
