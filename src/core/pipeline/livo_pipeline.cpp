@@ -2,6 +2,8 @@
 
 #include <print>
 
+#include "core/estimator/initial_estimate.h"
+
 namespace livo_slam {
 
 LivoPipeline::LivoPipeline(PipelineConfig config)
@@ -16,11 +18,39 @@ void LivoPipeline::Process(const MeasureGroup& group) {
       imu_initializer_.Add(imu);
       if (imu_initializer_.status() == InitStatus::kInitialized) {
         const auto init_result = *imu_initializer_.init_result();
+        estimate_ = MakeInitialEstimate(init_result, config_.initial);
         std::println(
             "imu initialized t={:.4f} |a|={:.4f} bg=[{:.5f} {:.5f} {:.5f}]",
             init_result.timestamp, init_result.accel_mean_norm,
             init_result.gyro_bias.x(), init_result.gyro_bias.y(),
             init_result.gyro_bias.z());
+
+        const State& state = estimate_.state;
+        const Eigen::Vector3d ypr =
+            state.rotation.matrix().eulerAngles(2, 1, 0) * 180.0 / M_PI;
+        std::println("initial state t={:.4f}", estimate_.timestamp);
+        std::println("  ypr deg    = [{:.3f} {:.3f} {:.3f}]", ypr.x(), ypr.y(),
+                     ypr.z());
+        std::println("  position   = [{:.4f} {:.4f} {:.4f}]",
+                     state.position.x(), state.position.y(),
+                     state.position.z());
+        std::println("  velocity   = [{:.4f} {:.4f} {:.4f}]",
+                     state.velocity.x(), state.velocity.y(),
+                     state.velocity.z());
+        std::println("  gyro_bias  = [{:.5f} {:.5f} {:.5f}]",
+                     state.gyro_bias.x(), state.gyro_bias.y(),
+                     state.gyro_bias.z());
+        std::println("  accel_bias = [{:.5f} {:.5f} {:.5f}]",
+                     state.accel_bias.x(), state.accel_bias.y(),
+                     state.accel_bias.z());
+        std::println("  gravity    = [{:.4f} {:.4f} {:.4f}]", state.gravity.x(),
+                     state.gravity.y(), state.gravity.z());
+        std::println("  cov diag   = [{:.2e} {:.2e} {:.2e} {:.2e} {:.2e}]",
+                     estimate_.covariance(kIdxRotation, kIdxRotation),
+                     estimate_.covariance(kIdxPosition, kIdxPosition),
+                     estimate_.covariance(kIdxVelocity, kIdxVelocity),
+                     estimate_.covariance(kIdxGyroBias, kIdxGyroBias),
+                     estimate_.covariance(kIdxAccelBias, kIdxAccelBias));
       }
       return;
     }

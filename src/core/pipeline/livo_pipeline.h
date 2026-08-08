@@ -2,6 +2,7 @@
 
 #include "core/config/pipeline_config.h"
 #include "core/imu/imu_initializer.h"
+#include "core/types/estimate.h"
 #include "core/types/measure_group.h"
 
 namespace livo_slam {
@@ -20,6 +21,7 @@ class LivoPipeline {
  private:
   PipelineConfig config_;
   ImuInitializer imu_initializer_;
+  Estimate estimate_;
 };
 
 }  // namespace livo_slam
