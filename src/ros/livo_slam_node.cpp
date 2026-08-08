@@ -66,6 +66,16 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       "initial_state.accel_bias_std", initial_defaults.accel_bias_std);
   config.initial.gravity_std = declare_parameter<double>(
       "initial_state.gravity_std", initial_defaults.gravity_std);
+
+  const ImuNoiseParams noise_defaults;
+  config.imu_noise.gyro_noise_std = declare_parameter<double>(
+      "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
+  config.imu_noise.accel_noise_std = declare_parameter<double>(
+      "imu_noise.accel_noise_std", noise_defaults.accel_noise_std);
+  config.imu_noise.gyro_random_walk_std = declare_parameter<double>(
+      "imu_noise.gyro_random_walk_std", noise_defaults.gyro_random_walk_std);
+  config.imu_noise.accel_random_walk_std = declare_parameter<double>(
+      "imu_noise.accel_random_walk_std", noise_defaults.accel_random_walk_std);
   return config;
 }
 
