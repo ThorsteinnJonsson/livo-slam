@@ -132,6 +132,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build ${INSTALL_PREFIX} ${INSTALL_PREFIX}
 COPY --from=dev /usr/local/bin/rerun /usr/local/bin/rerun
+COPY docker/launch.sh /usr/local/bin/livo-slam-launch
 
 ENV RERUN_ANALYTICS=disabled
 
@@ -143,4 +144,4 @@ WORKDIR /data
 
 # /ros_entrypoint.sh from the base image already sources setup.bash, which is what
 # makes the rosidl typesupport and rosbag2 storage plugins loadable at runtime.
-CMD ["livo_slam"]
+CMD ["livo-slam-launch"]
