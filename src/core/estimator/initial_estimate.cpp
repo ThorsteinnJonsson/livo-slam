@@ -1,11 +1,6 @@
 #include "core/estimator/initial_estimate.h"
 
 namespace livo_slam {
-namespace {
-
-double Square(double value) { return value * value; }
-
-}  // namespace
 
 Estimate MakeInitialEstimate(const InitResult& result,
                              const InitialStateParams& params) {
@@ -17,12 +12,17 @@ Estimate MakeInitialEstimate(const InitResult& result,
   estimate.timestamp = result.timestamp;
 
   ErrorState diagonal;
-  diagonal.segment<3>(kIdxRotation).setConstant(Square(params.rotation_std));
-  diagonal.segment<3>(kIdxPosition).setConstant(Square(params.position_std));
-  diagonal.segment<3>(kIdxVelocity).setConstant(Square(params.velocity_std));
-  diagonal.segment<3>(kIdxGyroBias).setConstant(Square(params.gyro_bias_std));
-  diagonal.segment<3>(kIdxAccelBias).setConstant(Square(params.accel_bias_std));
-  diagonal.segment<3>(kIdxGravity).setConstant(Square(params.gravity_std));
+  diagonal.segment<3>(kIdxRotation)
+      .setConstant(std::pow(params.rotation_std, 2));
+  diagonal.segment<3>(kIdxPosition)
+      .setConstant(std::pow(params.position_std, 2));
+  diagonal.segment<3>(kIdxVelocity)
+      .setConstant(std::pow(params.velocity_std, 2));
+  diagonal.segment<3>(kIdxGyroBias)
+      .setConstant(std::pow(params.gyro_bias_std, 2));
+  diagonal.segment<3>(kIdxAccelBias)
+      .setConstant(std::pow(params.accel_bias_std, 2));
+  diagonal.segment<3>(kIdxGravity).setConstant(std::pow(params.gravity_std, 2));
   estimate.covariance = diagonal.asDiagonal();
 
   return estimate;
