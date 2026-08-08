@@ -120,10 +120,11 @@ ARG USERNAME=livo
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# ros-core lacks rosbag2, which ros-base carries. Adding just the pieces we link
-# against keeps this image well under the 887 MB of a full ros-base.
+# ros-core carries neither rosbag2 nor cv_bridge. rosbag2 is the metapackage
+# rather than rosbag2-cpp, so the image also gets the ros2 bag CLI and can replay
+# recordings on its own.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-     ros-${ROS_DISTRO}-rosbag2-cpp \
+     ros-${ROS_DISTRO}-rosbag2 \
      ros-${ROS_DISTRO}-rosbag2-storage-mcap \
      ros-${ROS_DISTRO}-cv-bridge \
      && rm -rf /var/lib/apt/lists/* \

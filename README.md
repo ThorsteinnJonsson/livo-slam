@@ -95,3 +95,14 @@ than appending to it:
 docker run --rm --network=host --ipc=host -e RERUN_WEB_PORT=9092 \
   livo-slam:runtime livo-slam-launch -p viz.enabled:=false
 ```
+
+The image includes the `ros2 bag` CLI, so it can replay a recording against
+itself:
+
+```bash
+docker run --rm --network=host --ipc=host -v $PWD/datasets:/data \
+  livo-slam:runtime bash -c 'livo-slam-launch & sleep 6; ros2 bag play /data/eee_03_mcap'
+```
+
+The `sleep` gives the node time to subscribe before playback starts;
+`ros2 bag play --delay` does the same from the other side.
