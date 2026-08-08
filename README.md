@@ -53,8 +53,20 @@ rerun --serve-web --port 9876 --web-viewer-port 9090 &
 ./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
 ```
 
-Open `http://127.0.0.1:9090` in a browser on the host. The devcontainer uses host
-networking, so no port mapping is needed.
+Open the URL that `rerun --serve-web` prints on startup. It carries the gRPC endpoint
+as a query parameter:
+
+```
+http://127.0.0.1:9090?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9876%2Fproxy
+```
+
+Opening `http://127.0.0.1:9090` without the `url` parameter shows the welcome page,
+because the viewer has no data source selected.
+
+The devcontainer uses host networking, so no port mapping is needed. For the same
+reason port 9876 can collide with something already running on the host (VS Code
+binds it in some setups). To move it, pass `--port <n>` to `rerun` and set
+`viz.grpc_url` in the config to match.
 
 Logged entities: `world/imu` (pose and axes), `world/trajectory`, `world/cloud`.
 Timelines: `group` and `sensor_time`.
