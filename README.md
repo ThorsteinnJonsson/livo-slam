@@ -96,13 +96,14 @@ docker run --rm --network=host --ipc=host -e RERUN_WEB_PORT=9092 \
   livo-slam:runtime livo-slam-launch -p viz.enabled:=false
 ```
 
-The image includes the `ros2 bag` CLI, so it can replay a recording against
-itself:
+The image includes the `ros2 bag` CLI. Set `LIVO_SLAM_BAG` and the launcher
+replays a recording against the node itself:
 
 ```bash
 docker run --rm --network=host --ipc=host -v $PWD/datasets:/data \
-  livo-slam:runtime bash -c 'livo-slam-launch & sleep 6; ros2 bag play /data/eee_03_mcap'
+  -e LIVO_SLAM_BAG=/data/eee_03_mcap livo-slam:runtime
 ```
 
-The `sleep` gives the node time to subscribe before playback starts;
-`ros2 bag play --delay` does the same from the other side.
+The launcher waits for the node to appear in `ros2 node list` before starting
+playback. When playback finishes the container keeps running so the recording
+stays viewable in the browser; stop it with Ctrl-C or `docker stop`.
