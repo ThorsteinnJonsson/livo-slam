@@ -32,7 +32,7 @@
     {
       "label": "open viewer",
       "type": "shell",
-      "command": "\"$(ls ~/.vscode-server/bin/*/bin/remote-cli/code | head -1)\" --openExternal 'http://127.0.0.1:9091?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9877%2Fproxy'",
+      "command": "\"$(ls ~/.vscode-server/bin/*/bin/remote-cli/code | head -1)\" --openExternal 'http://127.0.0.1:9091?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9877%2Fproxy' || true",
       "problemMatcher": []
     },
     {
@@ -48,6 +48,37 @@
         "build",
         "start rerun",
         "open viewer"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "play bag",
+      "type": "shell",
+      "command": "setsid ${workspaceFolder}/scripts/play_bag.sh > /tmp/livo_bag.log 2>&1 & sleep 1; echo launched",
+      "problemMatcher": []
+    },
+    {
+      "label": "stop bag",
+      "type": "shell",
+      "command": "kill -TERM -- -$(cat /tmp/livo_bag.pid) 2>/dev/null; rm -f /tmp/livo_bag.pid; true",
+      "problemMatcher": []
+    },
+    {
+      "label": "build, start rerun and play bag",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "build",
+        "start rerun",
+        "play bag",
+        "open viewer"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "stop rerun and bag",
+      "dependsOn": [
+        "stop rerun",
+        "stop bag"
       ],
       "problemMatcher": []
     }
