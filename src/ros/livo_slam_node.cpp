@@ -52,6 +52,20 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       "imu_init.max_accel_var", defaults.max_accel_var);
   config.init.max_gyro_var =
       declare_parameter<double>("imu_init.max_gyro_var", defaults.max_gyro_var);
+
+  const InitialStateParams initial_defaults;
+  config.initial.rotation_std = declare_parameter<double>(
+      "initial_state.rotation_std", initial_defaults.rotation_std);
+  config.initial.position_std = declare_parameter<double>(
+      "initial_state.position_std", initial_defaults.position_std);
+  config.initial.velocity_std = declare_parameter<double>(
+      "initial_state.velocity_std", initial_defaults.velocity_std);
+  config.initial.gyro_bias_std = declare_parameter<double>(
+      "initial_state.gyro_bias_std", initial_defaults.gyro_bias_std);
+  config.initial.accel_bias_std = declare_parameter<double>(
+      "initial_state.accel_bias_std", initial_defaults.accel_bias_std);
+  config.initial.gravity_std = declare_parameter<double>(
+      "initial_state.gravity_std", initial_defaults.gravity_std);
   return config;
 }
 

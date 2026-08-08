@@ -15,10 +15,6 @@
     initial_state.gyro_bias_std: 0.001
     initial_state.accel_bias_std: 0.01
     initial_state.gravity_std: 0.01
-    initial_state.lidar_rotation_std: 0.0035
-    initial_state.lidar_position_std: 0.002
-    initial_state.camera_rotation_std: 0.0035
-    initial_state.camera_position_std: 0.002
 
     # prettier-ignore
     lidar.T_body_lidar: [
