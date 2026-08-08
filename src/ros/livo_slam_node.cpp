@@ -8,7 +8,11 @@
 
 namespace livo_slam {
 
-LivoSlamNode::LivoSlamNode() : Node("livo_slam"), pipeline_(ReadConfig()) {
+LivoSlamNode::LivoSlamNode()
+    : Node("livo_slam"),
+      config_(ReadConfig()),
+      pipeline_(config_),
+      visualizer_(config_.viz) {
   const auto imu_topic =
       declare_parameter<std::string>("imu_topic", "/imu/imu");
   const auto lidar_topic =
@@ -67,6 +71,12 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.initial.gravity_std = declare_parameter<double>(
       "initial_state.gravity_std", initial_defaults.gravity_std);
 
+  const VizParams viz_defaults;
+  config.viz.enabled =
+      declare_parameter<bool>("viz.enabled", viz_defaults.enabled);
+  config.viz.grpc_url =
+      declare_parameter<std::string>("viz.grpc_url", viz_defaults.grpc_url);
+
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(
       "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
@@ -83,7 +93,10 @@ LivoSlamNode::~LivoSlamNode() { buffer_.Shutdown(); }
 
 void LivoSlamNode::Run() {
   while (const auto group = buffer_.PopMeasureGroup()) {
-    pipeline_.Process(*group);
+    const ProcessResult result = pipeline_.Process(*group);
+    visualizer_.SetTime(group_index_++, group->image.timestamp);
+    visualizer_.LogState(result.estimate.state);
+    visualizer_.LogCloud(result.cloud_world);
   }
 }
 

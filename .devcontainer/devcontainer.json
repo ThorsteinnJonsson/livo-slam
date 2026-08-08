@@ -19,6 +19,15 @@
   // host networking for DDS discovery against ROS nodes on the host, host ipc so
   // FastDDS can use its shared memory transport instead of falling back to UDP.
   "runArgs": ["--network=host", "--ipc=host"],
+  // docker exec bypasses /ros_entrypoint.sh and non-interactive shells never
+  // read .bashrc, so tasks and the debug adapter get no ROS environment. This fixes that.
+  "remoteEnv": {
+    "PATH": "/opt/ros/jazzy/bin:${containerEnv:PATH}",
+    "LD_LIBRARY_PATH": "/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/lib",
+    "AMENT_PREFIX_PATH": "/opt/ros/jazzy",
+    "PYTHONPATH": "/opt/ros/jazzy/lib/python3.12/site-packages",
+    "CMAKE_PREFIX_PATH": "/opt/ros/jazzy"
+  },
   "customizations": {
     "vscode": {
       "extensions": [

@@ -47,3 +47,6 @@
 
     # t_imu = t_cam + time_shift
     camera.time_shift: -0.0199575325817
+
+    viz.enabled: true
+    viz.grpc_url: rerun+http://127.0.0.1:9877/proxy

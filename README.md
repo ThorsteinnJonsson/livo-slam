@@ -44,9 +44,66 @@ Topics come from `config/livo_slam.yaml`:
 ./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
 ```
 
+## Visualization
+
+Rerun runs entirely inside the container. Start the viewer, then the node:
+
+```bash
+rerun --serve-web --port 9877 --web-viewer-port 9091 &
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+```
+
+Open the URL that `rerun --serve-web` prints on startup. It carries the gRPC
+endpoint as a query parameter:
+
+```
+http://127.0.0.1:9091?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9877%2Fproxy
+```
+
+Opening `http://127.0.0.1:9091` without the `url` parameter shows the welcome
+page, because the viewer has no data source selected.
+
+The devcontainer uses host networking, so no port mapping is needed. For the
+same reason port 9877 can collide with something already running on the host (VS
+Code binds it in some setups). To move it, pass `--port <n>` to `rerun` and set
+`viz.grpc_url` in the config to match.
+
+Logged entities: `world/imu` (pose and axes), `world/trajectory`, `world/cloud`.
+Timelines: `group` and `sensor_time`.
+
+To turn it off, set `viz.enabled: false` in the config, or build with
+`-DLIVO_SLAM_ENABLE_RERUN=OFF`, which drops the dependency entirely and compiles
+the visualizer as no-ops.
+
 ## Packaged image
 
 ```bash
 docker build --target runtime -t livo-slam:runtime .
-docker run --rm livo-slam:runtime livo_slam
+docker run --rm --network=host --ipc=host livo-slam:runtime
 ```
+
+The image entrypoint starts the Rerun viewer, waits for it, prints the viewer
+URL, and then runs the node. Host networking is required for the browser to
+reach the viewer, and shared IPC for DDS to communicate with other containers.
+
+Override ports and config with `RERUN_GRPC_PORT`, `RERUN_WEB_PORT`, or
+`LIVO_SLAM_CONFIG`. To pass extra arguments to the node, name the launcher
+explicitly, since arguments after the image replace the default command rather
+than appending to it:
+
+```bash
+docker run --rm --network=host --ipc=host -e RERUN_WEB_PORT=9092 \
+  livo-slam:runtime livo-slam-launch -p viz.enabled:=false
+```
+
+The image includes the `ros2 bag` CLI. Set `LIVO_SLAM_BAG` and the launcher
+replays a recording against the node itself:
+
+```bash
+docker run --rm --network=host --ipc=host -v $PWD/datasets:/data \
+  -e LIVO_SLAM_BAG=/data/eee_03_mcap livo-slam:runtime
+```
+
+The launcher waits for the node to appear in `ros2 node list` before starting
+playback. When playback finishes the container keeps running so the recording
+stays viewable in the browser; stop it with Ctrl-C or `docker stop`.

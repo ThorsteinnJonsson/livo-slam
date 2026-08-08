@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -10,6 +11,7 @@
 #include "core/config/pipeline_config.h"
 #include "core/pipeline/livo_pipeline.h"
 #include "core/pipeline/measurement_buffer.h"
+#include "viz/visualizer.h"
 
 namespace livo_slam {
 
@@ -33,8 +35,11 @@ class LivoSlamNode : public rclcpp::Node {
   PipelineConfig ReadConfig();
 
  private:
+  PipelineConfig config_;
   MeasurementBuffer buffer_;
   LivoPipeline pipeline_;
+  Visualizer visualizer_;
+  std::int64_t group_index_ = 0;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_sub_;

@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(LIVO_SLAM_BUILD_TESTS "Build the test suite" ON)
+option(LIVO_SLAM_ENABLE_RERUN "Build with Rerun visualization support" ON)
 
 include(cmake/dependencies.cmake)
 include(cmake/warnings.cmake)

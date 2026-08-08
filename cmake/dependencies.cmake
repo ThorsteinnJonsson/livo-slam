@@ -41,3 +41,15 @@ if(LIVO_SLAM_BUILD_TESTS)
   set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
 endif()
+
+if(LIVO_SLAM_ENABLE_RERUN)
+  FetchContent_Declare(
+    rerun_sdk
+    URL
+      https://github.com/rerun-io/rerun/releases/download/0.35.0/rerun_cpp_sdk.zip
+    URL_HASH
+      SHA256=5e4f8dc7139dd081b1786b58133aa9380461123394aa970152343bcc98c7a1bd
+    SYSTEM
+    EXCLUDE_FROM_ALL)
+  FetchContent_MakeAvailable(rerun_sdk)
+endif()
