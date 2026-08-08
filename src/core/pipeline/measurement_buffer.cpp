@@ -13,6 +13,10 @@ constexpr std::size_t kMaxImu = 4000;
 constexpr std::size_t kMaxPoints = 1000000;
 constexpr std::size_t kMaxImages = 50;
 
+const auto by_time = [](const Point& lhs, const Point& rhs) {
+  return lhs.timestamp < rhs.timestamp;
+};
+
 }  // namespace
 
 void MeasurementBuffer::PushImu(ImuSample sample) {
@@ -41,9 +45,6 @@ void MeasurementBuffer::PushPoints(std::vector<Point> points) {
       points_.insert(points_.end(), std::make_move_iterator(points.begin()),
                      std::make_move_iterator(points.end()));
     } else {
-      const auto by_time = [](const Point& lhs, const Point& rhs) {
-        return lhs.timestamp < rhs.timestamp;
-      };
       const auto split = std::lower_bound(points_.begin(), points_.end(),
                                           points.front(), by_time);
 
