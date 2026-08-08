@@ -49,7 +49,7 @@ Topics come from `config/livo_slam.yaml`:
 Rerun runs entirely inside the container. Start the viewer, then the node:
 
 ```bash
-rerun --serve-web --port 9876 --web-viewer-port 9090 &
+rerun --serve-web --port 9877 --web-viewer-port 9091 &
 ./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
 ```
 
@@ -57,14 +57,14 @@ Open the URL that `rerun --serve-web` prints on startup. It carries the gRPC end
 as a query parameter:
 
 ```
-http://127.0.0.1:9090?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9876%2Fproxy
+http://127.0.0.1:9091?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9877%2Fproxy
 ```
 
-Opening `http://127.0.0.1:9090` without the `url` parameter shows the welcome page,
+Opening `http://127.0.0.1:9091` without the `url` parameter shows the welcome page,
 because the viewer has no data source selected.
 
 The devcontainer uses host networking, so no port mapping is needed. For the same
-reason port 9876 can collide with something already running on the host (VS Code
+reason port 9877 can collide with something already running on the host (VS Code
 binds it in some setups). To move it, pass `--port <n>` to `rerun` and set
 `viz.grpc_url` in the config to match.
 

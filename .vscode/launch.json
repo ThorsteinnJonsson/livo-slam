@@ -15,6 +15,20 @@
       "preLaunchTask": "build"
     },
     {
+      "name": "livo_slam + rerun",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${command:cmake.launchTargetPath}",
+      "args": [
+        "--ros-args",
+        "--params-file",
+        "${workspaceFolder}/config/livo_slam.yaml"
+      ],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build and start rerun",
+      "postDebugTask": "stop rerun"
+    },
+    {
       "name": "livo_slam_tests",
       "type": "lldb",
       "request": "launch",
