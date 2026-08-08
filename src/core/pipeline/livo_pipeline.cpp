@@ -3,6 +3,7 @@
 #include <print>
 
 #include "core/estimator/initial_estimate.h"
+#include "core/imu/imu_propagator.h"
 
 namespace livo_slam {
 
@@ -10,12 +11,12 @@ LivoPipeline::LivoPipeline(PipelineConfig config)
     : config_(config), imu_initializer_(config_.init) {}
 
 void LivoPipeline::Process(const MeasureGroup& group) {
-  const auto& [image, cloud, imu] = group;
+  const auto& [image, cloud, imu_samples] = group;
 
   switch (imu_initializer_.status()) {
     case InitStatus::kCollecting:
     case InitStatus::kNotStationary: {
-      imu_initializer_.Add(imu);
+      imu_initializer_.Add(imu_samples);
       if (imu_initializer_.status() == InitStatus::kInitialized) {
         const auto init_result = *imu_initializer_.init_result();
         estimate_ = MakeInitialEstimate(init_result, config_.initial);
@@ -57,31 +58,38 @@ void LivoPipeline::Process(const MeasureGroup& group) {
     case InitStatus::kInitialized: {
       std::println(
           "imu={} | image={}x{} {} t={:.4f} | points={} cloud span={:.4f}",
-          imu.size(), image.width, image.height, image.encoding,
+          imu_samples.size(), image.width, image.height, image.encoding,
           image.timestamp, cloud.points.size(),
           cloud.end_time - cloud.start_time);
+
+      //   IMU
+      //   IMU forward propagation, for state and cov to image time.
+      if (imu_samples.size() < 2) {
+        std::println("Too few IMU samples to propagate");
+        return;
+      }
+      const auto propagation_result =
+          Propagate(estimate_, imu_samples, image.timestamp, config_.imu_noise);
+      (void)propagation_result;
+
+      //   Lidar
+      //   Lidar backward propagation, (deskew points based on image time)
+      //   Lidar preprocessing + downsampling
+      //   Lidar update (point-to-plane residual against map, iterate in
+      //   iekf)
+
+      //   Camera
+      //   Undistort image
+      //   Visual update (Sparse direct photometric update against visual
+      //   points in map)
+
+      //   Map update
+      //   Update map with deskewed points in world frame
+      //   Update visual map in map (new patches)
+      //   Map sliding/culling if moved far enough
       break;
     }
   }
-
-  // If IMU initialized
-  //   IMU
-  //   IMU forward propagation, for state and cov to image time.
-
-  //   Lidar
-  //   Lidar backward propagation, (deskew points based on image time)
-  //   Lidar preprocessing + downsampling
-  //   Lidar update (point-to-plane residual against map, iterate in iekf)
-
-  //   Camera
-  //   Undistort image
-  //   Visual update (Sparse direct photometric update against visual points in
-  //   map)
-
-  //   Map update
-  //   Update map with deskewed points in world frame
-  //   Update visual map in map (new patches)
-  //   Map sliding/culling if moved far enough
 }
 
 }  // namespace livo_slam
