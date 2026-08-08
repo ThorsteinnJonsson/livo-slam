@@ -1,8 +1,10 @@
 #include "core/pipeline/measurement_buffer.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <iterator>
 #include <utility>
+#include <vector>
 
 namespace livo_slam {
 namespace {
@@ -25,10 +27,42 @@ void MeasurementBuffer::PushImu(ImuSample sample) {
 }
 
 void MeasurementBuffer::PushPoints(std::vector<Point> points) {
+  if (points.empty()) {
+    return;
+  }
+
   {
     const MutexLock lock(mutex_);
-    points_.insert(points_.end(), std::make_move_iterator(points.begin()),
-                   std::make_move_iterator(points.end()));
+
+    // Consecutive scans can overlap in absolute point time. In that case we
+    // can't append, since we need the points to be sorted by timestamp.
+    if (points_.empty() ||
+        points_.back().timestamp <= points.front().timestamp) {
+      points_.insert(points_.end(), std::make_move_iterator(points.begin()),
+                     std::make_move_iterator(points.end()));
+    } else {
+      const auto by_time = [](const Point& lhs, const Point& rhs) {
+        return lhs.timestamp < rhs.timestamp;
+      };
+      const auto split = std::lower_bound(points_.begin(), points_.end(),
+                                          points.front(), by_time);
+
+      std::vector<Point> overlap(std::make_move_iterator(split),
+                                 std::make_move_iterator(points_.end()));
+      points_.erase(split, points_.end());
+
+      std::vector<Point> merged;
+      merged.reserve(overlap.size() + points.size());
+      std::merge(std::make_move_iterator(overlap.begin()),
+                 std::make_move_iterator(overlap.end()),
+                 std::make_move_iterator(points.begin()),
+                 std::make_move_iterator(points.end()),
+                 std::back_inserter(merged), by_time);
+
+      points_.insert(points_.end(), std::make_move_iterator(merged.begin()),
+                     std::make_move_iterator(merged.end()));
+    }
+
     while (points_.size() > kMaxPoints) {
       points_.pop_front();
     }
