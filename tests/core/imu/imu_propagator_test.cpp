@@ -61,7 +61,7 @@ TEST(Propagate, EmptySamplesOnlyAdvancesTime) {
 
   EXPECT_DOUBLE_EQ(result.estimate.timestamp, 0.25);
   EXPECT_LT(BoxMinus(result.estimate.state, estimate.state).norm(), 1e-15);
-  EXPECT_TRUE(result.trajectory.poses.empty());
+  EXPECT_TRUE(result.trajectory.empty());
 }
 
 TEST(Propagate, TrajectoryStartsAtEstimateTimeAndCoversSamples) {
@@ -69,9 +69,9 @@ TEST(Propagate, TrajectoryStartsAtEstimateTimeAndCoversSamples) {
                                    Eigen::Vector3d::Zero());
   const auto result = Propagate(MakeEstimate(), samples, 0.1, ImuNoiseParams{});
 
-  ASSERT_FALSE(result.trajectory.poses.empty());
-  EXPECT_DOUBLE_EQ(result.trajectory.poses.front().timestamp, 0.0);
-  EXPECT_DOUBLE_EQ(result.trajectory.poses.back().timestamp,
+  ASSERT_FALSE(result.trajectory.empty());
+  EXPECT_DOUBLE_EQ(result.trajectory.front().timestamp, 0.0);
+  EXPECT_DOUBLE_EQ(result.trajectory.back().timestamp,
                    samples.back().timestamp);
 }
 

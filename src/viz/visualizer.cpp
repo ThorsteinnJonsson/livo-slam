@@ -4,6 +4,7 @@
 
 #include <print>
 #include <rerun.hpp>
+#include <string_view>
 #include <vector>
 
 namespace livo_slam {
@@ -22,6 +23,19 @@ struct Visualizer::Impl {
     }
     rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
     std::println("rerun: streaming to {}", params.grpc_url);
+  }
+
+  void LogPoints(std::string_view entity, const Cloud& cloud,
+                 rerun::Color color) {
+    std::vector<rerun::Position3D> positions;
+    positions.reserve(cloud.points.size());
+    for (const Point& point : cloud.points) {
+      positions.emplace_back(static_cast<float>(point.position.x()),
+                             static_cast<float>(point.position.y()),
+                             static_cast<float>(point.position.z()));
+    }
+    rec.log(entity,
+            rerun::Points3D(positions).with_colors(color).with_radii(0.05F));
   }
 };
 
@@ -72,18 +86,14 @@ void Visualizer::LogCloud(const Cloud& cloud) {
   if (!impl_) {
     return;
   }
+  impl_->LogPoints("world/cloud", cloud, rerun::Color(200, 40, 40));
+}
 
-  std::vector<rerun::Position3D> positions;
-  positions.reserve(cloud.points.size());
-  for (const Point& point : cloud.points) {
-    positions.emplace_back(static_cast<float>(point.position.x()),
-                           static_cast<float>(point.position.y()),
-                           static_cast<float>(point.position.z()));
+void Visualizer::LogDeskewedCloud(const Cloud& cloud) {
+  if (!impl_) {
+    return;
   }
-
-  impl_->rec.log("world/cloud", rerun::Points3D(positions)
-                                    .with_colors(rerun::Color(255, 255, 255))
-                                    .with_radii(0.05F));
+  impl_->LogPoints("world/cloud_deskewed", cloud, rerun::Color(40, 200, 200));
 }
 
 }  // namespace livo_slam
@@ -100,6 +110,7 @@ Visualizer::~Visualizer() = default;
 void Visualizer::SetTime(std::int64_t, double) {}
 void Visualizer::LogState(const State&) {}
 void Visualizer::LogCloud(const Cloud&) {}
+void Visualizer::LogDeskewedCloud(const Cloud&) {}
 
 }  // namespace livo_slam
 

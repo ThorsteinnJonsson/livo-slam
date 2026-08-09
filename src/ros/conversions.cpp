@@ -43,6 +43,24 @@ T ReadAt(const std::uint8_t* base, std::uint32_t offset) {
 
 }  // namespace
 
+Sophus::SE3d ToSe3(const std::vector<double>& row_major) {
+  if (row_major.size() != 16) {
+    return Sophus::SE3d{};
+  }
+
+  Eigen::Matrix3d rotation;
+  Eigen::Vector3d translation;
+  for (int row = 0; row < 3; ++row) {
+    for (int col = 0; col < 3; ++col) {
+      rotation(row, col) = row_major[static_cast<std::size_t>(row * 4 + col)];
+    }
+    translation(row) = row_major[static_cast<std::size_t>(row * 4 + 3)];
+  }
+
+  return Sophus::SE3d(Sophus::SO3d(Eigen::Quaterniond(rotation).normalized()),
+                      translation);
+}
+
 ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg) {
   ImuSample sample;
   sample.timestamp = ToSeconds(msg.header.stamp);

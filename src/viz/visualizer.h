@@ -27,6 +27,7 @@ class Visualizer {
 
   void LogState(const State& state);
   void LogCloud(const Cloud& cloud);
+  void LogDeskewedCloud(const Cloud& cloud);
 
  private:
   struct Impl;

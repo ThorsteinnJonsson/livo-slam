@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Eigen/Core>
-#include <sophus/so3.hpp>
+#include <sophus/se3.hpp>
 #include <vector>
 
 namespace livo_slam {
@@ -9,8 +9,7 @@ namespace livo_slam {
 struct ImuPose {
   double timestamp = 0.0;
 
-  Sophus::SO3d rotation;
-  Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  Sophus::SE3d pose;
   Eigen::Vector3d velocity = Eigen::Vector3d::Zero();
 
   Eigen::Vector3d angular_velocity = Eigen::Vector3d::Zero();
@@ -19,8 +18,6 @@ struct ImuPose {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-struct Trajectory {
-  std::vector<ImuPose> poses;
-};
+using Trajectory = std::vector<ImuPose>;
 
 }  // namespace livo_slam
