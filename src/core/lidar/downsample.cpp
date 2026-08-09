@@ -1,0 +1,74 @@
+#include "downsample.h"
+
+#include <cmath>
+#include <cstdint>
+#include <unordered_map>
+
+namespace livo_slam {
+namespace {
+
+struct VoxelAccumulator {
+  Eigen::Vector3d sum = Eigen::Vector3d::Zero();
+  double sum_intensity = 0.0;
+  double earliest_timestamp = 0.0;
+  std::uint32_t count = 0;
+};
+
+// Bit-packs the grid indices into one key: 21 bits per axis, biased to
+// non-negative, so +-2^20 voxels per axis. At a 0.5 m leaf that is +-524 km,
+// far beyond the extent of a scan.
+std::int64_t VoxelKey(const Eigen::Vector3d& position, double leaf_size) {
+  const auto index = [leaf_size](double value) {
+    return static_cast<std::int64_t>(std::floor(value / leaf_size));
+  };
+  constexpr std::int64_t kBias = 1 << 20;
+  constexpr std::int64_t kMask = 0x1FFFFF;
+
+  return ((index(position.x()) + kBias) & kMask) |
+         (((index(position.y()) + kBias) & kMask) << 21) |
+         (((index(position.z()) + kBias) & kMask) << 42);
+}
+
+}  // namespace
+
+Cloud VoxelDownsample(const Cloud& cloud, double leaf_size) {
+  Cloud downsampled;
+  downsampled.start_time = cloud.start_time;
+  downsampled.end_time = cloud.end_time;
+  if (leaf_size <= 0.0) {
+    return cloud;
+  }
+
+  std::unordered_map<std::int64_t, VoxelAccumulator> grid;
+  grid.reserve(cloud.points.size());
+
+  for (const Point& point : cloud.points) {
+    if (!point.position.allFinite()) {
+      continue;
+    }
+
+    auto& accumulator = grid[VoxelKey(point.position, leaf_size)];
+    accumulator.sum += point.position;
+    accumulator.sum_intensity += static_cast<double>(point.intensity);
+    if (accumulator.count == 0 ||
+        point.timestamp < accumulator.earliest_timestamp) {
+      accumulator.earliest_timestamp = point.timestamp;
+    }
+    ++accumulator.count;
+  }
+
+  downsampled.points.reserve(grid.size());
+  for (const auto& [key, accumulator] : grid) {
+    const double count = static_cast<double>(accumulator.count);
+
+    Point point;
+    point.position = accumulator.sum / count;
+    point.intensity = static_cast<float>(accumulator.sum_intensity / count);
+    point.timestamp = accumulator.earliest_timestamp;
+    downsampled.points.push_back(point);
+  }
+
+  return downsampled;
+}
+
+}  // namespace livo_slam

@@ -53,3 +53,4 @@
 
     lidar.min_range: 1.0
     lidar.max_range: 60.0
+    lidar.voxel_leaf_size: 0.5

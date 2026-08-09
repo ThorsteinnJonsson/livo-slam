@@ -5,6 +5,7 @@
 #include "core/estimator/initial_estimate.h"
 #include "core/imu/imu_propagator.h"
 #include "core/lidar/deskew.h"
+#include "core/lidar/downsample.h"
 #include "core/lidar/range_filter.h"
 
 namespace livo_slam {
@@ -87,6 +88,12 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       const Cloud deskewed =
           Deskew(in_range, propagation_result.trajectory, estimate_.state,
                  config_.lidar.imu_from_lidar);
+      const Cloud downsampled =
+          VoxelDownsample(deskewed, config_.lidar.voxel_leaf_size);
+
+      std::println("  points raw={} in_range={} downsampled={}",
+                   cloud.points.size(), in_range.points.size(),
+                   downsampled.points.size());
 
       //   Lidar preprocessing + downsampling
       //   Lidar update (point-to-plane residual against map, iterate in
@@ -111,7 +118,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
         point.position = T_world_lidar * point.position;
       }
 
-      Cloud deskewed_world = deskewed;
+      Cloud deskewed_world = downsampled;
       for (Point& point : deskewed_world.points) {
         point.position = T_world_imu * point.position;
       }

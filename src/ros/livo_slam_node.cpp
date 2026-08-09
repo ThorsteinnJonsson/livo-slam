@@ -99,6 +99,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       declare_parameter<double>("lidar.min_range", lidar_defaults.min_range);
   config.lidar.max_range =
       declare_parameter<double>("lidar.max_range", lidar_defaults.max_range);
+  config.lidar.voxel_leaf_size = declare_parameter<double>(
+      "lidar.voxel_leaf_size", lidar_defaults.voxel_leaf_size);
 
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(
