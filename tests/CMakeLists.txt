@@ -1,6 +1,6 @@
-add_executable(
-  livo_slam_tests imu_initializer_test.cpp imu_propagator_test.cpp
-  initial_estimate_test.cpp measurement_buffer_test.cpp state_test.cpp)
+add_executable(livo_slam_tests)
+
+add_subdirectory(core)
 
 target_link_libraries(
   livo_slam_tests
