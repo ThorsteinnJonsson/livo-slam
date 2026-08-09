@@ -50,3 +50,6 @@
 
     viz.enabled: true
     viz.grpc_url: rerun+http://127.0.0.1:9877/proxy
+
+    lidar.min_range: 1.0
+    lidar.max_range: 60.0

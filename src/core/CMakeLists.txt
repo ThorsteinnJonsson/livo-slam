@@ -6,6 +6,7 @@ add_library(
     imu/imu_initializer.cpp
     imu/imu_propagator.cpp
     lidar/deskew.cpp
+    lidar/range_filter.cpp
     estimator/initial_estimate.cpp)
 
 target_include_directories(livo_slam_core_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)

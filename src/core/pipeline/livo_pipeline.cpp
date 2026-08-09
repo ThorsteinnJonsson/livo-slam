@@ -5,6 +5,7 @@
 #include "core/estimator/initial_estimate.h"
 #include "core/imu/imu_propagator.h"
 #include "core/lidar/deskew.h"
+#include "core/lidar/range_filter.h"
 
 namespace livo_slam {
 
@@ -81,8 +82,10 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Lidar
       //   Lidar backward propagation, (deskew points based on image time)
+      const Cloud in_range = FilterByRange(cloud, config_.lidar.min_range,
+                                           config_.lidar.max_range);
       const Cloud deskewed =
-          Deskew(cloud, propagation_result.trajectory, estimate_.state,
+          Deskew(in_range, propagation_result.trajectory, estimate_.state,
                  config_.lidar.imu_from_lidar);
 
       //   Lidar preprocessing + downsampling
