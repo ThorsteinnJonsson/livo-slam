@@ -34,9 +34,7 @@ Cloud Deskew(const Cloud& cloud, const Trajectory& trajectory,
     const Eigen::Vector3d p_ref = correction * p_i;
 
     auto& p_out = deskewed.points[i].position;
-    p_out.x() = static_cast<float>(p_ref.x());
-    p_out.y() = static_cast<float>(p_ref.y());
-    p_out.z() = static_cast<float>(p_ref.z());
+    p_out = p_ref;
   }
   return deskewed;
 }
