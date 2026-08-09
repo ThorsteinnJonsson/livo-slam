@@ -2,8 +2,6 @@
 
 #include <algorithm>
 
-#include "core/types/trajectory.h"
-
 namespace livo_slam {
 
 namespace {
