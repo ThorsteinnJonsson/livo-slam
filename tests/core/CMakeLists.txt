@@ -1,6 +1,7 @@
 target_sources(
   livo_slam_tests
   PRIVATE
+    deskew_test.cpp
     imu_initializer_test.cpp
     imu_propagator_test.cpp
     initial_estimate_test.cpp
