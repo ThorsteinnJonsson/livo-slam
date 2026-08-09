@@ -11,15 +11,14 @@ Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double t) {
 
 // Deskew pointcloud and output in IMU frame
 Cloud Deskew(const Cloud& cloud, const Trajectory& trajectory,
-             const State& reference_state, double reference_time,
-             const Sophus::SE3d& T_imu_lidar) {
+             const State& reference_state, const Sophus::SE3d& T_imu_lidar) {
   Cloud deskewed = cloud;
   if (trajectory.poses.empty()) {
     return deskewed;
   }
 
-  const Sophus::SE3d T_lidar_imu = T_imu_lidar.inverse();
-  const Sophus::SE3d T_W_imu_ref = InterpolatePose(trajectory, reference_time);
+  const Sophus::SE3d T_W_imu_ref(reference_state.rotation,
+                                 reference_state.position);
   const Sophus::SE3d T_W_imu_ref_inv = T_W_imu_ref.inverse();
 
   for (size_t i = 0; i < cloud.points.size(); ++i) {
@@ -27,7 +26,7 @@ Cloud Deskew(const Cloud& cloud, const Trajectory& trajectory,
     const Sophus::SE3d T_W_imu_i = InterpolatePose(trajectory, t_i);
 
     // Relative body motion from the point's capture time to the reference time,
-    // re-expressed in the lidar frame.
+    // re-expressed in the IMU frame.
     const Sophus::SE3d correction = (T_W_imu_ref_inv * T_W_imu_i) * T_imu_lidar;
 
     const Eigen::Vector3d& p_i = cloud.points[i].position;

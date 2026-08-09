@@ -83,7 +83,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Lidar backward propagation, (deskew points based on image time)
       const Cloud deskewed =
           Deskew(cloud, propagation_result.trajectory, estimate_.state,
-                 estimate_.timestamp, config_.lidar.imu_from_lidar);
+                 config_.lidar.imu_from_lidar);
       (void)deskewed;
 
       //   Lidar preprocessing + downsampling
