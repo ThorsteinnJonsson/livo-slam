@@ -8,13 +8,12 @@ namespace livo_slam {
 
 namespace {
 Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double timestamp) {
-  const auto& poses = trajectory.poses;
-  if (timestamp <= poses.front().timestamp) return poses.front().pose;
-  if (timestamp >= poses.back().timestamp) return poses.back().pose;
+  if (timestamp <= trajectory.front().timestamp) return trajectory.front().pose;
+  if (timestamp >= trajectory.back().timestamp) return trajectory.back().pose;
 
   // First pose with timestamp strictly greater than the query.
   auto hi = std::upper_bound(
-      poses.begin(), poses.end(), timestamp,
+      trajectory.begin(), trajectory.end(), timestamp,
       [](double t, const ImuPose& p) { return t < p.timestamp; });
   auto lo = std::prev(hi);
 
@@ -31,7 +30,7 @@ Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double timestamp) {
 Cloud Deskew(const Cloud& cloud, const Trajectory& trajectory,
              const State& reference_state, const Sophus::SE3d& T_imu_lidar) {
   Cloud deskewed = cloud;
-  if (trajectory.poses.empty()) {
+  if (trajectory.empty()) {
     return deskewed;
   }
 

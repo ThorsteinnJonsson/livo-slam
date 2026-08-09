@@ -18,8 +18,6 @@ struct ImuPose {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-struct Trajectory {
-  std::vector<ImuPose> poses;
-};
+using Trajectory = std::vector<ImuPose>;
 
 }  // namespace livo_slam

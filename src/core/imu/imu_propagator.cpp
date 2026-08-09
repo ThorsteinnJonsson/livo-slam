@@ -53,7 +53,7 @@ PropagationResult Propagate(const Estimate& estimate,
     pose.velocity = state.velocity;
     pose.angular_velocity = w_mid;
     pose.linear_acceleration = a_mid;
-    result.trajectory.poses.push_back(pose);
+    result.trajectory.push_back(pose);
 
     // ──────────────────────────────────────────────────────────────
     // Propagate new state
