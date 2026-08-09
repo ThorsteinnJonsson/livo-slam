@@ -1,5 +1,7 @@
 #include "deskew.h"
 
+#include <algorithm>
+
 #include "core/types/trajectory.h"
 
 namespace livo_slam {
@@ -16,14 +18,14 @@ Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double timestamp) {
     return Sophus::SE3d{poses.back().rotation, poses.back().position};
   }
 
-  // First pose with t_ns strictly greater than the query.
+  // First pose with timestamp strictly greater than the query.
   auto hi = std::upper_bound(
       poses.begin(), poses.end(), timestamp,
       [](double t, const ImuPose& p) { return t < p.timestamp; });
   auto lo = std::prev(hi);
 
-  const double alpha = static_cast<double>(timestamp - lo->timestamp) /
-                       static_cast<double>(hi->timestamp - lo->timestamp);
+  const double alpha =
+      (timestamp - lo->timestamp) / (hi->timestamp - lo->timestamp);
 
   // SE3 interpolation via the Lie-algebra tangent between the two poses.
   const Sophus::SE3d T_lo{lo->rotation, lo->position};
