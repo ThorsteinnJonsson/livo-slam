@@ -114,6 +114,7 @@ void LivoSlamNode::Run() {
     visualizer_.SetTime(group_index_++, group->image.timestamp);
     visualizer_.LogState(result.estimate.state);
     visualizer_.LogCloud(result.cloud_world);
+    visualizer_.LogDeskewedCloud(result.cloud_deskewed_world);
   }
 }
 

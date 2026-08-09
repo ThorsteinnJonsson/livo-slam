@@ -54,7 +54,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                      estimate_.covariance(kIdxGyroBias, kIdxGyroBias),
                      estimate_.covariance(kIdxAccelBias, kIdxAccelBias));
       }
-      return {estimate_, {}};
+      return {estimate_, {}, {}};
     }
     case InitStatus::kInitialized: {
       std::println(
@@ -67,7 +67,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   IMU forward propagation, for state and cov to image time.
       if (imu_samples.size() < 2) {
         std::println("Too few IMU samples to propagate");
-        return {estimate_, {}};
+        return {estimate_, {}, {}};
       }
       const auto propagation_result =
           Propagate(estimate_, imu_samples, image.timestamp, config_.imu_noise);
@@ -84,7 +84,6 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       const Cloud deskewed =
           Deskew(cloud, propagation_result.trajectory, estimate_.state,
                  config_.lidar.imu_from_lidar);
-      (void)deskewed;
 
       //   Lidar preprocessing + downsampling
       //   Lidar update (point-to-plane residual against map, iterate in
@@ -99,16 +98,26 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Update map with deskewed points in world frame
       //   Update visual map in map (new patches)
       //   Map sliding/culling if moved far enough
-      break;
+      const Sophus::SE3d T_world_imu(estimate_.state.rotation,
+                                     estimate_.state.position);
+      const Sophus::SE3d T_world_lidar =
+          T_world_imu * config_.lidar.imu_from_lidar;
+
+      Cloud cloud_world = cloud;
+      for (Point& point : cloud_world.points) {
+        point.position = T_world_lidar * point.position;
+      }
+
+      Cloud deskewed_world = deskewed;
+      for (Point& point : deskewed_world.points) {
+        point.position = T_world_imu * point.position;
+      }
+
+      return {estimate_, std::move(cloud_world), std::move(deskewed_world)};
     }
   }
 
-  Cloud cloud_world = cloud;
-  for (Point& point : cloud_world.points) {
-    point.position =
-        estimate_.state.rotation * point.position + estimate_.state.position;
-  }
-  return {estimate_, std::move(cloud_world)};
+  return {estimate_, {}, {}};
 }
 
 }  // namespace livo_slam

@@ -10,6 +10,7 @@ namespace livo_slam {
 struct ProcessResult {
   Estimate estimate;
   Cloud cloud_world;
+  Cloud cloud_deskewed_world;
 };
 
 class LivoPipeline {
