@@ -8,8 +8,5 @@
 
 ## Goals
 
-- Multi-lidar, multi-camera
-
-## TODO
-
-- Co-located tests
+- Fully implement livo-odometry inspired by FAST-LIVO2
+- Support multi-lidar, multi-camera
