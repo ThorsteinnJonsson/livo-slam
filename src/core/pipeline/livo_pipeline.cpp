@@ -4,6 +4,7 @@
 
 #include "core/estimator/initial_estimate.h"
 #include "core/imu/imu_propagator.h"
+#include "core/lidar/deskew.h"
 
 namespace livo_slam {
 
@@ -80,6 +81,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Lidar
       //   Lidar backward propagation, (deskew points based on image time)
+      Deskew(estimate_, propagation_result.trajectory, cloud, image.timestamp);
+
       //   Lidar preprocessing + downsampling
       //   Lidar update (point-to-plane residual against map, iterate in
       //   iekf)
