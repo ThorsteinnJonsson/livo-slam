@@ -9,14 +9,8 @@ namespace livo_slam {
 namespace {
 Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double timestamp) {
   const auto& poses = trajectory.poses;
-  if (timestamp <= poses.front().timestamp) {
-    // TODO: Check if it is better to store directly as Sophus::SE3d in the
-    // trajectory
-    return Sophus::SE3d{poses.front().rotation, poses.front().position};
-  }
-  if (timestamp >= poses.back().timestamp) {
-    return Sophus::SE3d{poses.back().rotation, poses.back().position};
-  }
+  if (timestamp <= poses.front().timestamp) return poses.front().pose;
+  if (timestamp >= poses.back().timestamp) return poses.back().pose;
 
   // First pose with timestamp strictly greater than the query.
   auto hi = std::upper_bound(
@@ -28,10 +22,8 @@ Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double timestamp) {
       (timestamp - lo->timestamp) / (hi->timestamp - lo->timestamp);
 
   // SE3 interpolation via the Lie-algebra tangent between the two poses.
-  const Sophus::SE3d T_lo{lo->rotation, lo->position};
-  const Sophus::SE3d T_hi{hi->rotation, hi->position};
-  const Sophus::SE3d rel = T_lo.inverse() * T_hi;
-  return T_lo * Sophus::SE3d::exp(alpha * rel.log());
+  const Sophus::SE3d rel = lo->pose.inverse() * hi->pose;
+  return lo->pose * Sophus::SE3d::exp(alpha * rel.log());
 }
 }  // namespace
 

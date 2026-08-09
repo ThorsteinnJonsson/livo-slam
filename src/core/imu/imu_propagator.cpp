@@ -49,8 +49,7 @@ PropagationResult Propagate(const Estimate& estimate,
     // This will be used for backward propagation (lidar deskewing) later.
     ImuPose pose;
     pose.timestamp = timestamp;
-    pose.rotation = state.rotation;
-    pose.position = state.position;
+    pose.pose = Sophus::SE3d(state.rotation, state.position);
     pose.velocity = state.velocity;
     pose.angular_velocity = w_mid;
     pose.linear_acceleration = a_mid;
