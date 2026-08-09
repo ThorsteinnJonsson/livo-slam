@@ -1,6 +1,7 @@
-add_executable(livo_slam_tests)
+file(GLOB_RECURSE test_sources CONFIGURE_DEPENDS
+     ${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp)
 
-add_subdirectory(core)
+add_executable(livo_slam_tests ${test_sources})
 
 target_link_libraries(
   livo_slam_tests
