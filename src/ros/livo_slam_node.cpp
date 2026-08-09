@@ -3,11 +3,11 @@
 #include <cstdint>
 #include <rclcpp/qos.hpp>
 #include <string>
+#include <vector>
 
 #include "ros/conversions.h"
 
 namespace livo_slam {
-
 LivoSlamNode::LivoSlamNode()
     : Node("livo_slam"),
       config_(ReadConfig()),
@@ -76,6 +76,18 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       declare_parameter<bool>("viz.enabled", viz_defaults.enabled);
   config.viz.grpc_url =
       declare_parameter<std::string>("viz.grpc_url", viz_defaults.grpc_url);
+
+  const std::vector<double> identity = {1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                                        0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+  const auto imu_from_lidar =
+      declare_parameter<std::vector<double>>("lidar.T_body_lidar", identity);
+  if (imu_from_lidar.size() != 16) {
+    RCLCPP_ERROR(get_logger(),
+                 "lidar.T_body_lidar has %zu entries, expected 16; using "
+                 "identity",
+                 imu_from_lidar.size());
+  }
+  config.lidar.imu_from_lidar = ToSe3(imu_from_lidar);
 
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(

@@ -3,6 +3,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sophus/se3.hpp>
 #include <vector>
 
 #include "core/types/cloud.h"
@@ -10,6 +11,8 @@
 #include "core/types/imu_sample.h"
 
 namespace livo_slam {
+
+Sophus::SE3d ToSe3(const std::vector<double>& row_major);
 
 ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg);
 
