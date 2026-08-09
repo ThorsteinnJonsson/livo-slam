@@ -1,11 +1,35 @@
 #include "deskew.h"
 
+#include "core/types/trajectory.h"
+
 namespace livo_slam {
 
 namespace {
-Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double t) {
-  // TODO: Implement
-  return {};
+Sophus::SE3d InterpolatePose(const Trajectory& trajectory, double timestamp) {
+  const auto& poses = trajectory.poses;
+  if (timestamp <= poses.front().timestamp) {
+    // TODO: Check if it is better to store directly as Sophus::SE3d in the
+    // trajectory
+    return Sophus::SE3d{poses.front().rotation, poses.front().position};
+  }
+  if (timestamp >= poses.back().timestamp) {
+    return Sophus::SE3d{poses.back().rotation, poses.back().position};
+  }
+
+  // First pose with t_ns strictly greater than the query.
+  auto hi = std::upper_bound(
+      poses.begin(), poses.end(), timestamp,
+      [](double t, const ImuPose& p) { return t < p.timestamp; });
+  auto lo = std::prev(hi);
+
+  const double alpha = static_cast<double>(timestamp - lo->timestamp) /
+                       static_cast<double>(hi->timestamp - lo->timestamp);
+
+  // SE3 interpolation via the Lie-algebra tangent between the two poses.
+  const Sophus::SE3d T_lo{lo->rotation, lo->position};
+  const Sophus::SE3d T_hi{hi->rotation, hi->position};
+  const Sophus::SE3d rel = T_lo.inverse() * T_hi;
+  return T_lo * Sophus::SE3d::exp(alpha * rel.log());
 }
 }  // namespace
 
