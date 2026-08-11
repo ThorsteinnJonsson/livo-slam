@@ -57,3 +57,5 @@
 
     map.voxel_size: 0.5
     map.layer_init_points: [5, 5, 5]
+    map.max_points_per_voxel: 50
+    map.max_plane_variance: 0.01
