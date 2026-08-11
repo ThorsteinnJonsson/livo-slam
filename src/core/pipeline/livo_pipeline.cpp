@@ -84,12 +84,15 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
           estimate_.state.velocity.y(), estimate_.state.velocity.z());
 
       //   Lidar
-      //   Lidar backward propagation, (deskew points based on image time)
+      //   Lidar preprocessing
       const Cloud in_range = FilterByRange(cloud, config_.lidar.min_range,
                                            config_.lidar.max_range);
+
+      //   Lidar backward propagation, (deskew points based on image time)
       const Cloud deskewed =
           Deskew(in_range, propagation_result.trajectory, estimate_.state,
                  config_.lidar.imu_from_lidar);
+      //   Lidar downsampling
       const Cloud downsampled =
           VoxelDownsample(deskewed, config_.lidar.voxel_leaf_size);
 
@@ -97,7 +100,6 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                    cloud.points.size(), in_range.points.size(),
                    downsampled.points.size());
 
-      //   Lidar preprocessing + downsampling
       //   Lidar update (point-to-plane residual against map, iterate in
       //   iekf)
 
@@ -124,6 +126,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       for (Point& point : deskewed_world.points) {
         point.position = T_world_imu * point.position;
       }
+
+      local_map_.Insert(deskewed_world);
 
       return {estimate_, std::move(cloud_world), std::move(deskewed_world)};
     }
