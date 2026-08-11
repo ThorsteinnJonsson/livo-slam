@@ -19,7 +19,6 @@ class VoxelMap {
 
  private:
   VoxelMapParams params_;
-  std::array<std::size_t, VoxelMapParams::kMaxLayerDepth> layer_init_points_;
 
   std::unordered_map<std::int64_t, VoxelOctree> voxels_;
 };

@@ -4,8 +4,7 @@
 
 namespace livo_slam {
 
-VoxelMap::VoxelMap(const VoxelMapParams& params)
-    : params_(params), layer_init_points_(params.layer_init_points) {}
+VoxelMap::VoxelMap(const VoxelMapParams& params) : params_(params) {}
 
 void VoxelMap::Insert(const Cloud& cloud_world) {}
 
