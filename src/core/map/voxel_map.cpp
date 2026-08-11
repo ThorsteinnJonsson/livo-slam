@@ -12,16 +12,14 @@ void VoxelMap::Insert(const Cloud& cloud_world) {
         voxel::VoxelIndex(point.position, params_.voxel_size);
     const auto flat_index = voxel::PackKey(voxel_index);
 
-    if (!voxels_.contains(flat_index)) {
-      const Eigen::Vector3d center =
-          (voxel_index.cast<double>() + Eigen::Vector3d::Constant(0.5)) *
-          params_.voxel_size;
+    const Eigen::Vector3d center =
+        (voxel_index.cast<double>() + Eigen::Vector3d::Constant(0.5)) *
+        params_.voxel_size;
 
-      auto [it, inserted] =
-          voxels_.try_emplace(flat_index, center, params_.voxel_size / 4.0, 0);
+    auto [it, inserted] =
+        voxels_.try_emplace(flat_index, center, params_.voxel_size / 4.0, 0);
 
-      it->second.Insert(point, params_);
-    }
+    it->second.Insert(point, params_);
   }
 
   for (auto& [_key, voxel] : voxels_) {

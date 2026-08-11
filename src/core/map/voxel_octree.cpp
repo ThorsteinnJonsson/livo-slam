@@ -8,7 +8,12 @@ VoxelOctree::VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
 void VoxelOctree::Insert(const Point& point_world,
                          const VoxelMapParams& params) {}
 
-void VoxelOctree::Update(const VoxelMapParams& params) {}
+void VoxelOctree::Update(const VoxelMapParams& params) {
+  if (new_points_ == 0) {
+    // Early return, nothing to update
+    return;
+  }
+}
 
 void VoxelOctree::InitPlane() {}
 
