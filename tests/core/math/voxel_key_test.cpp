@@ -4,7 +4,7 @@
 
 #include <set>
 
-namespace livo_slam {
+namespace livo_slam::voxel {
 namespace {
 
 TEST(VoxelIndex, FloorsTowardsNegativeInfinity) {
@@ -66,4 +66,4 @@ TEST(PackKey, IsUniqueAcrossTheRepresentableRange) {
 }
 
 }  // namespace
-}  // namespace livo_slam
+}  // namespace livo_slam::voxel

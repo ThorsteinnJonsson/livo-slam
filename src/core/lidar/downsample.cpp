@@ -34,7 +34,7 @@ Cloud VoxelDownsample(const Cloud& cloud, double leaf_size) {
     }
 
     auto& accumulator =
-        grid[PackKey(VoxelIndex(point.position, leaf_size))];
+        grid[voxel::PackKey(voxel::VoxelIndex(point.position, leaf_size))];
     accumulator.sum += point.position;
     accumulator.sum_intensity += static_cast<double>(point.intensity);
     if (accumulator.count == 0 ||
