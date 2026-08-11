@@ -8,6 +8,8 @@ add_library(
     lidar/deskew.cpp
     lidar/downsample.cpp
     lidar/range_filter.cpp
+    map/voxel_octree.cpp
+    map/voxel_map.cpp
     estimator/initial_estimate.cpp)
 
 target_include_directories(livo_slam_core_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
