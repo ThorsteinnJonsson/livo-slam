@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <unordered_map>
 
 #include "core/config/map_params.h"
 #include "core/map/voxel_octree.h"
@@ -16,7 +18,7 @@ class VoxelMap {
   void Insert(const Cloud& cloud_world);
 
  private:
-  double voxel_size_;
+  VoxelMapParams params_;
   std::array<std::size_t, VoxelMapParams::kMaxLayerDepth> layer_init_points_;
 
   std::unordered_map<std::int64_t, VoxelOctree> voxels_;

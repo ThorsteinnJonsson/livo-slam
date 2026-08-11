@@ -1,7 +1,11 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <array>
+#include <cstddef>
 #include <memory>
+#include <optional>
+#include <vector>
 
 #include "core/config/map_params.h"
 #include "core/types/cloud.h"
@@ -35,6 +39,12 @@ class VoxelOctree {
       false;  // Not enough points yet for plane fit. Not a
               // plane if initialized and plane_ is std::nullopt.
   bool update_enabled_ = true;
+  std::size_t new_points_ =
+      0;  // New points added this frame, used to determine if we should attempt
+          // to fit a plane.
+          // - Not yet init + enough points → fit plane or subdivide.
+          // - Already a plane → refit with the new points.
+          // - Init but not planar → recurse into children.
 };
 
 }  // namespace livo_slam
