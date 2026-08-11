@@ -19,6 +19,9 @@ class VoxelOctree {
               std::size_t layer);
 
   void Insert(const Point& point_world, const VoxelMapParams& params);
+  void Update(const VoxelMapParams& params);
+
+ private:
   void InitPlane();
   void Subdivide();
   int ChildIndex(const Eigen::Vector3d& point_world) const;
