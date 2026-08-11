@@ -9,7 +9,7 @@ namespace livo_slam {
 
 class VoxelMap {
  public:
-  VoxelMap();
+  explicit VoxelMap(const VoxelMapParams& params);
 
  private:
   double voxel_size_;

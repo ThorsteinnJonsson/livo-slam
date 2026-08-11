@@ -11,7 +11,9 @@
 namespace livo_slam {
 
 LivoPipeline::LivoPipeline(PipelineConfig config)
-    : config_(config), imu_initializer_(config_.init), local_map_() {}
+    : config_(config),
+      imu_initializer_(config_.init),
+      local_map_(config_.map) {}
 
 ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
   const auto& [image, cloud, imu_samples] = group;
