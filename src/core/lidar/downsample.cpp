@@ -1,8 +1,9 @@
 #include "downsample.h"
 
-#include <cmath>
 #include <cstdint>
 #include <unordered_map>
+
+#include "core/math/voxel_key.h"
 
 namespace livo_slam {
 namespace {
@@ -13,21 +14,6 @@ struct VoxelAccumulator {
   double earliest_timestamp = 0.0;
   std::uint32_t count = 0;
 };
-
-// Bit-packs the grid indices into one key: 21 bits per axis, biased to
-// non-negative, so +-2^20 voxels per axis. At a 0.5 m leaf that is +-524 km,
-// far beyond the extent of a scan.
-std::int64_t VoxelKey(const Eigen::Vector3d& position, double leaf_size) {
-  const auto index = [leaf_size](double value) {
-    return static_cast<std::int64_t>(std::floor(value / leaf_size));
-  };
-  constexpr std::int64_t kBias = 1 << 20;
-  constexpr std::int64_t kMask = 0x1FFFFF;
-
-  return ((index(position.x()) + kBias) & kMask) |
-         (((index(position.y()) + kBias) & kMask) << 21) |
-         (((index(position.z()) + kBias) & kMask) << 42);
-}
 
 }  // namespace
 
@@ -47,7 +33,8 @@ Cloud VoxelDownsample(const Cloud& cloud, double leaf_size) {
       continue;
     }
 
-    auto& accumulator = grid[VoxelKey(point.position, leaf_size)];
+    auto& accumulator =
+        grid[PackKey(VoxelIndex(point.position, leaf_size))];
     accumulator.sum += point.position;
     accumulator.sum_intensity += static_cast<double>(point.intensity);
     if (accumulator.count == 0 ||
