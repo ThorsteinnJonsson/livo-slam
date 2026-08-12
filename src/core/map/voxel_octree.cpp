@@ -41,16 +41,17 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
   if (!initialized_ && points_.size() > params.layer_init_points[layer_]) {
     InitPlane(params);
     initialized_ = true;
-    if (!plane_ && layer_ + 1 < VoxelMapParams::kMaxLayerDepth) {
-      Subdivide();
-      for (const auto& child : children_) {
-        if (child) {
-          child->Update(params);
-        }
-      }
-    }
   } else if (plane_) {
     InitPlane(params);  // Refit with new points
+  }
+
+  if (initialized_ && !plane_ && layer_ + 1 < VoxelMapParams::kMaxLayerDepth) {
+    Subdivide();
+    for (const auto& child : children_) {
+      if (child) {
+        child->Update(params);
+      }
+    }
   }
 
   if (points_.size() > params.max_points_per_voxel) {
@@ -64,6 +65,7 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
 }
 
 void VoxelOctree::InitPlane(const VoxelMapParams& params) {
+  plane_.reset();
   if (points_.size() < 3) {
     return;
   }
