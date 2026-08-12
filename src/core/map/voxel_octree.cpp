@@ -22,10 +22,43 @@ void VoxelOctree::Insert(const Point& point_world) {
 }
 
 void VoxelOctree::Update(const VoxelMapParams& params) {
+  if (IsSubdivided()) {
+    for (const auto& child : children_) {
+      if (child) {
+        child->Update(params);
+      }
+    }
+    return;
+  }
+
   if (new_points_ == 0) {
     // Early return, nothing to update
     return;
   }
+
+  if (!initialized_ && points_.size() > params.layer_init_points[layer_]) {
+    InitPlane();
+    initialized_ = true;
+    if (!plane_ && layer_ + 1 < VoxelMapParams::kMaxLayerDepth) {
+      Subdivide();
+      for (const auto& child : children_) {
+        if (child) {
+          child->Update(params);
+        }
+      }
+    }
+  } else if (plane_) {
+    InitPlane();  // Refit with new points
+  }
+
+  if (points_.size() > params.max_points_per_voxel) {
+    update_enabled_ = false;
+    if (plane_) {
+      points_.clear();
+    }
+  }
+
+  new_points_ = 0;
 
   // OUTLINE
   // If subdivided
