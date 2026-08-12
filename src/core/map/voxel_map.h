@@ -11,15 +11,18 @@
 
 namespace livo_slam {
 
+// VoxelMap is the local map that stores the map points and enables fast lookup
+// for point-to-plane correspondences.
+// All clouds/points passed to VoxelMap are assumed to be in the world frame.
 class VoxelMap {
  public:
   explicit VoxelMap(const VoxelMapParams& params);
 
-  void Insert(const Cloud& cloud_world);
+  void Insert(const Cloud& cloud);
 
   // Returns the plane the point should be matched against, or nullopt when
   // no voxel near the point holds a suitable one.
-  std::optional<Plane> FindPlane(const Eigen::Vector3d& point_world) const;
+  std::optional<Plane> FindPlane(const Eigen::Vector3d& point) const;
 
   std::size_t VoxelCount() const { return voxels_.size(); }
   bool Empty() const { return voxels_.empty(); }

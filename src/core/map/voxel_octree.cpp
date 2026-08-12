@@ -10,16 +10,15 @@ VoxelOctree::VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
                          std::size_t layer)
     : center_(center), quarter_length_(quarter_length), layer_(layer) {}
 
-void VoxelOctree::Insert(const Point& point_world,
-                         const VoxelMapParams& params) {
+void VoxelOctree::Insert(const Point& point, const VoxelMapParams& params) {
   if (!update_enabled_) return;
 
   if (IsSubdivided()) {
-    const auto child_index = ChildIndex(point_world.position);
+    const auto child_index = ChildIndex(point.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point_world, params);
+    child.Insert(point, params);
   } else if (points_.size() < params.max_points_per_voxel) {
-    points_.push_back(point_world);
+    points_.push_back(point);
     ++new_points_;
   }
 }
@@ -111,22 +110,22 @@ void VoxelOctree::Subdivide(const VoxelMapParams& params) {
 }
 
 const VoxelOctree* VoxelOctree::FindCorrespondence(
-    const Eigen::Vector3d& point_world) const {
+    const Eigen::Vector3d& point) const {
   if (plane_) return this;
 
   if (!IsSubdivided()) return nullptr;
 
-  if (const VoxelOctree* child = children_[ChildIndex(point_world)].get();
+  if (const VoxelOctree* child = children_[ChildIndex(point)].get();
       child != nullptr) {
-    return child->FindCorrespondence(point_world);
+    return child->FindCorrespondence(point);
   }
   return nullptr;
 }
 
-std::size_t VoxelOctree::ChildIndex(const Eigen::Vector3d& point_world) const {
-  const std::size_t x = point_world.x() > center_.x() ? 1 : 0;
-  const std::size_t y = point_world.y() > center_.y() ? 1 : 0;
-  const std::size_t z = point_world.z() > center_.z() ? 1 : 0;
+std::size_t VoxelOctree::ChildIndex(const Eigen::Vector3d& point) const {
+  const std::size_t x = point.x() > center_.x() ? 1 : 0;
+  const std::size_t y = point.y() > center_.y() ? 1 : 0;
+  const std::size_t z = point.z() > center_.z() ? 1 : 0;
   return 4 * x + 2 * y + z;
 }
 

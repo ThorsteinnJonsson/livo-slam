@@ -13,18 +13,20 @@
 
 namespace livo_slam {
 
+// Voxel octree is the datastructure at each voxel in the voxel map. It can be
+// subdivided into smaller units, which are also VoxelOctree.
+// All points passed to this datastructure are assumed to be in the world frame.
 class VoxelOctree {
  public:
   VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
               std::size_t layer);
 
-  void Insert(const Point& point_world, const VoxelMapParams& params);
+  void Insert(const Point& point, const VoxelMapParams& params);
   void Update(const VoxelMapParams& params);
 
   // Descends to the deepest node covering the point that holds a plane.
   // Returns nullptr when no node along the path has one.
-  const VoxelOctree* FindCorrespondence(
-      const Eigen::Vector3d& point_world) const;
+  const VoxelOctree* FindCorrespondence(const Eigen::Vector3d& point) const;
 
   const std::optional<Plane>& plane() const { return plane_; }
   std::size_t PointCount() const { return points_.size(); }
@@ -33,7 +35,7 @@ class VoxelOctree {
   void InitPlane(const VoxelMapParams& params);
   void Subdivide(const VoxelMapParams& params);
 
-  std::size_t ChildIndex(const Eigen::Vector3d& point_world) const;
+  std::size_t ChildIndex(const Eigen::Vector3d& point) const;
   // Finds the child voxel octree (one layer down), creates it if it doesn't
   // exist.
   VoxelOctree& GetChild(std::size_t index);

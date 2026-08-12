@@ -6,8 +6,8 @@ namespace livo_slam {
 
 VoxelMap::VoxelMap(const VoxelMapParams& params) : params_(params) {}
 
-void VoxelMap::Insert(const Cloud& cloud_world) {
-  for (const Point& point : cloud_world.points) {
+void VoxelMap::Insert(const Cloud& cloud) {
+  for (const Point& point : cloud.points) {
     const Eigen::Vector3i voxel_index =
         voxel::VoxelIndex(point.position, params_.voxel_size);
     const auto flat_index = voxel::PackKey(voxel_index);
@@ -27,8 +27,7 @@ void VoxelMap::Insert(const Cloud& cloud_world) {
   }
 }
 
-std::optional<Plane> VoxelMap::FindPlane(
-    const Eigen::Vector3d& point_world) const {
+std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
   // Find the voxel index and key for the point
   //
   // If that voxel exists
@@ -42,6 +41,11 @@ std::optional<Plane> VoxelMap::FindPlane(
   //    If the shifted index differs, repeat the lookup and the test above
   //
   // Return nullopt
+
+  const Eigen::Vector3i voxel_index =
+      voxel::VoxelIndex(point.position, params_.voxel_size);
+  const auto flat_index = voxel::PackKey(voxel_index);
+
   return std::nullopt;
 }
 
