@@ -22,7 +22,7 @@ class VoxelOctree {
   void Update(const VoxelMapParams& params);
 
  private:
-  void InitPlane();
+  void InitPlane(const VoxelMapParams& params);
   void Subdivide();
 
   std::size_t ChildIndex(const Eigen::Vector3d& point_world) const;

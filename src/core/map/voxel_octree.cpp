@@ -1,5 +1,7 @@
 #include "voxel_octree.h"
 
+#include <Eigen/Eigenvalues>
+
 #include "core/config/map_params.h"
 
 namespace livo_slam {
@@ -37,7 +39,7 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
   }
 
   if (!initialized_ && points_.size() > params.layer_init_points[layer_]) {
-    InitPlane();
+    InitPlane(params);
     initialized_ = true;
     if (!plane_ && layer_ + 1 < VoxelMapParams::kMaxLayerDepth) {
       Subdivide();
@@ -48,7 +50,7 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
       }
     }
   } else if (plane_) {
-    InitPlane();  // Refit with new points
+    InitPlane(params);  // Refit with new points
   }
 
   if (points_.size() > params.max_points_per_voxel) {
@@ -59,29 +61,42 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
   }
 
   new_points_ = 0;
-
-  // OUTLINE
-  // If subdivided
-  //    Update each child
-  //    Return
-  //
-  // If new_points_ == 0, return
-  //
-  // If not initialized and points_.size() > layer_init_points[layer_]
-  //    InitPlane, initialized_ = true
-  //    If no plane and layer_ + 1 < kMaxLayerDepth
-  //       Subdivide, then Update each child
-  // Else if plane_
-  //    InitPlane again to refit with the new points
-  //    If points_.size() > max_points_per_voxel, freeze and free points_
-  //
-  // If points_.size() > max_points_per_voxel
-  //    update_enabled_ = false, and free points_ if plane_
-  //
-  // new_points_ = 0
 }
 
-void VoxelOctree::InitPlane() {}
+void VoxelOctree::InitPlane(const VoxelMapParams& params) {
+  if (points_.size() < 3) {
+    return;
+  }
+
+  const double count = static_cast<double>(points_.size());
+
+  Eigen::Vector3d centroid = Eigen::Vector3d::Zero();
+  for (const Point& point : points_) {
+    centroid += point.position;
+  }
+  centroid /= count;
+
+  Eigen::Matrix3d covariance = Eigen::Matrix3d::Zero();
+  for (const Point& point : points_) {
+    const Eigen::Vector3d offset = point.position - centroid;
+    covariance += offset * offset.transpose();
+  }
+  covariance /= count;
+
+  // Eigenvalues come out in increasing order, so the first one is the
+  // mean squared distance to the best-fit plane.
+  const Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> solver(covariance);
+  const double variance = solver.eigenvalues()(0);
+  if (variance > params.max_plane_variance) {
+    return;
+  }
+
+  Plane plane;
+  plane.centroid = centroid;
+  plane.normal = solver.eigenvectors().col(0);
+  plane.variance = variance;
+  plane_ = plane;
+}
 
 void VoxelOctree::Subdivide() {}
 
