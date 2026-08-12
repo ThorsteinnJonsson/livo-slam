@@ -173,5 +173,79 @@ TEST(VoxelOctree, UpdateWithoutNewPointsLeavesThePlaneUnchanged) {
   EXPECT_EQ(node.plane()->centroid, centroid);
 }
 
+// Six points spread along the axes, which no plane fits. They land in four of
+// the eight octants, leaving the other four without children.
+void InsertCrossPoints(VoxelOctree& node, const VoxelMapParams& params) {
+  node.Insert(MakePoint({0.1, 0.5, 0.5}), params);
+  node.Insert(MakePoint({0.9, 0.5, 0.5}), params);
+  node.Insert(MakePoint({0.5, 0.1, 0.5}), params);
+  node.Insert(MakePoint({0.5, 0.9, 0.5}), params);
+  node.Insert(MakePoint({0.5, 0.5, 0.1}), params);
+  node.Insert(MakePoint({0.5, 0.5, 0.9}), params);
+}
+
+TEST(FindCorrespondence, ReturnsNullWhileStillAccumulating) {
+  const VoxelMapParams params = MakeParams();
+  VoxelOctree node = MakeRoot();
+
+  InsertPlanarPoints(node, params);
+
+  EXPECT_EQ(node.FindCorrespondence({0.4, 0.4, 0.5}), nullptr);
+}
+
+TEST(FindCorrespondence, ReturnsTheNodeHoldingThePlane) {
+  const VoxelMapParams params = MakeParams();
+  VoxelOctree node = MakeRoot();
+
+  InsertPlanarPoints(node, params);
+  node.Update(params);
+
+  EXPECT_EQ(node.FindCorrespondence({0.4, 0.4, 0.5}), &node);
+}
+
+TEST(FindCorrespondence, ReturnsNullWhenTheSubtreeHasNoPlane) {
+  const VoxelMapParams params = MakeParams();
+  VoxelOctree node = MakeRoot();
+
+  InsertScatteredPoints(node, params);
+  node.Update(params);
+
+  EXPECT_EQ(node.FindCorrespondence({0.2, 0.2, 0.2}), nullptr);
+}
+
+TEST(FindCorrespondence, ReturnsNullWhenTheChildWasNeverCreated) {
+  const VoxelMapParams params = MakeParams();
+  VoxelOctree node = MakeRoot();
+
+  InsertCrossPoints(node, params);
+  node.Update(params);
+
+  // Nothing was ever inserted into the (+x, +y, +z) octant.
+  EXPECT_EQ(node.FindCorrespondence({0.9, 0.9, 0.9}), nullptr);
+}
+
+TEST(FindCorrespondence, DescendsToAChildPlane) {
+  const VoxelMapParams params = MakeParams();
+  VoxelOctree node = MakeRoot();
+
+  InsertCrossPoints(node, params);
+  node.Update(params);
+  ASSERT_EQ(node.PointCount(), 0U);
+
+  // Fill the (-x, -y, -z) octant with points coplanar at z = 0.2.
+  for (double x : {0.05, 0.15, 0.25, 0.35}) {
+    for (double y : {0.05, 0.15, 0.25}) {
+      node.Insert(MakePoint({x, y, 0.2}), params);
+    }
+  }
+  node.Update(params);
+
+  const VoxelOctree* found = node.FindCorrespondence({0.15, 0.15, 0.2});
+  ASSERT_NE(found, nullptr);
+  EXPECT_NE(found, &node);
+  ASSERT_TRUE(found->plane().has_value());
+  EXPECT_NEAR(std::abs(found->plane()->normal.z()), 1.0, 1e-9);
+}
+
 }  // namespace
 }  // namespace livo_slam

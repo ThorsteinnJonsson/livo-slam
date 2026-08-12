@@ -90,5 +90,87 @@ TEST(VoxelMap, VoxelSizeDeterminesHowPointsAreGrouped) {
   EXPECT_EQ(fine_map.VoxelCount(), 2U);
 }
 
+// Sixteen coplanar points at z = 0.5, all inside the voxel at index (0, 0, 0).
+Cloud MakePlanarCloud() {
+  Cloud cloud;
+  for (double x : {0.2, 0.4, 0.6, 0.8}) {
+    for (double y : {0.2, 0.4, 0.6, 0.8}) {
+      Point point;
+      point.position = {x, y, 0.5};
+      cloud.points.push_back(point);
+    }
+  }
+  return cloud;
+}
+
+TEST(FindPlane, EmptyMapMatchesNothing) {
+  const VoxelMap map(MakeParams());
+
+  EXPECT_FALSE(map.FindPlane({0.5, 0.5, 0.5}).has_value());
+}
+
+TEST(FindPlane, MatchesAPlaneInTheContainingVoxel) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  const auto plane = map.FindPlane({0.5, 0.5, 0.55});
+
+  ASSERT_TRUE(plane.has_value());
+  EXPECT_NEAR(plane->centroid.z(), 0.5, 1e-12);
+  EXPECT_NEAR(std::abs(plane->normal.z()), 1.0, 1e-9);
+}
+
+TEST(FindPlane, RejectsPointsBeyondTheMatchDistance) {
+  VoxelMapParams params = MakeParams();
+  params.max_match_distance = 0.1;
+  VoxelMap map(params);
+  map.Insert(MakePlanarCloud());
+
+  EXPECT_TRUE(map.FindPlane({0.5, 0.5, 0.55}).has_value());
+  EXPECT_FALSE(map.FindPlane({0.5, 0.5, 0.9}).has_value());
+}
+
+TEST(FindPlane, FallsBackToTheNeighborVoxel) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+  ASSERT_EQ(map.VoxelCount(), 1U);
+
+  // Just inside the empty voxel at (1, 0, 0), close to the shared face.
+  const auto plane = map.FindPlane({1.1, 0.5, 0.55});
+
+  ASSERT_TRUE(plane.has_value());
+  EXPECT_NEAR(std::abs(plane->normal.z()), 1.0, 1e-9);
+}
+
+TEST(FindPlane, DoesNotLeaveAVoxelFromItsMiddle) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  // Centre of the empty voxel at (1, 0, 0): no axis is past a quarter, so no
+  // neighbor is tried even though the plane next door is within range.
+  EXPECT_FALSE(map.FindPlane({1.5, 0.5, 0.5}).has_value());
+}
+
+TEST(FindPlane, MatchesNothingFarFromTheMap) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  EXPECT_FALSE(map.FindPlane({9.0, 9.0, 9.0}).has_value());
+}
+
+TEST(FindPlane, MatchesNothingWhileVoxelsAreStillAccumulating) {
+  VoxelMap map(MakeParams());
+  Cloud cloud;
+  for (double x : {0.2, 0.4, 0.6}) {
+    Point point;
+    point.position = {x, 0.2, 0.5};
+    cloud.points.push_back(point);
+  }
+  map.Insert(cloud);
+
+  ASSERT_EQ(map.VoxelCount(), 1U);
+  EXPECT_FALSE(map.FindPlane({0.4, 0.2, 0.5}).has_value());
+}
+
 }  // namespace
 }  // namespace livo_slam
