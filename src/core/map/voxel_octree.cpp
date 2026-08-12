@@ -10,14 +10,15 @@ VoxelOctree::VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
                          std::size_t layer)
     : center_(center), quarter_length_(quarter_length), layer_(layer) {}
 
-void VoxelOctree::Insert(const Point& point_world) {
+void VoxelOctree::Insert(const Point& point_world,
+                         const VoxelMapParams& params) {
   if (!update_enabled_) return;
 
   if (IsSubdivided()) {
     const auto child_index = ChildIndex(point_world.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point_world);
-  } else {
+    child.Insert(point_world, params);
+  } else if (points_.size() < params.max_points_per_voxel) {
     points_.push_back(point_world);
     ++new_points_;
   }
@@ -46,7 +47,7 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
   }
 
   if (initialized_ && !plane_ && layer_ + 1 < VoxelMapParams::kMaxLayerDepth) {
-    Subdivide();
+    Subdivide(params);
     for (const auto& child : children_) {
       if (child) {
         child->Update(params);
@@ -54,7 +55,7 @@ void VoxelOctree::Update(const VoxelMapParams& params) {
     }
   }
 
-  if (points_.size() > params.max_points_per_voxel) {
+  if (points_.size() >= params.max_points_per_voxel) {
     update_enabled_ = false;
     if (plane_) {
       points_.clear();
@@ -100,11 +101,11 @@ void VoxelOctree::InitPlane(const VoxelMapParams& params) {
   plane_ = plane;
 }
 
-void VoxelOctree::Subdivide() {
+void VoxelOctree::Subdivide(const VoxelMapParams& params) {
   for (const Point& point : points_) {
     const auto child_index = ChildIndex(point.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point);
+    child.Insert(point, params);
   }
   points_.clear();
 }
