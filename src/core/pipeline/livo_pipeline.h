@@ -2,6 +2,7 @@
 
 #include "core/config/pipeline_config.h"
 #include "core/imu/imu_initializer.h"
+#include "core/map/voxel_map.h"
 #include "core/types/estimate.h"
 #include "core/types/measure_group.h"
 
@@ -27,6 +28,7 @@ class LivoPipeline {
  private:
   PipelineConfig config_;
   ImuInitializer imu_initializer_;
+  VoxelMap local_map_;
   Estimate estimate_;
 };
 

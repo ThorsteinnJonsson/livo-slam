@@ -102,6 +102,37 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.lidar.voxel_leaf_size = declare_parameter<double>(
       "lidar.voxel_leaf_size", lidar_defaults.voxel_leaf_size);
 
+  const VoxelMapParams map_defaults;
+  config.map.voxel_size =
+      declare_parameter<double>("map.voxel_size", map_defaults.voxel_size);
+
+  std::vector<int64_t> layer_init_defaults;
+  for (std::size_t points : map_defaults.layer_init_points) {
+    layer_init_defaults.push_back(static_cast<int64_t>(points));
+  }
+  const auto layer_init_points = declare_parameter<std::vector<int64_t>>(
+      "map.layer_init_points", layer_init_defaults);
+  if (layer_init_points.size() != VoxelMapParams::kMaxLayerDepth) {
+    RCLCPP_ERROR(get_logger(),
+                 "map.layer_init_points has %zu entries, expected %zu; using "
+                 "defaults",
+                 layer_init_points.size(), VoxelMapParams::kMaxLayerDepth);
+  } else {
+    for (std::size_t i = 0; i < VoxelMapParams::kMaxLayerDepth; ++i) {
+      config.map.layer_init_points[i] =
+          static_cast<std::size_t>(layer_init_points[i]);
+    }
+  }
+
+  config.map.max_points_per_voxel =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "map.max_points_per_voxel",
+          static_cast<int64_t>(map_defaults.max_points_per_voxel)));
+  config.map.max_plane_variance = declare_parameter<double>(
+      "map.max_plane_variance", map_defaults.max_plane_variance);
+  config.map.max_match_distance = declare_parameter<double>(
+      "map.max_match_distance", map_defaults.max_match_distance);
+
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(
       "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);

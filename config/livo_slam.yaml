@@ -53,4 +53,10 @@
 
     lidar.min_range: 1.0
     lidar.max_range: 60.0
-    lidar.voxel_leaf_size: 0.5
+    lidar.voxel_leaf_size: 0.1
+
+    map.voxel_size: 0.5
+    map.layer_init_points: [5, 5, 5]
+    map.max_points_per_voxel: 50
+    map.max_plane_variance: 0.01
+    map.max_match_distance: 0.5
