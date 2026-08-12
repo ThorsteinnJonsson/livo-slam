@@ -27,4 +27,22 @@ void VoxelMap::Insert(const Cloud& cloud_world) {
   }
 }
 
+std::optional<Plane> VoxelMap::FindPlane(
+    const Eigen::Vector3d& point_world) const {
+  // Find the voxel index and key for the point
+  //
+  // If that voxel exists
+  //    FindCorrespond, and if it returns a node with a plane
+  //       Accept it when |normal.(point - centroid)| < max_match_distance
+  //
+  // Otherwise try one neighbour voxel:
+  //    Root center is (index + 0.5) * voxel_size, quarter is voxel_size / 4
+  //    Per axis, shift the index by +1 when the point is past
+  //    center + quarter, by -1 when it is before center - quarter
+  //    If the shifted index differs, repeat the lookup and the test above
+  //
+  // Return nullopt
+  return std::nullopt;
+}
+
 }  // namespace livo_slam

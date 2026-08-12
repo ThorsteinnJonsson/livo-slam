@@ -21,6 +21,10 @@ class VoxelOctree {
   void Insert(const Point& point_world, const VoxelMapParams& params);
   void Update(const VoxelMapParams& params);
 
+  // Descends to the deepest node covering the point that holds a plane.
+  // Returns nullptr when no node along the path has one.
+  const VoxelOctree* FindCorrespond(const Eigen::Vector3d& point_world) const;
+
   const std::optional<Plane>& plane() const { return plane_; }
   std::size_t PointCount() const { return points_.size(); }
 

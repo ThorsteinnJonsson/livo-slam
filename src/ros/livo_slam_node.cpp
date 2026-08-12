@@ -130,6 +130,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
           static_cast<int64_t>(map_defaults.max_points_per_voxel)));
   config.map.max_plane_variance = declare_parameter<double>(
       "map.max_plane_variance", map_defaults.max_plane_variance);
+  config.map.max_match_distance = declare_parameter<double>(
+      "map.max_match_distance", map_defaults.max_match_distance);
 
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(
