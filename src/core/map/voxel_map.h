@@ -17,6 +17,9 @@ class VoxelMap {
 
   void Insert(const Cloud& cloud_world);
 
+  std::size_t VoxelCount() const { return voxels_.size(); }
+  bool Empty() const { return voxels_.empty(); }
+
  private:
   VoxelMapParams params_;
 

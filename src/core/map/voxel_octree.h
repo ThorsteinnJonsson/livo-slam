@@ -21,6 +21,9 @@ class VoxelOctree {
   void Insert(const Point& point_world, const VoxelMapParams& params);
   void Update(const VoxelMapParams& params);
 
+  const std::optional<Plane>& plane() const { return plane_; }
+  std::size_t PointCount() const { return points_.size(); }
+
  private:
   void InitPlane(const VoxelMapParams& params);
   void Subdivide(const VoxelMapParams& params);
