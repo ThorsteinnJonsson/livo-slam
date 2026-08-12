@@ -29,23 +29,35 @@ void VoxelMap::Insert(const Cloud& cloud) {
   }
 }
 
+std::optional<Plane> VoxelMap::PlaneAt(const Eigen::Vector3i& voxel_index,
+                                       const Eigen::Vector3d& point) const {
+  const auto voxel_it = voxels_.find(voxel::PackKey(voxel_index));
+  if (voxel_it == voxels_.cend()) {
+    return std::nullopt;
+  }
+
+  const VoxelOctree* correspondence =
+      voxel_it->second.FindCorrespondence(point);
+  if (correspondence == nullptr) {
+    return std::nullopt;
+  }
+
+  const Plane& plane =
+      *correspondence
+           ->plane();  // SAFETY: Plane must exist if correspondence was found
+  if (std::abs(plane.normal.dot(point - plane.centroid)) >=
+      params_.max_match_distance) {
+    return std::nullopt;
+  }
+  return plane;
+}
+
 std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
   // Check the voxel the point lands in.
   const Eigen::Vector3i voxel_index =
       voxel::VoxelIndex(point, params_.voxel_size);
-  if (const auto voxel_it = voxels_.find(voxel::PackKey(voxel_index));
-      voxel_it != voxels_.cend()) {
-    const VoxelOctree* correspondence =
-        voxel_it->second.FindCorrespondence(point);
-    if (correspondence != nullptr) {
-      const Plane& plane =
-          *correspondence->plane();  // SAFETY: Plane must exist if
-                                     // correspondence was found
-      if (std::abs(plane.normal.dot(point - plane.centroid)) <
-          params_.max_match_distance) {
-        return plane;
-      }
-    }
+  if (const auto plane = PlaneAt(voxel_index, point)) {
+    return plane;
   }
 
   // Check the neighbor voxel on any axis where the point is more than a
@@ -70,24 +82,7 @@ std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
     // No neighbor close enough.
     return std::nullopt;
   }
-
-  const auto neighbor_it = voxels_.find(voxel::PackKey(neighbor_index));
-  if (neighbor_it == voxels_.cend()) {
-    return std::nullopt;
-  }
-
-  const VoxelOctree* correspondence =
-      neighbor_it->second.FindCorrespondence(point);
-  if (correspondence == nullptr) {
-    return std::nullopt;
-  }
-
-  const Plane& plane = *correspondence->plane();
-  if (std::abs(plane.normal.dot(point - plane.centroid)) >=
-      params_.max_match_distance) {
-    return std::nullopt;
-  }
-  return plane;
+  return PlaneAt(neighbor_index, point);
 }
 
 }  // namespace livo_slam

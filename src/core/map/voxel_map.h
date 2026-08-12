@@ -28,6 +28,11 @@ class VoxelMap {
   bool Empty() const { return voxels_.empty(); }
 
  private:
+  // Returns the plane in one voxel, if it holds one within max_match_distance.
+  std::optional<Plane> PlaneAt(const Eigen::Vector3i& voxel_index,
+                               const Eigen::Vector3d& point) const;
+
+ private:
   VoxelMapParams params_;
 
   std::unordered_map<std::int64_t, VoxelOctree> voxels_;
