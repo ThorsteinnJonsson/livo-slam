@@ -100,7 +100,14 @@ void VoxelOctree::InitPlane(const VoxelMapParams& params) {
   plane_ = plane;
 }
 
-void VoxelOctree::Subdivide() {}
+void VoxelOctree::Subdivide() {
+  for (const Point& point : points_) {
+    const auto child_index = ChildIndex(point.position);
+    VoxelOctree& child = GetChild(child_index);
+    child.Insert(point);
+  }
+  points_.clear();
+}
 
 std::size_t VoxelOctree::ChildIndex(const Eigen::Vector3d& point_world) const {
   const std::size_t x = point_world.x() > center_.x() ? 1 : 0;
