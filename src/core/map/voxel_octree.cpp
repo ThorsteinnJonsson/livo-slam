@@ -110,15 +110,16 @@ void VoxelOctree::Subdivide(const VoxelMapParams& params) {
   points_.clear();
 }
 
-const VoxelOctree* VoxelOctree::FindCorrespond(
+const VoxelOctree* VoxelOctree::FindCorrespondence(
     const Eigen::Vector3d& point_world) const {
-  // If this node has a plane, return it
-  //
-  // If not subdivided, return nullptr
-  //
-  // Find the child index for the point
-  // If that child does not exist, return nullptr
-  // Recurse into the child
+  if (plane_) return this;
+
+  if (!IsSubdivided()) return nullptr;
+
+  if (const VoxelOctree* child = children_[ChildIndex(point_world)].get();
+      child != nullptr) {
+    return child->FindCorrespondence(point_world);
+  }
   return nullptr;
 }
 
