@@ -18,13 +18,18 @@ class VoxelOctree {
   VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
               std::size_t layer);
 
-  void Insert(const Point& point_world, const VoxelMapParams& params);
+  void Insert(const Point& point_world);
   void Update(const VoxelMapParams& params);
 
  private:
   void InitPlane();
   void Subdivide();
-  int ChildIndex(const Eigen::Vector3d& point_world) const;
+
+  std::size_t ChildIndex(const Eigen::Vector3d& point_world) const;
+  // Finds the child voxel octree (one layer down), creates it if it doesn't
+  // exist.
+  VoxelOctree& GetChild(std::size_t index);
+  bool IsSubdivided() const;
 
  private:
   // Geometry

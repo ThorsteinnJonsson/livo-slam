@@ -19,7 +19,7 @@ void VoxelMap::Insert(const Cloud& cloud_world) {
     auto [it, inserted] =
         voxels_.try_emplace(flat_index, center, params_.voxel_size / 4.0, 0);
 
-    it->second.Insert(point, params_);
+    it->second.Insert(point);
   }
 
   for (auto& [_key, voxel] : voxels_) {
