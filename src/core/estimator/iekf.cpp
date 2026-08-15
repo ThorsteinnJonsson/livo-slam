@@ -13,10 +13,8 @@ IekfStepResult SolveIekfStep(const Estimate& prior, const State& current,
 
   const ErrorState increment =
       posterior_cov * system.htz + (ErrorMatrix::Identity() - gain) * offset;
-  const ErrorMatrix covariance =
-      (ErrorMatrix::Identity() - gain) * prior.covariance;
 
-  return IekfStepResult{increment, covariance};
+  return IekfStepResult{increment, posterior_cov};
 }
 
 bool IekfConverged(const ErrorState& increment, double rotation_epsilon,
