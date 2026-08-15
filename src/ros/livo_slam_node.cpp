@@ -133,6 +133,18 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.map.max_match_distance = declare_parameter<double>(
       "map.max_match_distance", map_defaults.max_match_distance);
 
+  const LidarUpdateParams update_defaults;
+  config.lidar_update.max_iterations =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "lidar_update.max_iterations",
+          static_cast<int64_t>(update_defaults.max_iterations)));
+  config.lidar_update.point_noise_std = declare_parameter<double>(
+      "lidar_update.point_noise_std", update_defaults.point_noise_std);
+  config.lidar_update.rotation_epsilon = declare_parameter<double>(
+      "lidar_update.rotation_epsilon", update_defaults.rotation_epsilon);
+  config.lidar_update.position_epsilon = declare_parameter<double>(
+      "lidar_update.position_epsilon", update_defaults.position_epsilon);
+
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(
       "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);

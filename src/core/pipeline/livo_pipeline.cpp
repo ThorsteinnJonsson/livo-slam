@@ -3,6 +3,7 @@
 #include <print>
 
 #include "core/estimator/initial_estimate.h"
+#include "core/estimator/lidar/lidar_update.h"
 #include "core/imu/imu_propagator.h"
 #include "core/lidar/deskew.h"
 #include "core/lidar/downsample.h"
@@ -102,6 +103,10 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Lidar update (point-to-plane residual against map, iterate in
       //   iekf)
+      if (!local_map_.Empty()) {
+        estimate_ = UpdateWithLidar(estimate_, downsampled, local_map_,
+                                    config_.lidar_update);
+      }
 
       //   Camera
       //   Undistort image
