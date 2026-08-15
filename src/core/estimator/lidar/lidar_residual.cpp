@@ -26,7 +26,27 @@ std::vector<PointToPlaneMatch> BuildLidarMatches(const Cloud& cloud_imu,
 
 IekfSystem BuildLidarSystem(const std::vector<PointToPlaneMatch>& matches,
                             const State& state, double point_noise_std) {
-  return {};
+  static_assert(kIdxPosition == kIdxRotation + 3,
+                "The 6x6 block below assumes rotation and position are "
+                "contiguous in the error state");
+
+  IekfSystem system;
+
+  const double weight = 1.0 / (point_noise_std * point_noise_std);
+  const Eigen::Matrix3d rotation_transpose = state.rotation.inverse().matrix();
+
+  for (const auto& match : matches) {
+    Eigen::Matrix<double, 6, 1> jacobian;
+    jacobian.head<3>() =
+        match.point_imu.cross(rotation_transpose * match.normal);
+    jacobian.tail<3>() = match.normal;
+
+    system.hth.block<6, 6>(kIdxRotation, kIdxRotation) +=
+        weight * jacobian * jacobian.transpose();
+    system.htz.segment<6>(kIdxRotation) += weight * jacobian * -match.distance;
+  }
+
+  return system;
 }
 
 }  // namespace livo_slam
