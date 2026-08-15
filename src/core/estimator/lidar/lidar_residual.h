@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <vector>
 
+#include "core/estimator/iekf.h"
 #include "core/map/voxel_map.h"
 #include "core/types/cloud.h"
 #include "core/types/state.h"
@@ -18,5 +19,8 @@ struct PointToPlaneMatch {
 std::vector<PointToPlaneMatch> BuildLidarMatches(const Cloud& cloud_imu,
                                                  const State& state,
                                                  const VoxelMap& map);
+
+IekfSystem BuildLidarSystem(const std::vector<PointToPlaneMatch>& matches,
+                            const State& state, double point_noise_std);
 
 }  // namespace livo_slam

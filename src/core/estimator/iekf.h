@@ -10,8 +10,13 @@ struct IekfSystem {
   ErrorState htz = ErrorState::Zero();    // H^T R^-1 z
 };
 
-ErrorState SolveIekfStep(const Estimate& prior, const State& current,
-                         const IekfSystem& system, ErrorMatrix& covariance);
+struct IekfStepResult {
+  ErrorState increment = ErrorState::Zero();
+  ErrorMatrix covariance = ErrorMatrix::Zero();
+};
+
+IekfStepResult SolveIekfStep(const Estimate& prior, const State& current,
+                             const IekfSystem& system);
 
 bool IekfConverged(const ErrorState& increment, double rotation_epsilon,
                    double position_epsilon);

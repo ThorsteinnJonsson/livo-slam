@@ -2,9 +2,9 @@
 
 namespace livo_slam {
 
-ErrorState SolveIekfStep(const Estimate& prior, const State& current,
-                         const IekfSystem& system, ErrorMatrix& covariance) {
-  return ErrorState::Zero();
+IekfStepResult SolveIekfStep(const Estimate& prior, const State& current,
+                             const IekfSystem& system) {
+  return IekfStepResult{ErrorState::Zero(), ErrorMatrix::Identity()};
 }
 
 bool IekfConverged(const ErrorState& increment, double rotation_epsilon,

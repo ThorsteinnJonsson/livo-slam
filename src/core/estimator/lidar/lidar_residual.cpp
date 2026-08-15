@@ -24,4 +24,9 @@ std::vector<PointToPlaneMatch> BuildLidarMatches(const Cloud& cloud_imu,
   return matches;
 }
 
+IekfSystem BuildLidarSystem(const std::vector<PointToPlaneMatch>& matches,
+                            const State& state, double point_noise_std) {
+  return {};
+}
+
 }  // namespace livo_slam
