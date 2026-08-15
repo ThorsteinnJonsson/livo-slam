@@ -5,6 +5,7 @@
 #include "core/config/initial_state_params.h"
 #include "core/config/lidar_params.h"
 #include "core/config/map_params.h"
+#include "core/config/update_params.h"
 #include "core/config/viz_params.h"
 
 namespace livo_slam {
@@ -15,6 +16,7 @@ struct PipelineConfig {
   ImuNoiseParams imu_noise;
   LidarParams lidar;
   VoxelMapParams map;
+  LidarUpdateParams lidar_update;
   VizParams viz;
 };
 
