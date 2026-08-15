@@ -14,7 +14,6 @@ Estimate UpdateWithLidar(const Estimate& prior, const Cloud& cloud_imu,
   Estimate posterior = prior;
 
   for (std::size_t iter = 0; iter < params.max_iterations; ++iter) {
-    // Find matches
     const auto matches = BuildLidarMatches(cloud_imu, posterior.state, map);
     if (matches.size() < LidarUpdateParams::kMinMatches) {
       std::println("Too few matches, skipping lidar update.");
