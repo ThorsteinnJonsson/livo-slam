@@ -7,12 +7,14 @@ namespace livo_slam {
 IekfStepResult SolveIekfStep(const Estimate& prior, const State& current,
                              const IekfSystem& system) {
   const ErrorState offset = BoxMinus(prior.state, current);
-  ErrorMatrix posterior_cov =
+  const ErrorMatrix posterior_cov =
       (system.hth + prior.covariance.inverse()).inverse();
-  ErrorMatrix gain = posterior_cov * system.hth;
+  const ErrorMatrix gain = posterior_cov * system.hth;
 
-  ErrorState increment = posterior_cov * system.htz + offset - gain * offset;
-  ErrorMatrix covariance = (ErrorMatrix::Identity() - gain) * prior.covariance;
+  const ErrorState increment =
+      posterior_cov * system.htz + offset - gain * offset;
+  const ErrorMatrix covariance =
+      (ErrorMatrix::Identity() - gain) * prior.covariance;
 
   return IekfStepResult{increment, covariance};
 }
