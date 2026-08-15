@@ -12,7 +12,7 @@ IekfStepResult SolveIekfStep(const Estimate& prior, const State& current,
   const ErrorMatrix gain = posterior_cov * system.hth;
 
   const ErrorState increment =
-      posterior_cov * system.htz + offset - gain * offset;
+      posterior_cov * system.htz + (ErrorMatrix::Identity() - gain) * offset;
   const ErrorMatrix covariance =
       (ErrorMatrix::Identity() - gain) * prior.covariance;
 
