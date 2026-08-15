@@ -12,8 +12,8 @@ add_library(
     map/voxel_map.cpp
     estimator/iekf.cpp
     estimator/initial_estimate.cpp
-    estimator/lidar_residual.cpp
-    estimator/lidar_update.cpp
+    estimator/lidar/lidar_residual.cpp
+    estimator/lidar/lidar_update.cpp
     math/voxel_key.cpp)
 
 target_include_directories(livo_slam_core_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)

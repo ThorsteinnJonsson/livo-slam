@@ -1,7 +1,7 @@
 #include "lidar_update.h"
 
 #include "core/estimator/iekf.h"
-#include "core/estimator/lidar_residual.h"
+#include "core/estimator/lidar/lidar_residual.h"
 
 namespace livo_slam {
 

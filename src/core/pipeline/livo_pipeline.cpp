@@ -3,7 +3,7 @@
 #include <print>
 
 #include "core/estimator/initial_estimate.h"
-#include "core/estimator/lidar_update.h"
+#include "core/estimator/lidar/lidar_update.h"
 #include "core/imu/imu_propagator.h"
 #include "core/lidar/deskew.h"
 #include "core/lidar/downsample.h"

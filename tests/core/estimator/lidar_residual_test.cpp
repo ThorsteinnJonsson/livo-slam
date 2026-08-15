@@ -1,4 +1,4 @@
-#include "core/estimator/lidar_residual.h"
+#include "core/estimator/lidar/lidar_residual.h"
 
 #include <gtest/gtest.h>
 
