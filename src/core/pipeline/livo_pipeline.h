@@ -12,6 +12,7 @@ struct ProcessResult {
   Estimate estimate;
   Cloud cloud_world;
   Cloud cloud_deskewed_world;
+  std::vector<Plane> map_planes;
 };
 
 class LivoPipeline {

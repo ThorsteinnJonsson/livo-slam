@@ -2,6 +2,7 @@
 
 #ifdef LIVO_SLAM_ENABLE_RERUN
 
+#include <algorithm>
 #include <print>
 #include <rerun.hpp>
 #include <string_view>
@@ -38,6 +39,18 @@ struct Visualizer::Impl {
             rerun::Points3D(positions).with_colors(color).with_radii(0.05F));
   }
 };
+
+// Blue at kMapColorZMin through to red at kMapColorZMax. Fixed so the
+// gradient does not rescale as the map grows.
+rerun::Color HeightColor(double z) {
+  constexpr double kMapColorZMin = -2.0;
+  constexpr double kMapColorZMax = 20.0;
+  const double t =
+      std::clamp((z - kMapColorZMin) / (kMapColorZMax - kMapColorZMin), 0.0,
+                 1.0);
+  return rerun::Color(static_cast<std::uint8_t>(255.0 * t), 60,
+                      static_cast<std::uint8_t>(255.0 * (1.0 - t)));
+}
 
 Visualizer::Visualizer(const VizParams& params, std::string app_id)
     : impl_(params.enabled ? std::make_unique<Impl>(params, app_id) : nullptr) {
@@ -96,6 +109,27 @@ void Visualizer::LogDeskewedCloud(const Cloud& cloud) {
   impl_->LogPoints("world/cloud_deskewed", cloud, rerun::Color(40, 200, 200));
 }
 
+void Visualizer::LogMap(const std::vector<Plane>& planes) {
+  if (!impl_) {
+    return;
+  }
+
+  std::vector<rerun::Position3D> positions;
+  std::vector<rerun::Color> colors;
+  positions.reserve(planes.size());
+  colors.reserve(planes.size());
+  for (const Plane& plane : planes) {
+    positions.emplace_back(static_cast<float>(plane.centroid.x()),
+                           static_cast<float>(plane.centroid.y()),
+                           static_cast<float>(plane.centroid.z()));
+    colors.push_back(HeightColor(plane.centroid.z()));
+  }
+
+  impl_->rec.log("world/map", rerun::Points3D(positions)
+                                  .with_colors(colors)
+                                  .with_radii(0.05F));
+}
+
 }  // namespace livo_slam
 
 #else
@@ -111,6 +145,7 @@ void Visualizer::SetTime(std::int64_t, double) {}
 void Visualizer::LogState(const State&) {}
 void Visualizer::LogCloud(const Cloud&) {}
 void Visualizer::LogDeskewedCloud(const Cloud&) {}
+void Visualizer::LogMap(const std::vector<Plane>&) {}
 
 }  // namespace livo_slam
 
