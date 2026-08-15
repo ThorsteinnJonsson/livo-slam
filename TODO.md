@@ -10,3 +10,7 @@
 
 - Fully implement livo-odometry inspired by FAST-LIVO2
 - Support multi-lidar, multi-camera
+
+## TODO
+
+- Implement slide-function in local map
