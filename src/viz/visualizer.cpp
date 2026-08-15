@@ -3,6 +3,7 @@
 #ifdef LIVO_SLAM_ENABLE_RERUN
 
 #include <algorithm>
+#include <cmath>
 #include <print>
 #include <rerun.hpp>
 #include <string_view>
@@ -40,16 +41,37 @@ struct Visualizer::Impl {
   }
 };
 
-// Blue at kMapColorZMin through to red at kMapColorZMax. Fixed so the
-// gradient does not rescale as the map grows.
+// Sweeps hue from blue (low) through green to red (high), saturation and
+// value pinned to 1.
+rerun::Color HueColor(float t) {
+  const float h = (1.0F - std::clamp(t, 0.0F, 1.0F)) * 4.0F;
+  const float x = 1.0F - std::abs(std::fmod(h, 2.0F) - 1.0F);
+  float r = 0.0F;
+  float g = 0.0F;
+  float b = 0.0F;
+  if (h < 1.0F) {
+    r = 1.0F, g = x;
+  } else if (h < 2.0F) {
+    r = x, g = 1.0F;
+  } else if (h < 3.0F) {
+    g = 1.0F, b = x;
+  } else if (h < 4.0F) {
+    g = x, b = 1.0F;
+  } else if (h < 5.0F) {
+    r = x, b = 1.0F;
+  } else {
+    r = 1.0F, b = x;
+  }
+  const auto to8 = [](float c) { return static_cast<std::uint8_t>(c * 255.0F); };
+  return rerun::Color(to8(r), to8(g), to8(b));
+}
+
+// Fixed range so the gradient does not rescale as the map grows.
 rerun::Color HeightColor(double z) {
   constexpr double kMapColorZMin = -2.0;
   constexpr double kMapColorZMax = 20.0;
-  const double t =
-      std::clamp((z - kMapColorZMin) / (kMapColorZMax - kMapColorZMin), 0.0,
-                 1.0);
-  return rerun::Color(static_cast<std::uint8_t>(255.0 * t), 60,
-                      static_cast<std::uint8_t>(255.0 * (1.0 - t)));
+  return HueColor(
+      static_cast<float>((z - kMapColorZMin) / (kMapColorZMax - kMapColorZMin)));
 }
 
 Visualizer::Visualizer(const VizParams& params, std::string app_id)
