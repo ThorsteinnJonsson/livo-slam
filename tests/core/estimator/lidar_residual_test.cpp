@@ -138,5 +138,103 @@ TEST(BuildLidarMatches, KeepsThePointInTheBodyFrame) {
   EXPECT_EQ(matches[0].point_imu, Eigen::Vector3d(0.5, 0.5, 0.45));
 }
 
+PointToPlaneMatch MakeMatch() {
+  PointToPlaneMatch match;
+  match.point_imu = {0.7, 1.3, -0.4};
+  match.normal = Eigen::Vector3d(0.2, -0.5, 0.84).normalized();
+  match.distance = 0.05;
+  return match;
+}
+
+State MakeState() {
+  State state;
+  state.rotation = Sophus::SO3d::exp({0.3, -0.2, 0.7});
+  state.position = {1.0, -2.0, 0.5};
+  return state;
+}
+
+TEST(BuildLidarSystem, NoMatchesGivesAnEmptySystem) {
+  const IekfSystem system = BuildLidarSystem({}, MakeState(), 0.03);
+
+  EXPECT_TRUE(system.hth.isZero());
+  EXPECT_TRUE(system.htz.isZero());
+}
+
+TEST(BuildLidarSystem, TouchesOnlyTheRotationAndPositionBlock) {
+  const IekfSystem system = BuildLidarSystem({MakeMatch()}, MakeState(), 0.03);
+
+  const Eigen::Matrix<double, 6, 6> pose_block =
+      system.hth.block<6, 6>(kIdxRotation, kIdxRotation);
+
+  EXPECT_FALSE(pose_block.isZero());
+  EXPECT_TRUE(system.hth.bottomRows(kErrorDim - 6).isZero());
+  EXPECT_TRUE(system.hth.rightCols(kErrorDim - 6).isZero());
+  EXPECT_TRUE(system.htz.tail(kErrorDim - 6).isZero());
+}
+
+TEST(BuildLidarSystem, JacobianMatchesFiniteDifferences) {
+  const State state = MakeState();
+  const PointToPlaneMatch match = MakeMatch();
+  const double point_noise_std = 0.03;
+  const double weight = 1.0 / (point_noise_std * point_noise_std);
+
+  const IekfSystem system = BuildLidarSystem({match}, state, point_noise_std);
+
+  // htz = weight * jacobian * (-distance), so the jacobian divides back out.
+  const Eigen::Matrix<double, 6, 1> jacobian =
+      system.htz.segment<6>(kIdxRotation) / (weight * -match.distance);
+
+  // The centroid is constant, so it drops out of the differences.
+  const auto distance = [&](const ErrorState& delta) {
+    const State perturbed = BoxPlus(state, delta);
+    return match.normal.dot(perturbed.rotation * match.point_imu +
+                            perturbed.position);
+  };
+
+  const double eps = 1e-6;
+  const double at_zero = distance(ErrorState::Zero());
+  for (int i = 0; i < 6; ++i) {
+    ErrorState delta = ErrorState::Zero();
+    delta(kIdxRotation + i) = eps;
+    EXPECT_NEAR(jacobian(i), (distance(delta) - at_zero) / eps, 1e-5)
+        << "component " << i;
+  }
+}
+
+TEST(BuildLidarSystem, WeightsByInverseNoiseVariance) {
+  const State state = MakeState();
+  const PointToPlaneMatch match = MakeMatch();
+
+  const IekfSystem coarse = BuildLidarSystem({match}, state, 0.06);
+  const IekfSystem fine = BuildLidarSystem({match}, state, 0.03);
+
+  EXPECT_TRUE(fine.hth.isApprox(4.0 * coarse.hth));
+  EXPECT_TRUE(fine.htz.isApprox(4.0 * coarse.htz));
+}
+
+TEST(BuildLidarSystem, AccumulatesOverMatches) {
+  const State state = MakeState();
+  const PointToPlaneMatch match = MakeMatch();
+
+  const IekfSystem one = BuildLidarSystem({match}, state, 0.03);
+  const IekfSystem two = BuildLidarSystem({match, match}, state, 0.03);
+
+  EXPECT_TRUE(two.hth.isApprox(2.0 * one.hth));
+  EXPECT_TRUE(two.htz.isApprox(2.0 * one.htz));
+}
+
+TEST(BuildLidarSystem, ResidualOpposesTheSignedDistance) {
+  const State state = MakeState();
+  PointToPlaneMatch positive = MakeMatch();
+  PointToPlaneMatch negative = positive;
+  negative.distance = -positive.distance;
+
+  const IekfSystem a = BuildLidarSystem({positive}, state, 0.03);
+  const IekfSystem b = BuildLidarSystem({negative}, state, 0.03);
+
+  EXPECT_TRUE(a.htz.isApprox(-b.htz));
+  EXPECT_TRUE(a.hth.isApprox(b.hth));
+}
+
 }  // namespace
 }  // namespace livo_slam
