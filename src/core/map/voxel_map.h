@@ -24,6 +24,9 @@ class VoxelMap {
   // no voxel near the point holds a suitable one.
   std::optional<Plane> FindPlane(const Eigen::Vector3d& point) const;
 
+  // For visualization
+  std::vector<Plane> CollectPlanes() const;
+
   std::size_t VoxelCount() const { return voxels_.size(); }
   bool Empty() const { return voxels_.empty(); }
 

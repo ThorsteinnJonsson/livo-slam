@@ -29,6 +29,15 @@ void VoxelMap::Insert(const Cloud& cloud) {
   }
 }
 
+std::vector<Plane> VoxelMap::CollectPlanes() const {
+  std::vector<Plane> planes;
+  planes.reserve(voxels_.size());
+  for (const auto& [_key, voxel] : voxels_) {
+    voxel.CollectPlanes(planes);
+  }
+  return planes;
+}
+
 std::optional<Plane> VoxelMap::PlaneAt(const Eigen::Vector3i& voxel_index,
                                        const Eigen::Vector3d& point) const {
   const auto voxel_it = voxels_.find(voxel::PackKey(voxel_index));

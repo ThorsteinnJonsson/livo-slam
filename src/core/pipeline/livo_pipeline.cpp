@@ -134,7 +134,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       local_map_.Insert(deskewed_world);
 
-      return {estimate_, std::move(cloud_world), std::move(deskewed_world)};
+      return {estimate_, std::move(cloud_world), local_map_.CollectPlanes()};
     }
   }
 

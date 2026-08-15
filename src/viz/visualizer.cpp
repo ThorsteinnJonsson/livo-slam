@@ -2,6 +2,8 @@
 
 #ifdef LIVO_SLAM_ENABLE_RERUN
 
+#include <algorithm>
+#include <cmath>
 #include <print>
 #include <rerun.hpp>
 #include <string_view>
@@ -38,6 +40,39 @@ struct Visualizer::Impl {
             rerun::Points3D(positions).with_colors(color).with_radii(0.05F));
   }
 };
+
+// Sweeps hue from blue (low) through green to red (high), saturation and
+// value pinned to 1.
+rerun::Color HueColor(float t) {
+  const float h = (1.0F - std::clamp(t, 0.0F, 1.0F)) * 4.0F;
+  const float x = 1.0F - std::abs(std::fmod(h, 2.0F) - 1.0F);
+  float r = 0.0F;
+  float g = 0.0F;
+  float b = 0.0F;
+  if (h < 1.0F) {
+    r = 1.0F, g = x;
+  } else if (h < 2.0F) {
+    r = x, g = 1.0F;
+  } else if (h < 3.0F) {
+    g = 1.0F, b = x;
+  } else if (h < 4.0F) {
+    g = x, b = 1.0F;
+  } else if (h < 5.0F) {
+    r = x, b = 1.0F;
+  } else {
+    r = 1.0F, b = x;
+  }
+  const auto to8 = [](float c) { return static_cast<std::uint8_t>(c * 255.0F); };
+  return rerun::Color(to8(r), to8(g), to8(b));
+}
+
+// Fixed range so the gradient does not rescale as the map grows.
+rerun::Color HeightColor(double z) {
+  constexpr double kMapColorZMin = -2.0;
+  constexpr double kMapColorZMax = 20.0;
+  return HueColor(
+      static_cast<float>((z - kMapColorZMin) / (kMapColorZMax - kMapColorZMin)));
+}
 
 Visualizer::Visualizer(const VizParams& params, std::string app_id)
     : impl_(params.enabled ? std::make_unique<Impl>(params, app_id) : nullptr) {
@@ -86,14 +121,28 @@ void Visualizer::LogCloud(const Cloud& cloud) {
   if (!impl_) {
     return;
   }
-  impl_->LogPoints("world/cloud", cloud, rerun::Color(200, 40, 40));
+  impl_->LogPoints("world/raw_cloud", cloud, rerun::Color(178, 150, 220));
 }
 
-void Visualizer::LogDeskewedCloud(const Cloud& cloud) {
+void Visualizer::LogMap(const std::vector<Plane>& planes) {
   if (!impl_) {
     return;
   }
-  impl_->LogPoints("world/cloud_deskewed", cloud, rerun::Color(40, 200, 200));
+
+  std::vector<rerun::Position3D> positions;
+  std::vector<rerun::Color> colors;
+  positions.reserve(planes.size());
+  colors.reserve(planes.size());
+  for (const Plane& plane : planes) {
+    positions.emplace_back(static_cast<float>(plane.centroid.x()),
+                           static_cast<float>(plane.centroid.y()),
+                           static_cast<float>(plane.centroid.z()));
+    colors.push_back(HeightColor(plane.centroid.z()));
+  }
+
+  impl_->rec.log("world/map", rerun::Points3D(positions)
+                                  .with_colors(colors)
+                                  .with_radii(0.05F));
 }
 
 }  // namespace livo_slam
@@ -110,7 +159,7 @@ Visualizer::~Visualizer() = default;
 void Visualizer::SetTime(std::int64_t, double) {}
 void Visualizer::LogState(const State&) {}
 void Visualizer::LogCloud(const Cloud&) {}
-void Visualizer::LogDeskewedCloud(const Cloud&) {}
+void Visualizer::LogMap(const std::vector<Plane>&) {}
 
 }  // namespace livo_slam
 

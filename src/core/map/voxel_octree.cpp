@@ -122,6 +122,18 @@ const VoxelOctree* VoxelOctree::FindCorrespondence(
   return nullptr;
 }
 
+void VoxelOctree::CollectPlanes(std::vector<Plane>& planes) const {
+  if (plane_) {
+    planes.push_back(*plane_);
+    return;
+  }
+  for (const auto& child : children_) {
+    if (child) {
+      child->CollectPlanes(planes);
+    }
+  }
+}
+
 std::size_t VoxelOctree::ChildIndex(const Eigen::Vector3d& point) const {
   const std::size_t x = point.x() > center_.x() ? 1 : 0;
   const std::size_t y = point.y() > center_.y() ? 1 : 0;

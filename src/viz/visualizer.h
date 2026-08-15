@@ -5,7 +5,10 @@
 #include <string>
 
 #include "core/config/viz_params.h"
+#include <vector>
+
 #include "core/types/cloud.h"
+#include "core/types/plane.h"
 #include "core/types/state.h"
 
 namespace livo_slam {
@@ -27,7 +30,7 @@ class Visualizer {
 
   void LogState(const State& state);
   void LogCloud(const Cloud& cloud);
-  void LogDeskewedCloud(const Cloud& cloud);
+  void LogMap(const std::vector<Plane>& planes);
 
  private:
   struct Impl;
