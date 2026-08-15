@@ -30,7 +30,6 @@ class Visualizer {
 
   void LogState(const State& state);
   void LogCloud(const Cloud& cloud);
-  void LogDeskewedCloud(const Cloud& cloud);
   void LogMap(const std::vector<Plane>& planes);
 
  private:

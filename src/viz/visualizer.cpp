@@ -121,14 +121,7 @@ void Visualizer::LogCloud(const Cloud& cloud) {
   if (!impl_) {
     return;
   }
-  impl_->LogPoints("world/cloud", cloud, rerun::Color(200, 40, 40));
-}
-
-void Visualizer::LogDeskewedCloud(const Cloud& cloud) {
-  if (!impl_) {
-    return;
-  }
-  impl_->LogPoints("world/cloud_deskewed", cloud, rerun::Color(40, 200, 200));
+  impl_->LogPoints("world/raw_cloud", cloud, rerun::Color(178, 150, 220));
 }
 
 void Visualizer::LogMap(const std::vector<Plane>& planes) {
@@ -166,7 +159,6 @@ Visualizer::~Visualizer() = default;
 void Visualizer::SetTime(std::int64_t, double) {}
 void Visualizer::LogState(const State&) {}
 void Visualizer::LogCloud(const Cloud&) {}
-void Visualizer::LogDeskewedCloud(const Cloud&) {}
 void Visualizer::LogMap(const std::vector<Plane>&) {}
 
 }  // namespace livo_slam
