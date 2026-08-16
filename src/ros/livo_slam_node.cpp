@@ -1,6 +1,7 @@
 #include "ros/livo_slam_node.h"
 
 #include <cstdint>
+#include <format>
 #include <rclcpp/qos.hpp>
 #include <string>
 #include <vector>
@@ -37,6 +38,17 @@ LivoSlamNode::LivoSlamNode()
       [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
         CameraCallback(msg);
       });
+
+  if (declare_parameter<bool>("ros.output_trajectory", false)) {
+    const auto path = declare_parameter<std::string>(
+        "ros.trajectory_path", "/workspace/evaluation/trajectory.tum");
+    trajectory_file_.open(path, std::ios::out | std::ios::trunc);
+    if (trajectory_file_) {
+      RCLCPP_INFO(get_logger(), "writing trajectory to %s", path.c_str());
+    } else {
+      RCLCPP_ERROR(get_logger(), "could not open %s for writing", path.c_str());
+    }
+  }
 
   worker_ = std::jthread([this] { Run(); });
 
@@ -166,7 +178,24 @@ void LivoSlamNode::Run() {
     visualizer_.LogState(result.estimate.state);
     visualizer_.LogCloud(result.cloud_world);
     visualizer_.LogMap(result.map_planes);
+    WriteTrajectory(result.estimate);
   }
+}
+
+void LivoSlamNode::WriteTrajectory(const Estimate& estimate) {
+  // Groups before IMU initialization carry a default estimate at time zero.
+  if (!trajectory_file_ || estimate.timestamp <= 0.0) {
+    return;
+  }
+
+  const Eigen::Vector3d& p = estimate.state.position;
+  const Eigen::Quaterniond q = estimate.state.rotation.unit_quaternion();
+  trajectory_file_
+      << std::format(
+             "{:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f}\n",
+             estimate.timestamp, p.x(), p.y(), p.z(), q.x(), q.y(), q.z(),
+             q.w())
+      << std::flush;
 }
 
 void LivoSlamNode::ImuCallback(

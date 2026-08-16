@@ -4,6 +4,9 @@
     lidar_topic: /os1_cloud_node1/points
     camera_topic: /left/image_raw
 
+    ros.output_trajectory: true
+    ros.trajectory_path: /workspace/evaluation/trajectory.tum
+
     # Pipeline config
     imu_init.window_size: 200
     imu_init.gravity_magnitude: 9.81

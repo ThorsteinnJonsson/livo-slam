@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      lld-${LLVM_VERSION} \
      lldb-${LLVM_VERSION} \
      g++-${GCC_VERSION} \
-     cmake ninja-build ccache git gdb sudo \
+     cmake ninja-build ccache git gdb sudo python3-venv \
      ros-${ROS_DISTRO}-cv-bridge \
      ros-${ROS_DISTRO}-image-transport \
      && rm -rf /var/lib/apt/lists/*
@@ -56,6 +56,13 @@ RUN wget -qO /tmp/cmakefmt.tar.gz \
      && install -m 0755 "/tmp/cmakefmt-${CMAKEFMT_VERSION}-x86_64-unknown-linux-gnu/cmakefmt" \
      /usr/local/bin/cmakefmt \
      && rm -rf /tmp/cmakefmt*
+
+# evo, for trajectory evaluation. Kept in its own venv because it wants a newer
+# numpy than the apt one that ROS's Python tooling is built against.
+RUN python3 -m venv /opt/evo \
+     && /opt/evo/bin/pip install --no-cache-dir evo \
+     && ln -s /opt/evo/bin/evo_ape /opt/evo/bin/evo_rpe /opt/evo/bin/evo_traj \
+     /opt/evo/bin/evo_res /opt/evo/bin/evo_config /usr/local/bin/
 
 # Rerun viewer. Serves the web viewer itself (rerun --serve-web), so nothing is
 # fetched from app.rerun.io and no viewer is needed on the host.
