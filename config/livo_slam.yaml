@@ -4,7 +4,7 @@
     lidar_topic: /os1_cloud_node1/points
     camera_topic: /left/image_raw
 
-    ros.output_trajectory: false
+    ros.output_trajectory: true
     ros.trajectory_path: /workspace/evaluation/trajectory.tum
 
     # Pipeline config
