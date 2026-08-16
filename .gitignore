@@ -10,3 +10,5 @@ datasets/*
 # Per-run evaluation output 
 evaluation/**/trajectory.tum
 evaluation/**/estimate_gt.tum
+
+__pycache__/
