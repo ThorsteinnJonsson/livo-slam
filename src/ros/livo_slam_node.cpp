@@ -190,10 +190,12 @@ void LivoSlamNode::WriteTrajectory(const Estimate& estimate) {
 
   const Eigen::Vector3d& p = estimate.state.position;
   const Eigen::Quaterniond q = estimate.state.rotation.unit_quaternion();
-  trajectory_file_ << std::format(
-      "{:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f}\n",
-      estimate.timestamp, p.x(), p.y(), p.z(), q.x(), q.y(), q.z(), q.w())
-                   << std::flush;
+  trajectory_file_
+      << std::format(
+             "{:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f} {:.9f}\n",
+             estimate.timestamp, p.x(), p.y(), p.z(), q.x(), q.y(), q.z(),
+             q.w())
+      << std::flush;
 }
 
 void LivoSlamNode::ImuCallback(
