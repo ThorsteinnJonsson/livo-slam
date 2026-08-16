@@ -6,3 +6,7 @@ compile_commands.json
 # Bind-mounted into the container at /data. Contents are never committed.
 datasets/*
 !datasets/.gitkeep
+
+# Per-run evaluation output 
+evaluation/**/trajectory.tum
+evaluation/**/estimate_gt.tum

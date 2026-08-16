@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      lld-${LLVM_VERSION} \
      lldb-${LLVM_VERSION} \
      g++-${GCC_VERSION} \
-     cmake ninja-build ccache git gdb sudo \
+     cmake ninja-build ccache git gdb sudo python3-pip \
      ros-${ROS_DISTRO}-cv-bridge \
      ros-${ROS_DISTRO}-image-transport \
      && rm -rf /var/lib/apt/lists/*
@@ -56,6 +56,9 @@ RUN wget -qO /tmp/cmakefmt.tar.gz \
      && install -m 0755 "/tmp/cmakefmt-${CMAKEFMT_VERSION}-x86_64-unknown-linux-gnu/cmakefmt" \
      /usr/local/bin/cmakefmt \
      && rm -rf /tmp/cmakefmt*
+
+# evo, for trajectory evaluation.
+RUN pip3 install --no-cache-dir --break-system-packages evo
 
 # Rerun viewer. Serves the web viewer itself (rerun --serve-web), so nothing is
 # fetched from app.rerun.io and no viewer is needed on the host.

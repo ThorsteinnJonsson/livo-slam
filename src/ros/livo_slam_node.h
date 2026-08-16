@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <fstream>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -31,6 +32,7 @@ class LivoSlamNode : public rclcpp::Node {
   void CameraCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
 
   void Run();
+  void WriteTrajectory(const Estimate& estimate);
 
   PipelineConfig ReadConfig();
 
@@ -44,6 +46,8 @@ class LivoSlamNode : public rclcpp::Node {
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr camera_sub_;
+
+  std::ofstream trajectory_file_;
 
   std::jthread worker_;
 };
