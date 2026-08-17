@@ -1,10 +1,32 @@
 #include "undistort.h"
 
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/imgproc.hpp>
+
 namespace livo_slam {
-Undistorter::Undistorter(const CameraParams& params) {}
+Undistorter::Undistorter(const CameraParams& params) {
+  // clang-format off
+  const cv::Mat camera_matrix =    
+      (cv::Mat_<double>(3, 3) << params.fx, 0.0, params.cx, 
+                                 0.0, params.fy, params.cy, 
+                                 0.0, 0.0, 1.0);
+  // clang-format on
+
+  const cv::Mat distortion =
+      (cv::Mat_<double>(1, 4) << params.k1, params.k2, params.p1, params.p2);
+
+  cv::Mat rectification_transformation{};  // Empty (identity) for single-camera
+
+  cv::initUndistortRectifyMap(
+      camera_matrix, distortion, rectification_transformation, camera_matrix,
+      cv::Size(static_cast<int>(params.width), static_cast<int>(params.height)),
+      CV_32FC1, map_x_, map_y_);
+}
 
 cv::Mat Undistorter::Undistort(const cv::Mat& image) const {
-  // TODO: Implement
-  return {};
+  cv::Mat undistorted;
+  cv::remap(image, undistorted, map_x_, map_y_, cv::INTER_LINEAR);
+  return undistorted;
 }
 }  // namespace livo_slam
