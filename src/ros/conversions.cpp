@@ -72,7 +72,8 @@ ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg) {
   return sample;
 }
 
-std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg) {
+std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
+                            double time_shift) {
   using sensor_msgs::msg::PointField;
 
   const std::uint32_t x_offset = FieldOffset(msg, "x", PointField::FLOAT32);
@@ -82,7 +83,7 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg) {
       FieldOffset(msg, "intensity", PointField::FLOAT32);
   const std::uint32_t time_offset = FieldOffset(msg, "t", PointField::UINT32);
 
-  const double base_time = ToSeconds(msg.header.stamp);
+  const double base_time = ToSeconds(msg.header.stamp) + time_shift;
 
   std::vector<Point> points;
   points.reserve(static_cast<std::size_t>(msg.width) * msg.height);

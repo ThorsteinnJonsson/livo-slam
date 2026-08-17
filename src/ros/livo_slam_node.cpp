@@ -113,6 +113,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       declare_parameter<double>("lidar.max_range", lidar_defaults.max_range);
   config.lidar.voxel_leaf_size = declare_parameter<double>(
       "lidar.voxel_leaf_size", lidar_defaults.voxel_leaf_size);
+  config.lidar.time_shift =
+      declare_parameter<double>("lidar.time_shift", lidar_defaults.time_shift);
 
   const VoxelMapParams map_defaults;
   config.map.voxel_size =
@@ -209,7 +211,7 @@ void LivoSlamNode::ImuCallback(
 
 void LivoSlamNode::LidarCallback(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg) {
-  buffer_.PushPoints(ToPoints(*msg));
+  buffer_.PushPoints(ToPoints(*msg, config_.lidar.time_shift));
 }
 
 void LivoSlamNode::CameraCallback(
