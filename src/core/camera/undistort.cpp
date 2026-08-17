@@ -23,9 +23,11 @@ Undistorter::Undistorter(const CameraParams& params) {
       CV_32FC1, map_x_, map_y_);
 }
 
-cv::Mat Undistorter::Undistort(const cv::Mat& image) const {
+ImageFrame Undistorter::Undistort(const ImageFrame& image_frame) const {
   cv::Mat undistorted;
-  cv::remap(image, undistorted, map_x_, map_y_, cv::INTER_LINEAR);
-  return undistorted;
+  cv::remap(image_frame.image, undistorted, map_x_, map_y_, cv::INTER_LINEAR);
+
+  ImageFrame undistorted_frame{image_frame.timestamp, undistorted};
+  return undistorted_frame;
 }
 }  // namespace livo_slam

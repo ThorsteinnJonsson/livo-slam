@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 
 #include "core/config/camera_params.h"
+#include "core/types/image_frame.h"
 
 namespace livo_slam {
 
@@ -15,7 +16,7 @@ class Undistorter {
   Undistorter(Undistorter&&) = delete;
   Undistorter& operator=(Undistorter&&) = delete;
 
-  cv::Mat Undistort(const cv::Mat& image) const;
+  ImageFrame Undistort(const ImageFrame& image_frame) const;
 
  private:
   cv::Mat map_x_;

@@ -111,7 +111,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Camera
       //   Undistort image
-      const auto undistorted = image_undistorter_.Undistort(image.image);
+      const auto undistorted_image = image_undistorter_.Undistort(image);
 
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
