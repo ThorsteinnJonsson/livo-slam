@@ -20,5 +20,5 @@ target_include_directories(livo_slam_core_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
 
 target_link_libraries(
   livo_slam_core_lib
-  PUBLIC Eigen3::Eigen Sophus::Sophus
+  PUBLIC Eigen3::Eigen Sophus::Sophus ${OpenCV_LIBS}
   PRIVATE livo_slam_warnings)

@@ -4,6 +4,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <cv_bridge/cv_bridge.hpp>
+#include <print>
+#include <sensor_msgs/image_encodings.hpp>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -119,10 +122,12 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
 ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift) {
   ImageFrame frame;
   frame.timestamp = ToSeconds(msg.header.stamp) + time_shift;
-  frame.width = msg.width;
-  frame.height = msg.height;
-  frame.encoding = msg.encoding;
-  frame.data = msg.data;
+  try {
+    frame.image =
+        cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8)->image;
+  } catch (const cv_bridge::Exception& error) {
+    std::println("cannot convert {} to mono8: {}", msg.encoding, error.what());
+  }
   return frame;
 }
 

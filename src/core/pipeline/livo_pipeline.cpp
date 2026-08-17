@@ -63,8 +63,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
     }
     case InitStatus::kInitialized: {
       std::println(
-          "imu={} | image={}x{} {} t={:.4f} | points={} cloud span={:.4f}",
-          imu_samples.size(), image.width, image.height, image.encoding,
+          "imu={} | image={}x{} t={:.4f} | points={} cloud span={:.4f}",
+          imu_samples.size(), image.image.cols, image.image.rows,
           image.timestamp, cloud.points.size(),
           cloud.end_time - cloud.start_time);
 
