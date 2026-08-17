@@ -160,6 +160,31 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       "lidar_update.position_epsilon", update_defaults.position_epsilon);
 
   const CameraParams camera_defaults;
+  const auto imu_from_cam =
+      declare_parameter<std::vector<double>>("camera.T_body_cam", identity);
+  if (imu_from_cam.size() != 16) {
+    RCLCPP_ERROR(get_logger(),
+                 "camera.T_body_cam has %zu entries, expected 16; using "
+                 "identity",
+                 imu_from_cam.size());
+  }
+  config.camera.imu_from_cam = ToSe3(imu_from_cam);
+
+  config.camera.width = static_cast<std::uint32_t>(declare_parameter<int64_t>(
+      "camera.width", static_cast<int64_t>(camera_defaults.width)));
+  config.camera.height = static_cast<std::uint32_t>(declare_parameter<int64_t>(
+      "camera.height", static_cast<int64_t>(camera_defaults.height)));
+
+  config.camera.fx = declare_parameter<double>("camera.fx", camera_defaults.fx);
+  config.camera.fy = declare_parameter<double>("camera.fy", camera_defaults.fy);
+  config.camera.cx = declare_parameter<double>("camera.cx", camera_defaults.cx);
+  config.camera.cy = declare_parameter<double>("camera.cy", camera_defaults.cy);
+
+  config.camera.k1 = declare_parameter<double>("camera.k1", camera_defaults.k1);
+  config.camera.k2 = declare_parameter<double>("camera.k2", camera_defaults.k2);
+  config.camera.p1 = declare_parameter<double>("camera.p1", camera_defaults.p1);
+  config.camera.p2 = declare_parameter<double>("camera.p2", camera_defaults.p2);
+
   config.camera.time_shift = declare_parameter<double>(
       "camera.time_shift", camera_defaults.time_shift);
 
