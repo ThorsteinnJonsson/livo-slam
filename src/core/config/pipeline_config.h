@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/config/camera_params.h"
 #include "core/config/imu_noise_params.h"
 #include "core/config/init_params.h"
 #include "core/config/initial_state_params.h"
@@ -15,6 +16,7 @@ struct PipelineConfig {
   InitialStateParams initial;
   ImuNoiseParams imu_noise;
   LidarParams lidar;
+  CameraParams camera;
   VoxelMapParams map;
   LidarUpdateParams lidar_update;
   VizParams viz;

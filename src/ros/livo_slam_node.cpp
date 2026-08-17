@@ -157,6 +157,10 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.lidar_update.position_epsilon = declare_parameter<double>(
       "lidar_update.position_epsilon", update_defaults.position_epsilon);
 
+  const CameraParams camera_defaults;
+  config.camera.time_shift = declare_parameter<double>(
+      "camera.time_shift", camera_defaults.time_shift);
+
   const ImuNoiseParams noise_defaults;
   config.imu_noise.gyro_noise_std = declare_parameter<double>(
       "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
@@ -210,7 +214,7 @@ void LivoSlamNode::LidarCallback(
 
 void LivoSlamNode::CameraCallback(
     const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-  buffer_.PushImage(ToImageFrame(*msg));
+  buffer_.PushImage(ToImageFrame(*msg, config_.camera.time_shift));
 }
 
 }  // namespace livo_slam
