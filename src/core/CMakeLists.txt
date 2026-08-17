@@ -8,6 +8,8 @@ add_library(
     lidar/deskew.cpp
     lidar/downsample.cpp
     lidar/range_filter.cpp
+    camera/projection.cpp
+    camera/undistort.cpp
     map/voxel_octree.cpp
     map/voxel_map.cpp
     estimator/iekf.cpp

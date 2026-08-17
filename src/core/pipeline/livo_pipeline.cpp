@@ -14,6 +14,7 @@ namespace livo_slam {
 LivoPipeline::LivoPipeline(PipelineConfig config)
     : config_(config),
       imu_initializer_(config_.init),
+      image_undistorter_(config_.camera),
       local_map_(config_.map) {}
 
 ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
@@ -110,6 +111,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Camera
       //   Undistort image
+      const auto undistorted = image_undistorter_.Undistort(image.image);
+
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
 
