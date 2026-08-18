@@ -7,7 +7,7 @@
 #include "core/config/camera_params.h"
 #include "core/config/update_params.h"
 #include "core/estimator/iekf.h"
-#include "core/map/voxel_map.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -20,7 +20,8 @@ struct PhotometricMatch {
 };
 
 std::vector<PhotometricMatch> BuildCameraMatches(
-    const cv::Mat& image, const State& state, const VoxelMap& map,
+    const cv::Mat& image, const State& state,
+    const std::vector<const VisualPoint*>& visual_points,
     const CameraParams& camera, const CameraUpdateParams& params);
 
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,

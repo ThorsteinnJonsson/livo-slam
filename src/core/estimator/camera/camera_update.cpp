@@ -3,10 +3,11 @@
 #include <opencv2/imgproc.hpp>
 
 #include "core/estimator/camera/camera_residual.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 Estimate UpdateWithCamera(const Estimate& prior, const ImageFrame& image_frame,
-                          const VoxelMap& map,
+                          const Cloud& cloud_imu, const VoxelMap& map,
                           const CameraParams& camera_params,
                           const CameraUpdateParams& update_params) {
   // Start from the prior: state to iterate, covariance to carry
@@ -29,15 +30,26 @@ Estimate UpdateWithCamera(const Estimate& prior, const ImageFrame& image_frame,
 
   Estimate posterior = prior;
 
+  // Collect candidate visual points
+  const Sophus::SE3d T_world_imu(posterior.state.rotation,
+                                 posterior.state.position);
+  Cloud cloud_world = cloud_imu;
+  for (Point& point : cloud_world.points) {
+    point.position = T_world_imu * point.position;
+  }
+  const std::vector<const VisualPoint*> visual_points =
+      map.CollectVisualPoints(cloud_world);
+
   std::vector<cv::Mat> image_pyramid;
   cv::buildPyramid(image_frame.image, image_pyramid,
                    static_cast<int>(update_params.pyramid_levels - 1));
 
   for (std::size_t level = update_params.pyramid_levels; level-- > 0;) {
     for (std::size_t iter = 0; iter < update_params.max_iterations; ++iter) {
+      // Find matches
       const cv::Mat& image = image_pyramid[level];
       std::vector<PhotometricMatch> matches = BuildCameraMatches(
-          image, posterior.state, map, camera_params, update_params);
+          image, posterior.state, visual_points, camera_params, update_params);
     }
   }
   return posterior;

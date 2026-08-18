@@ -94,4 +94,9 @@ std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
   return PlaneAt(neighbor_index, point);
 }
 
+std::vector<const VisualPoint*> VoxelMap::CollectVisualPoints(
+    const Cloud& cloud) const {
+  return {};
+}
+
 }  // namespace livo_slam

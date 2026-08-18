@@ -8,6 +8,7 @@
 #include "core/config/map_params.h"
 #include "core/map/voxel_octree.h"
 #include "core/types/cloud.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -23,6 +24,9 @@ class VoxelMap {
   // Returns the plane the point should be matched against, or nullopt when
   // no voxel near the point holds a suitable one.
   std::optional<Plane> FindPlane(const Eigen::Vector3d& point) const;
+
+  // Returns the visual points visible from a given cloud.
+  std::vector<const VisualPoint*> CollectVisualPoints(const Cloud& cloud) const;
 
   // For visualization
   std::vector<Plane> CollectPlanes() const;

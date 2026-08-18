@@ -3,7 +3,8 @@
 namespace livo_slam {
 
 std::vector<PhotometricMatch> BuildCameraMatches(
-    const cv::Mat& image, const State& state, const VoxelMap& map,
+    const cv::Mat& image, const State& state,
+    const std::vector<const VisualPoint*>& visual_points,
     const CameraParams& camera, const CameraUpdateParams& params) {
   // TODO: Implement
   return {};
