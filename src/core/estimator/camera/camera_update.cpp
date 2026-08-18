@@ -33,7 +33,7 @@ Estimate UpdateWithCamera(const Estimate& prior, const ImageFrame& image_frame,
   cv::buildPyramid(image_frame.image, image_pyramid,
                    static_cast<int>(update_params.pyramid_levels - 1));
 
-  for (std::size_t level = update_params.pyramid_levels; level-- >= 0;) {
+  for (std::size_t level = update_params.pyramid_levels; level-- > 0;) {
     for (std::size_t iter = 0; iter < update_params.max_iterations; ++iter) {
       const cv::Mat& image = image_pyramid[level];
       std::vector<PhotometricMatch> matches = BuildCameraMatches(
