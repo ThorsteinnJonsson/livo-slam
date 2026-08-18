@@ -19,6 +19,7 @@ struct PipelineConfig {
   CameraParams camera;
   VoxelMapParams map;
   LidarUpdateParams lidar_update;
+  CameraUpdateParams camera_update;
   VizParams viz;
 };
 

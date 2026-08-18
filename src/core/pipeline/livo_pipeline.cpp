@@ -2,6 +2,7 @@
 
 #include <print>
 
+#include "core/estimator/camera/camera_update.h"
 #include "core/estimator/initial_estimate.h"
 #include "core/estimator/lidar/lidar_update.h"
 #include "core/imu/imu_propagator.h"
@@ -115,6 +116,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
+      estimate_ = UpdateWithCamera(estimate_, undistorted_image, local_map_,
+                                   config_.camera_update);
 
       //   Map update
       //   Update map with deskewed points in world frame

@@ -159,6 +159,32 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.lidar_update.position_epsilon = declare_parameter<double>(
       "lidar_update.position_epsilon", update_defaults.position_epsilon);
 
+  const CameraUpdateParams camera_update_defaults;
+  config.camera_update.max_iterations =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "camera_update.max_iterations",
+          static_cast<int64_t>(camera_update_defaults.max_iterations)));
+  config.camera_update.patch_size =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "camera_update.patch_size",
+          static_cast<int64_t>(camera_update_defaults.patch_size)));
+  config.camera_update.pyramid_levels =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "camera_update.pyramid_levels",
+          static_cast<int64_t>(camera_update_defaults.pyramid_levels)));
+  config.camera_update.intensity_noise_std =
+      declare_parameter<double>("camera_update.intensity_noise_std",
+                                camera_update_defaults.intensity_noise_std);
+  config.camera_update.outlier_threshold =
+      declare_parameter<double>("camera_update.outlier_threshold",
+                                camera_update_defaults.outlier_threshold);
+  config.camera_update.rotation_epsilon =
+      declare_parameter<double>("camera_update.rotation_epsilon",
+                                camera_update_defaults.rotation_epsilon);
+  config.camera_update.position_epsilon =
+      declare_parameter<double>("camera_update.position_epsilon",
+                                camera_update_defaults.position_epsilon);
+
   const CameraParams camera_defaults;
   const auto imu_from_cam =
       declare_parameter<std::vector<double>>("camera.T_body_cam", identity);
