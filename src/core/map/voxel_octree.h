@@ -10,6 +10,7 @@
 #include "core/config/map_params.h"
 #include "core/types/cloud.h"
 #include "core/types/plane.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -52,6 +53,7 @@ class VoxelOctree {
 
   // Data
   std::vector<Point> points_;
+  std::vector<VisualPoint> visual_points_;
   std::optional<Plane> plane_;
   std::array<std::unique_ptr<VoxelOctree>, 8> children_;
 

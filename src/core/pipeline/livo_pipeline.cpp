@@ -117,7 +117,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
       estimate_ = UpdateWithCamera(estimate_, undistorted_image, local_map_,
-                                   config_.camera_update);
+                                   config_.camera, config_.camera_update);
 
       //   Map update
       //   Update map with deskewed points in world frame
