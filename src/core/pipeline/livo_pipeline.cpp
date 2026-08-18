@@ -76,8 +76,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
         std::println("Too few IMU samples to propagate");
         return {estimate_, {}, {}};
       }
-      const auto propagation_result =
-          Propagate(estimate_, imu_samples, image.timestamp, config_.imu_noise);
+      const auto propagation_result = Propagate(
+          estimate_, imu_samples, image.timestamp, config_.process_noise);
       estimate_ = propagation_result.estimate;
 
       std::println(

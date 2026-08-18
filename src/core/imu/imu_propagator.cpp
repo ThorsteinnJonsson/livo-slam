@@ -8,7 +8,7 @@ namespace livo_slam {
 
 PropagationResult Propagate(const Estimate& estimate,
                             std::span<const ImuSample> imu_samples,
-                            double end_time, const ImuNoiseParams& noise) {
+                            double end_time, const ProcessNoiseParams& noise) {
   PropagationResult result;
 
   if (imu_samples.empty()) {
@@ -102,17 +102,21 @@ PropagationResult Propagate(const Estimate& estimate,
     //   σ_bg²·I  (δb_g)
     //   σ_ba²·I  (δb_a)
     //   0        (δg)
+    //   σ_e²     (δ inverse exposure)
     const double sg2 = noise.gyro_noise_std * noise.gyro_noise_std;
     const double sa2 = noise.accel_noise_std * noise.accel_noise_std;
     const double sbg2 = noise.gyro_random_walk_std * noise.gyro_random_walk_std;
     const double sba2 =
         noise.accel_random_walk_std * noise.accel_random_walk_std;
+    const double se2 =
+        noise.inv_exposure_random_walk_std * noise.inv_exposure_random_walk_std;
 
     ErrorMatrix Qd = ErrorMatrix::Zero();
     Qd.block<3, 3>(0, 0) = sg2 * dt * I3;
     Qd.block<3, 3>(6, 6) = sa2 * dt * I3;
     Qd.block<3, 3>(9, 9) = sbg2 * dt * I3;
     Qd.block<3, 3>(12, 12) = sba2 * dt * I3;
+    Qd(kIdxInvExposure, kIdxInvExposure) = se2 * dt;
 
     const ErrorMatrix new_cov = Fd * cov * Fd.transpose() + Qd;
 

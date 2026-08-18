@@ -216,15 +216,17 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.camera.time_shift = declare_parameter<double>(
       "camera.time_shift", camera_defaults.time_shift);
 
-  const ImuNoiseParams noise_defaults;
-  config.imu_noise.gyro_noise_std = declare_parameter<double>(
-      "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
-  config.imu_noise.accel_noise_std = declare_parameter<double>(
-      "imu_noise.accel_noise_std", noise_defaults.accel_noise_std);
-  config.imu_noise.gyro_random_walk_std = declare_parameter<double>(
-      "imu_noise.gyro_random_walk_std", noise_defaults.gyro_random_walk_std);
-  config.imu_noise.accel_random_walk_std = declare_parameter<double>(
-      "imu_noise.accel_random_walk_std", noise_defaults.accel_random_walk_std);
+  const ProcessNoiseParams noise_defaults;
+  config.process_noise.gyro_noise_std = declare_parameter<double>(
+      "process_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
+  config.process_noise.accel_noise_std = declare_parameter<double>(
+      "process_noise.accel_noise_std", noise_defaults.accel_noise_std);
+  config.process_noise.gyro_random_walk_std =
+      declare_parameter<double>("process_noise.gyro_random_walk_std",
+                                noise_defaults.gyro_random_walk_std);
+  config.process_noise.accel_random_walk_std =
+      declare_parameter<double>("process_noise.accel_random_walk_std",
+                                noise_defaults.accel_random_walk_std);
   return config;
 }
 

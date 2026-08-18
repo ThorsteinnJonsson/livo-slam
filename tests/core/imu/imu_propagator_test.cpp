@@ -33,7 +33,8 @@ std::vector<ImuSample> MakeSamples(std::size_t count, double dt,
 TEST(Propagate, StationaryPlatformDoesNotDrift) {
   const auto samples = MakeSamples(41, 0.0025, Eigen::Vector3d(0.0, 0.0, 9.81),
                                    Eigen::Vector3d::Zero());
-  const auto result = Propagate(MakeEstimate(), samples, 0.1, ImuNoiseParams{});
+  const auto result =
+      Propagate(MakeEstimate(), samples, 0.1, ProcessNoiseParams{});
 
   EXPECT_LT(result.estimate.state.position.norm(), 1e-12);
   EXPECT_LT(result.estimate.state.velocity.norm(), 1e-12);
@@ -42,7 +43,8 @@ TEST(Propagate, StationaryPlatformDoesNotDrift) {
 TEST(Propagate, ConstantAccelerationIntegratesAnalytically) {
   const auto samples = MakeSamples(41, 0.0025, Eigen::Vector3d(1.0, 0.0, 9.81),
                                    Eigen::Vector3d::Zero());
-  const auto result = Propagate(MakeEstimate(), samples, 0.1, ImuNoiseParams{});
+  const auto result =
+      Propagate(MakeEstimate(), samples, 0.1, ProcessNoiseParams{});
 
   EXPECT_NEAR(result.estimate.state.velocity.x(), 0.1, 1e-12);
   EXPECT_NEAR(result.estimate.state.position.x(), 0.005, 1e-12);
@@ -51,13 +53,14 @@ TEST(Propagate, ConstantAccelerationIntegratesAnalytically) {
 TEST(Propagate, EstimateLandsOnEndTime) {
   const auto samples = MakeSamples(10, 0.0025, Eigen::Vector3d(0.0, 0.0, 9.81),
                                    Eigen::Vector3d::Zero());
-  const auto result = Propagate(MakeEstimate(), samples, 0.5, ImuNoiseParams{});
+  const auto result =
+      Propagate(MakeEstimate(), samples, 0.5, ProcessNoiseParams{});
   EXPECT_DOUBLE_EQ(result.estimate.timestamp, 0.5);
 }
 
 TEST(Propagate, EmptySamplesOnlyAdvancesTime) {
   const Estimate estimate = MakeEstimate();
-  const auto result = Propagate(estimate, {}, 0.25, ImuNoiseParams{});
+  const auto result = Propagate(estimate, {}, 0.25, ProcessNoiseParams{});
 
   EXPECT_DOUBLE_EQ(result.estimate.timestamp, 0.25);
   EXPECT_LT(BoxMinus(result.estimate.state, estimate.state).norm(), 1e-15);
@@ -67,7 +70,8 @@ TEST(Propagate, EmptySamplesOnlyAdvancesTime) {
 TEST(Propagate, TrajectoryStartsAtEstimateTimeAndCoversSamples) {
   const auto samples = MakeSamples(5, 0.01, Eigen::Vector3d(0.0, 0.0, 9.81),
                                    Eigen::Vector3d::Zero());
-  const auto result = Propagate(MakeEstimate(), samples, 0.1, ImuNoiseParams{});
+  const auto result =
+      Propagate(MakeEstimate(), samples, 0.1, ProcessNoiseParams{});
 
   ASSERT_FALSE(result.trajectory.empty());
   EXPECT_DOUBLE_EQ(result.trajectory.front().timestamp, 0.0);
@@ -79,7 +83,8 @@ TEST(Propagate, RotationIntegratesConstantAngularRate) {
   const double rate = 0.5;
   const auto samples = MakeSamples(101, 0.001, Eigen::Vector3d(0.0, 0.0, 9.81),
                                    Eigen::Vector3d(0.0, 0.0, rate));
-  const auto result = Propagate(MakeEstimate(), samples, 0.1, ImuNoiseParams{});
+  const auto result =
+      Propagate(MakeEstimate(), samples, 0.1, ProcessNoiseParams{});
 
   EXPECT_NEAR(result.estimate.state.rotation.log().z(), rate * 0.1, 1e-9);
 }
@@ -88,7 +93,7 @@ TEST(Propagate, CovarianceGrows) {
   const Estimate estimate = MakeEstimate();
   const auto samples = MakeSamples(41, 0.0025, Eigen::Vector3d(0.0, 0.0, 9.81),
                                    Eigen::Vector3d::Zero());
-  const auto result = Propagate(estimate, samples, 0.1, ImuNoiseParams{});
+  const auto result = Propagate(estimate, samples, 0.1, ProcessNoiseParams{});
 
   EXPECT_GT(result.estimate.covariance(kIdxRotation, kIdxRotation),
             estimate.covariance(kIdxRotation, kIdxRotation));
@@ -102,7 +107,7 @@ TEST(Propagate, GyroBiasIsRemovedFromMeasurements) {
 
   const auto samples = MakeSamples(101, 0.001, Eigen::Vector3d(0.0, 0.0, 9.81),
                                    Eigen::Vector3d(0.0, 0.0, 0.5));
-  const auto result = Propagate(estimate, samples, 0.1, ImuNoiseParams{});
+  const auto result = Propagate(estimate, samples, 0.1, ProcessNoiseParams{});
 
   EXPECT_LT(result.estimate.state.rotation.log().norm(), 1e-12);
 }
