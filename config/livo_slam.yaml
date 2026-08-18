@@ -18,6 +18,8 @@
     initial_state.gyro_bias_std: 0.001
     initial_state.accel_bias_std: 0.01
     initial_state.gravity_std: 0.01
+    initial_state.inv_exposure_std: 0.1
+
     imu_noise.gyro_noise_std: 0.3162
     imu_noise.accel_noise_std: 0.3162
     imu_noise.gyro_random_walk_std: 0.01

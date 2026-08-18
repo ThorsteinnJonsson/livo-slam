@@ -23,6 +23,6 @@ Estimate UpdateWithCamera(const Estimate& prior, const ImageFrame& image_frame,
   //       Stop if IekfConverged(increment, ...)
   //
   // Return the state, covariance and prior.timestamp
-  return {};
+  return prior;
 }
 }  // namespace livo_slam

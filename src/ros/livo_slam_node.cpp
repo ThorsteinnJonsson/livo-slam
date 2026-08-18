@@ -82,6 +82,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       "initial_state.accel_bias_std", initial_defaults.accel_bias_std);
   config.initial.gravity_std = declare_parameter<double>(
       "initial_state.gravity_std", initial_defaults.gravity_std);
+  config.initial.inv_exposure_std = declare_parameter<double>(
+      "initial_state.inv_exposure_std", initial_defaults.inv_exposure_std);
 
   const VizParams viz_defaults;
   config.viz.enabled =

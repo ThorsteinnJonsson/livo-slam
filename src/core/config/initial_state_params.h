@@ -9,6 +9,7 @@ struct InitialStateParams {
   double gyro_bias_std = 0.001;
   double accel_bias_std = 0.01;
   double gravity_std = 0.01;
+  double inv_exposure_std = 0.1;
 };
 
 }  // namespace livo_slam

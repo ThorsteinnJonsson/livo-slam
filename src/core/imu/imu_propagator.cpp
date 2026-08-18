@@ -66,6 +66,7 @@ PropagationResult Propagate(const Estimate& estimate,
     new_state.gravity = state.gravity;
     new_state.gyro_bias = state.gyro_bias;
     new_state.accel_bias = state.accel_bias;
+    new_state.inv_exposure = state.inv_exposure;
 
     // ──────────────────────────────────────────────────────────────
     // Propagate new covariance
