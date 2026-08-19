@@ -15,7 +15,13 @@ std::optional<Eigen::Vector2d> Project(const CameraParams& params,
 
 bool InFrame(const CameraParams& params, const Eigen::Vector2d& pixel,
              int margin) {
-  return false;
+  const double low = static_cast<double>(margin);
+  const double high_x = static_cast<double>(params.width) - low;
+  const double high_y = static_cast<double>(params.height) - low;
+  // clang-format off
+  return low <= pixel.x() && pixel.x() < high_x && 
+         low <= pixel.y() && pixel.y() < high_y;
+  // clang-format on
 }
 
 double SampleBilinear(const cv::Mat& image, const Eigen::Vector2d& pixel) {

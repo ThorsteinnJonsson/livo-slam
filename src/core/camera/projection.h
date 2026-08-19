@@ -8,10 +8,13 @@
 
 namespace livo_slam {
 
-// Project 3D point (in camera frame) to pixel coordinates
+// Project 3D point (in camera frame) to pixel coordinates.
 std::optional<Eigen::Vector2d> Project(const CameraParams& params,
                                        const Eigen::Vector3d& point_cam);
 
+// Check if a given pixel is visible in the image. The margin should be used
+// when checking patches so they are fully contained within the image (normally
+// using patch_size / 2 + 1).
 bool InFrame(const CameraParams& params, const Eigen::Vector2d& pixel,
              int margin);
 
