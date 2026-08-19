@@ -128,10 +128,9 @@ const VoxelOctree* VoxelOctree::FindCorrespondence(
 void VoxelOctree::CollectVisualPoints(
     std::vector<const VisualPoint*>& visual_points) const {
   // Push back const pointer to own visual points
-  visual_points.reserve(visual_points.size() + visual_points_.size());
-  std::transform(visual_points_.cbegin(), visual_points_.cend(),
-                 std::back_inserter(visual_points),
-                 [](const VisualPoint& p) { return &p; });
+  for (const VisualPoint& p : visual_points_) {
+    visual_points.push_back(&p);
+  }
 
   // Recuse into children
   for (const auto& child : children_) {

@@ -104,18 +104,10 @@ std::vector<const VisualPoint*> VoxelMap::CollectVisualPoints(
   for (const auto& point : cloud.points) {
     const auto key =
         voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size));
-    if (seen.contains(key)) {
-      continue;
-    }
-    seen.insert(key);
+    if (!seen.insert(key).second) continue;
 
     if (const auto voxel = voxels_.find(key); voxel != voxels_.end()) {
-      std::vector<const VisualPoint*> points;
-      voxel->second.CollectVisualPoints(points);
-
-      visual_points.insert(visual_points.end(),
-                           std::make_move_iterator(points.begin()),
-                           std::make_move_iterator(points.end()));
+      voxel->second.CollectVisualPoints(visual_points);
     }
   }
   return visual_points;
