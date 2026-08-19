@@ -172,5 +172,33 @@ TEST(FindPlane, MatchesNothingWhileVoxelsAreStillAccumulating) {
   EXPECT_FALSE(map.FindPlane({0.4, 0.2, 0.5}).has_value());
 }
 
+TEST(CollectVisualPoints, EmptyMapCollectsNothing) {
+  const VoxelMap map(MakeParams());
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarCloud()).empty());
+}
+
+TEST(CollectVisualPoints, EmptyCloudCollectsNothing) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  EXPECT_TRUE(map.CollectVisualPoints(Cloud{}).empty());
+}
+
+TEST(CollectVisualPoints, VoxelsWithoutVisualPointsCollectNothing) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+  ASSERT_EQ(map.VoxelCount(), 1U);
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarCloud()).empty());
+}
+
+TEST(CollectVisualPoints, CloudAwayFromTheMapCollectsNothing) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakeCloud({{9.0, 9.0, 9.0}})).empty());
+}
+
 }  // namespace
 }  // namespace livo_slam
