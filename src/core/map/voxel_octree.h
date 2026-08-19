@@ -29,6 +29,9 @@ class VoxelOctree {
   // Returns nullptr when no node along the path has one.
   const VoxelOctree* FindCorrespondence(const Eigen::Vector3d& point) const;
 
+  void CollectVisualPoints(
+      std::vector<const VisualPoint*>& visual_points) const;
+
   // For visualization
   void CollectPlanes(std::vector<Plane>& planes) const;
 

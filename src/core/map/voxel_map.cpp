@@ -1,6 +1,8 @@
 #include "voxel_map.h"
 
 #include <cmath>
+#include <iterator>
+#include <unordered_set>
 
 #include "core/math/voxel_key.h"
 
@@ -96,7 +98,27 @@ std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
 
 std::vector<const VisualPoint*> VoxelMap::CollectVisualPoints(
     const Cloud& cloud) const {
-  return {};
+  std::vector<const VisualPoint*> visual_points;
+
+  std::unordered_set<std::int64_t> seen;
+  for (const auto& point : cloud.points) {
+    const auto key =
+        voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size));
+    if (seen.contains(key)) {
+      continue;
+    }
+    seen.insert(key);
+
+    if (const auto voxel = voxels_.find(key); voxel != voxels_.end()) {
+      std::vector<const VisualPoint*> points;
+      voxel->second.CollectVisualPoints(points);
+
+      visual_points.insert(visual_points.end(),
+                           std::make_move_iterator(points.begin()),
+                           std::make_move_iterator(points.end()));
+    }
+  }
+  return visual_points;
 }
 
 }  // namespace livo_slam
