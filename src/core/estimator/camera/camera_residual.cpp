@@ -36,6 +36,8 @@ std::vector<PhotometricMatch> BuildCameraMatches(
   std::vector<PhotometricMatch> matches;
 
   const std::size_t margin = update_params.patch_size / 2 + 1;
+  const double scale =
+      1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
   const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
   const Sophus::SO3d R_inv = state.rotation.inverse();
 
@@ -49,7 +51,6 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     if (!projected) continue;
 
     // Scale the pixel to this pyramid level
-    const double scale = 1.0 / static_cast<double>(1U << pyramid_level);
     const Eigen::Vector2d pixel = *projected * scale;
 
     if (!InFrame(image, pixel, margin)) continue;
