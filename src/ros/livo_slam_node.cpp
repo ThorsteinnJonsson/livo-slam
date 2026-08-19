@@ -98,15 +98,15 @@ PipelineConfig LivoSlamNode::ReadConfig() {
                                         0.0, 0.0, 0.0, 1.0};
   // clang-format on
 
-  const auto imu_from_lidar =
+  const auto T_imu_lidar =
       declare_parameter<std::vector<double>>("lidar.T_body_lidar", identity);
-  if (imu_from_lidar.size() != 16) {
+  if (T_imu_lidar.size() != 16) {
     RCLCPP_ERROR(get_logger(),
                  "lidar.T_body_lidar has %zu entries, expected 16; using "
                  "identity",
-                 imu_from_lidar.size());
+                 T_imu_lidar.size());
   }
-  config.lidar.imu_from_lidar = ToSe3(imu_from_lidar);
+  config.lidar.T_imu_lidar = ToSe3(T_imu_lidar);
 
   const LidarParams lidar_defaults;
   config.lidar.min_range =
@@ -188,15 +188,15 @@ PipelineConfig LivoSlamNode::ReadConfig() {
                                 camera_update_defaults.position_epsilon);
 
   const CameraParams camera_defaults;
-  const auto imu_from_cam =
+  const auto T_imu_cam =
       declare_parameter<std::vector<double>>("camera.T_body_cam", identity);
-  if (imu_from_cam.size() != 16) {
+  if (T_imu_cam.size() != 16) {
     RCLCPP_ERROR(get_logger(),
                  "camera.T_body_cam has %zu entries, expected 16; using "
                  "identity",
-                 imu_from_cam.size());
+                 T_imu_cam.size());
   }
-  config.camera.imu_from_cam = ToSe3(imu_from_cam);
+  config.camera.T_imu_cam = ToSe3(T_imu_cam);
 
   config.camera.width = static_cast<std::uint32_t>(declare_parameter<int64_t>(
       "camera.width", static_cast<int64_t>(camera_defaults.width)));

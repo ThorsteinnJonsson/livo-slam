@@ -6,7 +6,7 @@
 namespace livo_slam {
 
 struct CameraParams {
-  Sophus::SE3d imu_from_cam;
+  Sophus::SE3d T_imu_cam;
 
   std::uint32_t width = 0;
   std::uint32_t height = 0;

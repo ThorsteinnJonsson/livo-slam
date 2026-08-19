@@ -92,9 +92,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                                            config_.lidar.max_range);
 
       //   Lidar backward propagation, (deskew points based on image time)
-      const Cloud deskewed =
-          Deskew(in_range, propagation_result.trajectory, estimate_.state,
-                 config_.lidar.imu_from_lidar);
+      const Cloud deskewed = Deskew(in_range, propagation_result.trajectory,
+                                    estimate_.state, config_.lidar.T_imu_lidar);
       //   Lidar downsampling
       const Cloud downsampled =
           VoxelDownsample(deskewed, config_.lidar.voxel_leaf_size);
@@ -127,7 +126,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       const Sophus::SE3d T_world_imu(estimate_.state.rotation,
                                      estimate_.state.position);
       const Sophus::SE3d T_world_lidar =
-          T_world_imu * config_.lidar.imu_from_lidar;
+          T_world_imu * config_.lidar.T_imu_lidar;
 
       Cloud cloud_world = cloud;
       for (Point& point : cloud_world.points) {

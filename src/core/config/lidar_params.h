@@ -5,7 +5,7 @@
 namespace livo_slam {
 
 struct LidarParams {
-  Sophus::SE3d imu_from_lidar;
+  Sophus::SE3d T_imu_lidar;
 
   double min_range = 1.0;
   double max_range = 60.0;

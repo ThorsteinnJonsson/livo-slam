@@ -9,7 +9,7 @@ namespace livo_slam {
 
 struct VisualPatch {
   Eigen::VectorXf intensities;
-  Sophus::SE3d world_from_camera;
+  Sophus::SE3d T_world_camera;
   Eigen::Vector2d pixel = Eigen::Vector2d::Zero();
   std::size_t level = 0;
   double inv_exposure = 1.0;

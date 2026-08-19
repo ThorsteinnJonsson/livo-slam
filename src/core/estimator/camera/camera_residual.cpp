@@ -26,12 +26,12 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
   IekfSystem system;
 
   const double weight = 1.0 / (intensity_noise_std * intensity_noise_std);
-  const Sophus::SE3d T_cam_from_imu = camera.imu_from_cam.inverse();
-  const Eigen::Matrix3d R_cam_imu = T_cam_from_imu.rotationMatrix();
+  const Sophus::SE3d T_cam_imu = camera.T_imu_cam.inverse();
+  const Eigen::Matrix3d R_cam_imu = T_cam_imu.rotationMatrix();
 
   for (const auto& match : matches) {
     const Eigen::Vector3d& p_imu = match.point_imu;
-    const Eigen::Vector3d p_cam = T_cam_from_imu * match.point_imu;
+    const Eigen::Vector3d p_cam = T_cam_imu * match.point_imu;
 
     // dU_dP is ∂u/∂p_cam. Move the 3D point in the camera frame, how far
     // the pixel u slides.
