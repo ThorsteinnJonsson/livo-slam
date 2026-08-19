@@ -6,13 +6,15 @@ namespace livo_slam {
 
 std::optional<Eigen::Vector2d> Project(const CameraParams& params,
                                        const Eigen::Vector3d& point_cam) {
-  // TODO: Implement
-  return std::nullopt;
+  if (point_cam.z() <= 0.0) return std::nullopt;
+
+  const double u = params.fx * point_cam.x() / point_cam.z() + params.cx;
+  const double v = params.fy * point_cam.y() / point_cam.z() + params.cy;
+  return Eigen::Vector2d(u, v);
 }
 
 bool InFrame(const CameraParams& params, const Eigen::Vector2d& pixel,
              int margin) {
-  // TODO: Implement
   return false;
 }
 

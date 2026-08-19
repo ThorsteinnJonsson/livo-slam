@@ -8,6 +8,7 @@
 
 namespace livo_slam {
 
+// Project 3D point (in camera frame) to pixel coordinates
 std::optional<Eigen::Vector2d> Project(const CameraParams& params,
                                        const Eigen::Vector3d& point_cam);
 
