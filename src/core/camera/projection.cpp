@@ -15,11 +15,11 @@ std::optional<Eigen::Vector2d> Project(const CameraParams& params,
   return Eigen::Vector2d(u, v);
 }
 
-bool InFrame(const CameraParams& params, const Eigen::Vector2d& pixel,
-             int margin) {
+bool InFrame(const cv::Mat& image, const Eigen::Vector2d& pixel,
+             std::size_t margin) {
   const double low = static_cast<double>(margin);
-  const double high_x = static_cast<double>(params.width) - low;
-  const double high_y = static_cast<double>(params.height) - low;
+  const double high_x = static_cast<double>(image.cols) - low;
+  const double high_y = static_cast<double>(image.rows) - low;
   // clang-format off
   return low <= pixel.x() && pixel.x() < high_x && 
          low <= pixel.y() && pixel.y() < high_y;

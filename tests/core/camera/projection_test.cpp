@@ -56,37 +56,49 @@ TEST(Project, RejectsPointsBehindTheCamera) {
   EXPECT_FALSE(Project(params, {0.1, 0.1, 0.0}).has_value());
 }
 
+// Matches the camera resolution above.
+cv::Mat MakeFrame() { return cv::Mat(480, 752, CV_8UC1, cv::Scalar(0)); }
+
 TEST(InFrame, AcceptsThePrincipalPointWithoutMargin) {
   const CameraParams params = MakeParams();
 
-  EXPECT_TRUE(InFrame(params, {params.cx, params.cy}, 0));
+  EXPECT_TRUE(InFrame(MakeFrame(), {params.cx, params.cy}, 0));
 }
 
 TEST(InFrame, RejectsOutsideTheImage) {
-  const CameraParams params = MakeParams();
+  const cv::Mat image = MakeFrame();
 
-  EXPECT_FALSE(InFrame(params, {-1.0, 100.0}, 0));
-  EXPECT_FALSE(InFrame(params, {100.0, -1.0}, 0));
-  EXPECT_FALSE(InFrame(params, {752.0, 100.0}, 0));
-  EXPECT_FALSE(InFrame(params, {100.0, 480.0}, 0));
+  EXPECT_FALSE(InFrame(image, {-1.0, 100.0}, 0));
+  EXPECT_FALSE(InFrame(image, {100.0, -1.0}, 0));
+  EXPECT_FALSE(InFrame(image, {752.0, 100.0}, 0));
+  EXPECT_FALSE(InFrame(image, {100.0, 480.0}, 0));
 }
 
 TEST(InFrame, BoundsAreInclusiveBelowAndExclusiveAbove) {
-  const CameraParams params = MakeParams();
+  const cv::Mat image = MakeFrame();
 
-  EXPECT_TRUE(InFrame(params, {0.0, 0.0}, 0));
-  EXPECT_TRUE(InFrame(params, {751.9, 479.9}, 0));
-  EXPECT_FALSE(InFrame(params, {752.0, 479.9}, 0));
-  EXPECT_FALSE(InFrame(params, {751.9, 480.0}, 0));
+  EXPECT_TRUE(InFrame(image, {0.0, 0.0}, 0));
+  EXPECT_TRUE(InFrame(image, {751.9, 479.9}, 0));
+  EXPECT_FALSE(InFrame(image, {752.0, 479.9}, 0));
+  EXPECT_FALSE(InFrame(image, {751.9, 480.0}, 0));
 }
 
 TEST(InFrame, MarginShrinksTheAcceptedRegion) {
-  const CameraParams params = MakeParams();
+  const cv::Mat image = MakeFrame();
 
-  EXPECT_TRUE(InFrame(params, {5.0, 5.0}, 5));
-  EXPECT_FALSE(InFrame(params, {4.9, 5.0}, 5));
-  EXPECT_TRUE(InFrame(params, {746.9, 474.9}, 5));
-  EXPECT_FALSE(InFrame(params, {747.0, 474.9}, 5));
+  EXPECT_TRUE(InFrame(image, {5.0, 5.0}, 5));
+  EXPECT_FALSE(InFrame(image, {4.9, 5.0}, 5));
+  EXPECT_TRUE(InFrame(image, {746.9, 474.9}, 5));
+  EXPECT_FALSE(InFrame(image, {747.0, 474.9}, 5));
+}
+
+TEST(InFrame, FollowsTheImageRatherThanTheCameraResolution) {
+  // A pyramid level is smaller than the full-resolution camera.
+  const cv::Mat level(120, 188, CV_8UC1, cv::Scalar(0));
+
+  EXPECT_TRUE(InFrame(level, {187.9, 119.9}, 0));
+  EXPECT_FALSE(InFrame(level, {188.0, 60.0}, 0));
+  EXPECT_FALSE(InFrame(level, {90.0, 120.0}, 0));
 }
 
 // (u=0,v=0)=10  (u=1,v=0)=20

@@ -20,12 +20,13 @@ struct PhotometricMatch {
 };
 
 std::vector<PhotometricMatch> BuildCameraMatches(
-    const cv::Mat& image, const State& state,
+    const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,
-    const CameraParams& camera, const CameraUpdateParams& params);
+    const CameraParams& camera_params, const CameraUpdateParams& update_params);
 
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
-                             const State& state, const CameraParams& camera,
+                             const State& state,
+                             const CameraParams& camera_params,
                              double intensity_noise_std);
 
 }  // namespace livo_slam
