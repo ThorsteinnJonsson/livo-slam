@@ -44,8 +44,20 @@ double SampleBilinear(const cv::Mat& image, const Eigen::Vector2d& pixel) {
 
 Eigen::Matrix<double, 2, 3> ProjectionJacobian(
     const CameraParams& params, const Eigen::Vector3d& point_cam) {
-  // TODO: Implement
-  return {};
+  // Projection is:
+  // u = fx * x/z + cx
+  // v = fy * y/z + cy
+  // So jacobian is:
+  // [ fx/z,    0, -fx*x/z² ]
+  // [    0, fy/z, -fy*y/z² ]
+
+  Eigen::Matrix<double, 2, 3> jacobian = Eigen::Matrix<double, 2, 3>::Zero();
+  jacobian(0, 0) = params.fx / point_cam.z();
+  jacobian(1, 1) = params.fy / point_cam.z();
+  jacobian(0, 2) = -params.fx * point_cam.x() / (point_cam.z() * point_cam.z());
+  jacobian(1, 2) = -params.fy * point_cam.y() / (point_cam.z() * point_cam.z());
+
+  return jacobian;
 }
 
 }  // namespace livo_slam
