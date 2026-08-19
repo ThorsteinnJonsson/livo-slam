@@ -146,7 +146,7 @@ TEST(FindPlane, DoesNotLeaveAVoxelFromItsMiddle) {
   VoxelMap map(MakeParams());
   map.Insert(MakePlanarCloud());
 
-  // Centre of the empty voxel at (1, 0, 0): no axis is past a quarter, so no
+  // Center of the empty voxel at (1, 0, 0): no axis is past a quarter, so no
   // neighbor is tried even though the plane next door is within range.
   EXPECT_FALSE(map.FindPlane({1.5, 0.5, 0.5}).has_value());
 }
