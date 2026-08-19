@@ -1,5 +1,7 @@
 #include "projection.h"
 
+#include <cmath>
+#include <cstdint>
 #include <optional>
 
 namespace livo_slam {
@@ -25,8 +27,19 @@ bool InFrame(const CameraParams& params, const Eigen::Vector2d& pixel,
 }
 
 double SampleBilinear(const cv::Mat& image, const Eigen::Vector2d& pixel) {
-  // TODO: Implement
-  return -1.0;
+  const int u0 = static_cast<int>(pixel.x());
+  const int v0 = static_cast<int>(pixel.y());
+  const double du = pixel.x() - static_cast<double>(u0);
+  const double dv = pixel.y() - static_cast<double>(v0);
+
+  // clang-format off
+  const double sample =
+    (1.0 - du) * (1.0 - dv) * image.at<std::uint8_t>(v0,     u0) +
+           du  * (1.0 - dv) * image.at<std::uint8_t>(v0,     u0 + 1) +
+    (1.0 - du) *        dv  * image.at<std::uint8_t>(v0 + 1, u0) +
+           du  *        dv  * image.at<std::uint8_t>(v0 + 1, u0 + 1);
+  // clang-format on
+  return sample;
 }
 
 Eigen::Matrix<double, 2, 3> ProjectionJacobian(
