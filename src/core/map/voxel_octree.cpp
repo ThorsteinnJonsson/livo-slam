@@ -1,8 +1,6 @@
 #include "voxel_octree.h"
 
 #include <Eigen/Eigenvalues>
-#include <algorithm>
-#include <iterator>
 
 #include "core/config/map_params.h"
 #include "core/types/visual_point.h"
