@@ -1,7 +1,6 @@
 #include "voxel_map.h"
 
 #include <cmath>
-#include <iterator>
 #include <unordered_set>
 
 #include "core/math/voxel_key.h"
