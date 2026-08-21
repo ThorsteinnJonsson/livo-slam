@@ -1,5 +1,8 @@
 #include "camera_residual.h"
 
+#include <Eigen/src/Core/Matrix.h>
+
+#include <limits>
 #include <optional>
 
 #include "core/camera/projection.h"
@@ -8,6 +11,29 @@
 #include "core/types/visual_point.h"
 
 namespace livo_slam {
+
+const VisualPatch* SelectReferencePatch(const VisualPoint& visual_point,
+                                        const Eigen::Vector3d& camera_position,
+                                        std::size_t level) {
+  const Eigen::Vector3d view_dir =
+      (camera_position - visual_point.position).normalized();
+
+  double max_cos_angle = std::numeric_limits<double>::lowest();
+  const VisualPatch* best_match = nullptr;
+  for (const VisualPatch& patch : visual_point.patches) {
+    if (patch.level != level) continue;
+
+    const Eigen::Vector3d patch_dir =
+        (patch.T_world_camera.translation() - visual_point.position)
+            .normalized();
+    const double cos_angle = view_dir.dot(patch_dir);
+    if (best_match == nullptr || max_cos_angle < cos_angle) {
+      max_cos_angle = cos_angle;
+      best_match = &patch;
+    }
+  }
+  return best_match;
+}
 
 std::vector<PhotometricMatch> BuildCameraMatches(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
@@ -38,8 +64,12 @@ std::vector<PhotometricMatch> BuildCameraMatches(
   const std::size_t margin = update_params.patch_size / 2 + 1;
   const double scale =
       1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
+
   const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
   const Sophus::SO3d R_inv = state.rotation.inverse();
+  const Sophus::SE3d T_world_imu(state.rotation, state.position);
+  const Eigen::Vector3d cam_position =
+      (T_world_imu * camera_params.T_imu_cam).translation();
 
   for (const VisualPoint* visual_point : visual_points) {
     const Eigen::Vector3d p_imu =
@@ -55,7 +85,14 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 
     if (!InFrame(image, pixel, margin)) continue;
 
-    // TODO: Continue
+    const VisualPatch* reference_patch =
+        SelectReferencePatch(*visual_point, cam_position, pyramid_level);
+
+    if (!reference_patch) continue;  // No patch at this pyramid level
+
+    // TODO: Update visual point to store reference patch by level, and update
+    // SelectReferencePatch.
+    // TODO: Continue "For each of the patch_size^2 offsets around the pixel"
   }
   return matches;
 }
