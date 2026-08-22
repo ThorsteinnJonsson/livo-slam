@@ -12,7 +12,7 @@ add_library(
     camera/undistort.cpp
     map/voxel_octree.cpp
     map/voxel_map.cpp
-    map/camera/visual_points.cpp
+    map/camera/visual_point_selection.cpp
     estimator/iekf.cpp
     estimator/initial_estimate.cpp
     estimator/lidar/lidar_residual.cpp

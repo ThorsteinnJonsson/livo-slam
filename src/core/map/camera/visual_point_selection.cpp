@@ -1,4 +1,4 @@
-#include "visual_points.h"
+#include "visual_point_selection.h"
 
 #include <limits>
 

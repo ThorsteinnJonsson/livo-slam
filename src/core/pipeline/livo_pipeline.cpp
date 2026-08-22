@@ -10,7 +10,7 @@
 #include "core/lidar/deskew.h"
 #include "core/lidar/downsample.h"
 #include "core/lidar/range_filter.h"
-#include "core/map/camera/visual_points.h"
+#include "core/map/camera/visual_point_selection.h"
 #include "core/types/visual_point.h"
 
 namespace livo_slam {
