@@ -38,25 +38,6 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     const std::vector<const VisualPoint*>& visual_points,
     const CameraParams& camera_params,
     const CameraUpdateParams& update_params) {
-  // For each visual point
-  //    p_imu = state.rotation.inverse() * (position - state.position)
-  //    p_cam = camera.T_imu_cam.inverse() * p_imu
-  //    Project, skip if nullopt
-  //    Scale the pixel to this level, skip if not InFrame with the margin
-  //
-  //    Pick the reference patch from point->patches
-  //
-  //    For each of the patch_size^2 offsets around the pixel
-  //       current(i)     = SampleBilinear at pixel + offset
-  //       gradients(i,0) = central difference in u
-  //       gradients(i,1) = central difference in v
-  //
-  //    Skip if the photometric error against the reference exceeds
-  //    outlier_threshold
-  //
-  //    Append {point_imu, reference, current, gradients,
-  //            reference_inv_exposure}
-
   std::vector<PhotometricMatch> matches;
 
   const std::size_t margin = update_params.patch_size / 2 + 1;
@@ -82,7 +63,7 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     if (!projected) continue;
 
     // Scale the pixel to this pyramid level
-    const Eigen::Vector2d pixel = *projected * scale;
+    const Eigen::Vector2d pixel = (*projected) * scale;
 
     if (!InFrame(image, pixel, margin)) continue;
 
@@ -114,6 +95,14 @@ std::vector<PhotometricMatch> BuildCameraMatches(
              SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitY()));
         ++index;
       }
+    }
+
+    const double photometric_error =
+        (match.current_patch - state.inv_exposure * (*match.reference_patch))
+            .squaredNorm();
+
+    if (photometric_error < update_params.outlier_threshold) {
+      matches.push_back(std::move(match));
     }
   }
 
