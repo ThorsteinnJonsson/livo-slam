@@ -109,9 +109,9 @@ TEST(Deskew, OutputIsInImuFrame) {
   const State reference = MakeReference(0.0, Eigen::Vector3d::Zero());
   const Cloud cloud = MakeCloud({0.05});
 
-  const Sophus::SE3d imu_from_lidar(Sophus::SO3d{},
-                                    Eigen::Vector3d(-0.05, 0.0, 0.055));
-  const Cloud out = Deskew(cloud, trajectory, reference, imu_from_lidar);
+  const Sophus::SE3d T_imu_lidar(Sophus::SO3d{},
+                                 Eigen::Vector3d(-0.05, 0.0, 0.055));
+  const Cloud out = Deskew(cloud, trajectory, reference, T_imu_lidar);
 
   const Eigen::Vector3d expected =
       cloud.points[0].position + Eigen::Vector3d(-0.05, 0.0, 0.055);

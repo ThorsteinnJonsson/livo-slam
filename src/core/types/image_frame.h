@@ -1,17 +1,12 @@
 #pragma once
 
-#include <cstdint>
-#include <string>
-#include <vector>
+#include <opencv2/core/mat.hpp>
 
 namespace livo_slam {
 
 struct ImageFrame {
   double timestamp = 0.0;
-  std::uint32_t width = 0;
-  std::uint32_t height = 0;
-  std::string encoding;
-  std::vector<std::uint8_t> data;
+  cv::Mat image;  // single channel, 8 bit
 };
 
 }  // namespace livo_slam

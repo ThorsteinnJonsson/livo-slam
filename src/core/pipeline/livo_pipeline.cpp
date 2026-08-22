@@ -2,6 +2,7 @@
 
 #include <print>
 
+#include "core/estimator/camera/camera_update.h"
 #include "core/estimator/initial_estimate.h"
 #include "core/estimator/lidar/lidar_update.h"
 #include "core/imu/imu_propagator.h"
@@ -14,6 +15,7 @@ namespace livo_slam {
 LivoPipeline::LivoPipeline(PipelineConfig config)
     : config_(config),
       imu_initializer_(config_.init),
+      image_undistorter_(config_.camera),
       local_map_(config_.map) {}
 
 ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
@@ -63,8 +65,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
     }
     case InitStatus::kInitialized: {
       std::println(
-          "imu={} | image={}x{} {} t={:.4f} | points={} cloud span={:.4f}",
-          imu_samples.size(), image.width, image.height, image.encoding,
+          "imu={} | image={}x{} t={:.4f} | points={} cloud span={:.4f}",
+          imu_samples.size(), image.image.cols, image.image.rows,
           image.timestamp, cloud.points.size(),
           cloud.end_time - cloud.start_time);
 
@@ -74,8 +76,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
         std::println("Too few IMU samples to propagate");
         return {estimate_, {}, {}};
       }
-      const auto propagation_result =
-          Propagate(estimate_, imu_samples, image.timestamp, config_.imu_noise);
+      const auto propagation_result = Propagate(
+          estimate_, imu_samples, image.timestamp, config_.process_noise);
       estimate_ = propagation_result.estimate;
 
       std::println(
@@ -90,9 +92,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                                            config_.lidar.max_range);
 
       //   Lidar backward propagation, (deskew points based on image time)
-      const Cloud deskewed =
-          Deskew(in_range, propagation_result.trajectory, estimate_.state,
-                 config_.lidar.imu_from_lidar);
+      const Cloud deskewed = Deskew(in_range, propagation_result.trajectory,
+                                    estimate_.state, config_.lidar.T_imu_lidar);
       //   Lidar downsampling
       const Cloud downsampled =
           VoxelDownsample(deskewed, config_.lidar.voxel_leaf_size);
@@ -110,8 +111,13 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Camera
       //   Undistort image
+      const auto undistorted_image = image_undistorter_.Undistort(image);
+
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
+      estimate_ =
+          UpdateWithCamera(estimate_, undistorted_image, downsampled,
+                           local_map_, config_.camera, config_.camera_update);
 
       //   Map update
       //   Update map with deskewed points in world frame
@@ -120,7 +126,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       const Sophus::SE3d T_world_imu(estimate_.state.rotation,
                                      estimate_.state.position);
       const Sophus::SE3d T_world_lidar =
-          T_world_imu * config_.lidar.imu_from_lidar;
+          T_world_imu * config_.lidar.T_imu_lidar;
 
       Cloud cloud_world = cloud;
       for (Point& point : cloud_world.points) {

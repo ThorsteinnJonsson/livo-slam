@@ -23,6 +23,7 @@ Estimate MakeInitialEstimate(const InitResult& result,
   diagonal.segment<3>(kIdxAccelBias)
       .setConstant(std::pow(params.accel_bias_std, 2));
   diagonal.segment<3>(kIdxGravity).setConstant(std::pow(params.gravity_std, 2));
+  diagonal(kIdxInvExposure) = std::pow(params.inv_exposure_std, 2);
   estimate.covariance = diagonal.asDiagonal();
 
   return estimate;

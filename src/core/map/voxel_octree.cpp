@@ -3,6 +3,7 @@
 #include <Eigen/Eigenvalues>
 
 #include "core/config/map_params.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -120,6 +121,19 @@ const VoxelOctree* VoxelOctree::FindCorrespondence(
     return child->FindCorrespondence(point);
   }
   return nullptr;
+}
+
+void VoxelOctree::CollectVisualPoints(
+    std::vector<const VisualPoint*>& visual_points) const {
+  // Push back const pointer to own visual points
+  for (const VisualPoint& p : visual_points_) {
+    visual_points.push_back(&p);
+  }
+
+  // Recuse into children
+  for (const auto& child : children_) {
+    if (child) child->CollectVisualPoints(visual_points);
+  }
 }
 
 void VoxelOctree::CollectPlanes(std::vector<Plane>& planes) const {

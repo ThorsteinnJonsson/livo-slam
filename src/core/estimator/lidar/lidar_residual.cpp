@@ -36,7 +36,7 @@ IekfSystem BuildLidarSystem(const std::vector<PointToPlaneMatch>& matches,
   const Eigen::Matrix3d rotation_transpose = state.rotation.inverse().matrix();
 
   for (const auto& match : matches) {
-    Eigen::Matrix<double, 6, 1> jacobian;
+    Eigen::Matrix<double, 6, 1> jacobian = Eigen::Matrix<double, 6, 1>::Zero();
     jacobian.head<3>() =
         match.point_imu.cross(rotation_transpose * match.normal);
     jacobian.tail<3>() = match.normal;

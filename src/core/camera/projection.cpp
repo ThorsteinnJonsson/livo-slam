@@ -1,0 +1,63 @@
+#include "projection.h"
+
+#include <cmath>
+#include <cstdint>
+#include <optional>
+
+namespace livo_slam {
+
+std::optional<Eigen::Vector2d> Project(const CameraParams& params,
+                                       const Eigen::Vector3d& point_cam) {
+  if (point_cam.z() <= 0.0) return std::nullopt;
+
+  const double u = params.fx * point_cam.x() / point_cam.z() + params.cx;
+  const double v = params.fy * point_cam.y() / point_cam.z() + params.cy;
+  return Eigen::Vector2d(u, v);
+}
+
+bool InFrame(const cv::Mat& image, const Eigen::Vector2d& pixel,
+             std::size_t margin) {
+  const double low = static_cast<double>(margin);
+  const double high_x = static_cast<double>(image.cols) - low;
+  const double high_y = static_cast<double>(image.rows) - low;
+  // clang-format off
+  return low <= pixel.x() && pixel.x() < high_x && 
+         low <= pixel.y() && pixel.y() < high_y;
+  // clang-format on
+}
+
+double SampleBilinear(const cv::Mat& image, const Eigen::Vector2d& pixel) {
+  const int u0 = static_cast<int>(pixel.x());
+  const int v0 = static_cast<int>(pixel.y());
+  const double du = pixel.x() - static_cast<double>(u0);
+  const double dv = pixel.y() - static_cast<double>(v0);
+
+  // clang-format off
+  const double sample =
+    (1.0 - du) * (1.0 - dv) * image.at<std::uint8_t>(v0,     u0) +
+           du  * (1.0 - dv) * image.at<std::uint8_t>(v0,     u0 + 1) +
+    (1.0 - du) *        dv  * image.at<std::uint8_t>(v0 + 1, u0) +
+           du  *        dv  * image.at<std::uint8_t>(v0 + 1, u0 + 1);
+  // clang-format on
+  return sample;
+}
+
+Eigen::Matrix<double, 2, 3> ProjectionJacobian(
+    const CameraParams& params, const Eigen::Vector3d& point_cam) {
+  // Projection is:
+  // u = fx * x/z + cx
+  // v = fy * y/z + cy
+  // So jacobian is:
+  // [ fx/z,    0, -fx*x/z² ]
+  // [    0, fy/z, -fy*y/z² ]
+
+  Eigen::Matrix<double, 2, 3> jacobian = Eigen::Matrix<double, 2, 3>::Zero();
+  jacobian(0, 0) = params.fx / point_cam.z();
+  jacobian(1, 1) = params.fy / point_cam.z();
+  jacobian(0, 2) = -params.fx * point_cam.x() / (point_cam.z() * point_cam.z());
+  jacobian(1, 2) = -params.fy * point_cam.y() / (point_cam.z() * point_cam.z());
+
+  return jacobian;
+}
+
+}  // namespace livo_slam

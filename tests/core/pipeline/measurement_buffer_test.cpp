@@ -33,8 +33,7 @@ void PushImuRange(MeasurementBuffer& buffer, double start, double end,
 ImageFrame MakeImage(double timestamp) {
   ImageFrame image;
   image.timestamp = timestamp;
-  image.width = 4;
-  image.height = 2;
+  image.image = cv::Mat::zeros(2, 4, CV_8UC1);
   return image;
 }
 

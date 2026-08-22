@@ -10,6 +10,7 @@
 #include "core/config/map_params.h"
 #include "core/types/cloud.h"
 #include "core/types/plane.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -27,6 +28,9 @@ class VoxelOctree {
   // Descends to the deepest node covering the point that holds a plane.
   // Returns nullptr when no node along the path has one.
   const VoxelOctree* FindCorrespondence(const Eigen::Vector3d& point) const;
+
+  void CollectVisualPoints(
+      std::vector<const VisualPoint*>& visual_points) const;
 
   // For visualization
   void CollectPlanes(std::vector<Plane>& planes) const;
@@ -52,6 +56,7 @@ class VoxelOctree {
 
   // Data
   std::vector<Point> points_;
+  std::vector<VisualPoint> visual_points_;
   std::optional<Plane> plane_;
   std::array<std::unique_ptr<VoxelOctree>, 8> children_;
 

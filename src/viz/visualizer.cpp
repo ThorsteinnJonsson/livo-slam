@@ -37,7 +37,7 @@ struct Visualizer::Impl {
                              static_cast<float>(point.position.z()));
     }
     rec.log(entity,
-            rerun::Points3D(positions).with_colors(color).with_radii(0.05F));
+            rerun::Points3D(positions).with_colors(color).with_radii(0.075F));
   }
 };
 
@@ -62,7 +62,9 @@ rerun::Color HueColor(float t) {
   } else {
     r = 1.0F, b = x;
   }
-  const auto to8 = [](float c) { return static_cast<std::uint8_t>(c * 255.0F); };
+  const auto to8 = [](float c) {
+    return static_cast<std::uint8_t>(c * 255.0F);
+  };
   return rerun::Color(to8(r), to8(g), to8(b));
 }
 
@@ -70,8 +72,8 @@ rerun::Color HueColor(float t) {
 rerun::Color HeightColor(double z) {
   constexpr double kMapColorZMin = -2.0;
   constexpr double kMapColorZMax = 20.0;
-  return HueColor(
-      static_cast<float>((z - kMapColorZMin) / (kMapColorZMax - kMapColorZMin)));
+  return HueColor(static_cast<float>((z - kMapColorZMin) /
+                                     (kMapColorZMax - kMapColorZMin)));
 }
 
 Visualizer::Visualizer(const VizParams& params, std::string app_id)
@@ -140,9 +142,9 @@ void Visualizer::LogMap(const std::vector<Plane>& planes) {
     colors.push_back(HeightColor(plane.centroid.z()));
   }
 
-  impl_->rec.log("world/map", rerun::Points3D(positions)
-                                  .with_colors(colors)
-                                  .with_radii(0.05F));
+  impl_->rec.log(
+      "world/map",
+      rerun::Points3D(positions).with_colors(colors).with_radii(0.075F));
 }
 
 }  // namespace livo_slam

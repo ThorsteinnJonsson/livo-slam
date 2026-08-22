@@ -82,6 +82,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       "initial_state.accel_bias_std", initial_defaults.accel_bias_std);
   config.initial.gravity_std = declare_parameter<double>(
       "initial_state.gravity_std", initial_defaults.gravity_std);
+  config.initial.inv_exposure_std = declare_parameter<double>(
+      "initial_state.inv_exposure_std", initial_defaults.inv_exposure_std);
 
   const VizParams viz_defaults;
   config.viz.enabled =
@@ -96,15 +98,15 @@ PipelineConfig LivoSlamNode::ReadConfig() {
                                         0.0, 0.0, 0.0, 1.0};
   // clang-format on
 
-  const auto imu_from_lidar =
+  const auto T_imu_lidar =
       declare_parameter<std::vector<double>>("lidar.T_body_lidar", identity);
-  if (imu_from_lidar.size() != 16) {
+  if (T_imu_lidar.size() != 16) {
     RCLCPP_ERROR(get_logger(),
                  "lidar.T_body_lidar has %zu entries, expected 16; using "
                  "identity",
-                 imu_from_lidar.size());
+                 T_imu_lidar.size());
   }
-  config.lidar.imu_from_lidar = ToSe3(imu_from_lidar);
+  config.lidar.T_imu_lidar = ToSe3(T_imu_lidar);
 
   const LidarParams lidar_defaults;
   config.lidar.min_range =
@@ -113,6 +115,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       declare_parameter<double>("lidar.max_range", lidar_defaults.max_range);
   config.lidar.voxel_leaf_size = declare_parameter<double>(
       "lidar.voxel_leaf_size", lidar_defaults.voxel_leaf_size);
+  config.lidar.time_shift =
+      declare_parameter<double>("lidar.time_shift", lidar_defaults.time_shift);
 
   const VoxelMapParams map_defaults;
   config.map.voxel_size =
@@ -157,15 +161,68 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.lidar_update.position_epsilon = declare_parameter<double>(
       "lidar_update.position_epsilon", update_defaults.position_epsilon);
 
-  const ImuNoiseParams noise_defaults;
-  config.imu_noise.gyro_noise_std = declare_parameter<double>(
-      "imu_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
-  config.imu_noise.accel_noise_std = declare_parameter<double>(
-      "imu_noise.accel_noise_std", noise_defaults.accel_noise_std);
-  config.imu_noise.gyro_random_walk_std = declare_parameter<double>(
-      "imu_noise.gyro_random_walk_std", noise_defaults.gyro_random_walk_std);
-  config.imu_noise.accel_random_walk_std = declare_parameter<double>(
-      "imu_noise.accel_random_walk_std", noise_defaults.accel_random_walk_std);
+  const CameraUpdateParams camera_update_defaults;
+  config.camera_update.max_iterations =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "camera_update.max_iterations",
+          static_cast<int64_t>(camera_update_defaults.max_iterations)));
+  config.camera_update.patch_size =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "camera_update.patch_size",
+          static_cast<int64_t>(camera_update_defaults.patch_size)));
+  config.camera_update.intensity_noise_std =
+      declare_parameter<double>("camera_update.intensity_noise_std",
+                                camera_update_defaults.intensity_noise_std);
+  config.camera_update.outlier_threshold =
+      declare_parameter<double>("camera_update.outlier_threshold",
+                                camera_update_defaults.outlier_threshold);
+  config.camera_update.rotation_epsilon =
+      declare_parameter<double>("camera_update.rotation_epsilon",
+                                camera_update_defaults.rotation_epsilon);
+  config.camera_update.position_epsilon =
+      declare_parameter<double>("camera_update.position_epsilon",
+                                camera_update_defaults.position_epsilon);
+
+  const CameraParams camera_defaults;
+  const auto T_imu_cam =
+      declare_parameter<std::vector<double>>("camera.T_body_cam", identity);
+  if (T_imu_cam.size() != 16) {
+    RCLCPP_ERROR(get_logger(),
+                 "camera.T_body_cam has %zu entries, expected 16; using "
+                 "identity",
+                 T_imu_cam.size());
+  }
+  config.camera.T_imu_cam = ToSe3(T_imu_cam);
+
+  config.camera.width = static_cast<std::uint32_t>(declare_parameter<int64_t>(
+      "camera.width", static_cast<int64_t>(camera_defaults.width)));
+  config.camera.height = static_cast<std::uint32_t>(declare_parameter<int64_t>(
+      "camera.height", static_cast<int64_t>(camera_defaults.height)));
+
+  config.camera.fx = declare_parameter<double>("camera.fx", camera_defaults.fx);
+  config.camera.fy = declare_parameter<double>("camera.fy", camera_defaults.fy);
+  config.camera.cx = declare_parameter<double>("camera.cx", camera_defaults.cx);
+  config.camera.cy = declare_parameter<double>("camera.cy", camera_defaults.cy);
+
+  config.camera.k1 = declare_parameter<double>("camera.k1", camera_defaults.k1);
+  config.camera.k2 = declare_parameter<double>("camera.k2", camera_defaults.k2);
+  config.camera.p1 = declare_parameter<double>("camera.p1", camera_defaults.p1);
+  config.camera.p2 = declare_parameter<double>("camera.p2", camera_defaults.p2);
+
+  config.camera.time_shift = declare_parameter<double>(
+      "camera.time_shift", camera_defaults.time_shift);
+
+  const ProcessNoiseParams noise_defaults;
+  config.process_noise.gyro_noise_std = declare_parameter<double>(
+      "process_noise.gyro_noise_std", noise_defaults.gyro_noise_std);
+  config.process_noise.accel_noise_std = declare_parameter<double>(
+      "process_noise.accel_noise_std", noise_defaults.accel_noise_std);
+  config.process_noise.gyro_random_walk_std =
+      declare_parameter<double>("process_noise.gyro_random_walk_std",
+                                noise_defaults.gyro_random_walk_std);
+  config.process_noise.accel_random_walk_std =
+      declare_parameter<double>("process_noise.accel_random_walk_std",
+                                noise_defaults.accel_random_walk_std);
   return config;
 }
 
@@ -205,12 +262,12 @@ void LivoSlamNode::ImuCallback(
 
 void LivoSlamNode::LidarCallback(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg) {
-  buffer_.PushPoints(ToPoints(*msg));
+  buffer_.PushPoints(ToPoints(*msg, config_.lidar.time_shift));
 }
 
 void LivoSlamNode::CameraCallback(
     const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-  buffer_.PushImage(ToImageFrame(*msg));
+  buffer_.PushImage(ToImageFrame(*msg, config_.camera.time_shift));
 }
 
 }  // namespace livo_slam

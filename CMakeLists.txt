@@ -16,8 +16,10 @@ option(LIVO_SLAM_ENABLE_RERUN "Build with Rerun visualization support" ON)
 include(cmake/dependencies.cmake)
 include(cmake/warnings.cmake)
 
+find_package(OpenCV REQUIRED COMPONENTS core imgproc calib3d)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
 
 add_subdirectory(src)
 

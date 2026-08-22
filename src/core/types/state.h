@@ -12,11 +12,13 @@ struct State {
   Eigen::Vector3d gyro_bias = Eigen::Vector3d::Zero();
   Eigen::Vector3d accel_bias = Eigen::Vector3d::Zero();
   Eigen::Vector3d gravity = Eigen::Vector3d(0.0, 0.0, -9.81);
+  double inv_exposure =
+      1.0;  // Scales a reference patch to the current image. 1.0 is no scaling.
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-inline constexpr int kErrorDim = 18;
+inline constexpr int kErrorDim = 19;
 
 inline constexpr int kIdxRotation = 0;
 inline constexpr int kIdxPosition = 3;
@@ -24,6 +26,7 @@ inline constexpr int kIdxVelocity = 6;
 inline constexpr int kIdxGyroBias = 9;
 inline constexpr int kIdxAccelBias = 12;
 inline constexpr int kIdxGravity = 15;
+inline constexpr int kIdxInvExposure = 18;
 
 using ErrorState = Eigen::Matrix<double, kErrorDim, 1>;
 using ErrorMatrix = Eigen::Matrix<double, kErrorDim, kErrorDim>;
@@ -37,6 +40,7 @@ inline State BoxPlus(const State& state, const ErrorState& delta) {
   out.gyro_bias = state.gyro_bias + delta.segment<3>(kIdxGyroBias);
   out.accel_bias = state.accel_bias + delta.segment<3>(kIdxAccelBias);
   out.gravity = state.gravity + delta.segment<3>(kIdxGravity);
+  out.inv_exposure = state.inv_exposure + delta(kIdxInvExposure);
   return out;
 }
 
@@ -48,6 +52,7 @@ inline ErrorState BoxMinus(const State& a, const State& b) {
   delta.segment<3>(kIdxGyroBias) = a.gyro_bias - b.gyro_bias;
   delta.segment<3>(kIdxAccelBias) = a.accel_bias - b.accel_bias;
   delta.segment<3>(kIdxGravity) = a.gravity - b.gravity;
+  delta(kIdxInvExposure) = a.inv_exposure - b.inv_exposure;
   return delta;
 }
 

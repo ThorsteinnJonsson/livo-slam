@@ -18,10 +18,13 @@
     initial_state.gyro_bias_std: 0.001
     initial_state.accel_bias_std: 0.01
     initial_state.gravity_std: 0.01
-    imu_noise.gyro_noise_std: 0.3162
-    imu_noise.accel_noise_std: 0.3162
-    imu_noise.gyro_random_walk_std: 0.01
-    imu_noise.accel_random_walk_std: 0.01
+    initial_state.inv_exposure_std: 0.1
+
+    process_noise.gyro_noise_std: 0.3162
+    process_noise.accel_noise_std: 0.3162
+    process_noise.gyro_random_walk_std: 0.01
+    process_noise.accel_random_walk_std: 0.01
+    process_noise.inv_exposure_random_walk_std: 0.1
 
     # prettier-ignore
     lidar.T_body_lidar: [
@@ -58,6 +61,9 @@
     lidar.max_range: 60.0
     lidar.voxel_leaf_size: 0.1
 
+    # t_imu = t_lidar_header + time_shift
+    lidar.time_shift: -0.1
+
     map.voxel_size: 0.5
     map.layer_init_points: [5, 5, 5]
     map.max_points_per_voxel: 50
@@ -68,3 +74,10 @@
     lidar_update.point_noise_std: 0.03
     lidar_update.rotation_epsilon: 0.001
     lidar_update.position_epsilon: 0.001
+
+    camera_update.max_iterations: 5
+    camera_update.patch_size: 8
+    camera_update.intensity_noise_std: 10.0
+    camera_update.outlier_threshold: 1000.0
+    camera_update.rotation_epsilon: 0.001
+    camera_update.position_epsilon: 0.001

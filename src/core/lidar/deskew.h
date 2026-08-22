@@ -9,6 +9,6 @@
 namespace livo_slam {
 
 Cloud Deskew(const Cloud& cloud, const Trajectory& trajectory,
-             const State& reference, const Sophus::SE3d& imu_from_lidar);
+             const State& reference, const Sophus::SE3d& T_imu_lidar);
 
 }  // namespace livo_slam

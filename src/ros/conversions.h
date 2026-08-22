@@ -16,8 +16,9 @@ Sophus::SE3d ToSe3(const std::vector<double>& row_major);
 
 ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg);
 
-std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg);
+std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
+                            double time_shift);
 
-ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg);
+ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift);
 
 }  // namespace livo_slam

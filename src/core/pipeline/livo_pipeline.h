@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/camera/undistort.h"
 #include "core/config/pipeline_config.h"
 #include "core/imu/imu_initializer.h"
 #include "core/map/voxel_map.h"
@@ -27,7 +28,10 @@ class LivoPipeline {
 
  private:
   PipelineConfig config_;
+
   ImuInitializer imu_initializer_;
+  Undistorter image_undistorter_;
+
   VoxelMap local_map_;
   Estimate estimate_;
 };

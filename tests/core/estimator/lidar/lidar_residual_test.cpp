@@ -15,7 +15,7 @@ VoxelMapParams MakeParams() {
   return params;
 }
 
-// A map holding one plane at z = 0.5, centred on (0.5, 0.5, 0.5).
+// A map holding one plane at z = 0.5, centerd on (0.5, 0.5, 0.5).
 VoxelMap MakeMapWithPlane() {
   VoxelMap map(MakeParams());
 

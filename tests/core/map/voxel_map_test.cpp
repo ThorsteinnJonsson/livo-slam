@@ -146,7 +146,7 @@ TEST(FindPlane, DoesNotLeaveAVoxelFromItsMiddle) {
   VoxelMap map(MakeParams());
   map.Insert(MakePlanarCloud());
 
-  // Centre of the empty voxel at (1, 0, 0): no axis is past a quarter, so no
+  // Center of the empty voxel at (1, 0, 0): no axis is past a quarter, so no
   // neighbor is tried even though the plane next door is within range.
   EXPECT_FALSE(map.FindPlane({1.5, 0.5, 0.5}).has_value());
 }
@@ -170,6 +170,34 @@ TEST(FindPlane, MatchesNothingWhileVoxelsAreStillAccumulating) {
 
   ASSERT_EQ(map.VoxelCount(), 1U);
   EXPECT_FALSE(map.FindPlane({0.4, 0.2, 0.5}).has_value());
+}
+
+TEST(CollectVisualPoints, EmptyMapCollectsNothing) {
+  const VoxelMap map(MakeParams());
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarCloud()).empty());
+}
+
+TEST(CollectVisualPoints, EmptyCloudCollectsNothing) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  EXPECT_TRUE(map.CollectVisualPoints(Cloud{}).empty());
+}
+
+TEST(CollectVisualPoints, VoxelsWithoutVisualPointsCollectNothing) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+  ASSERT_EQ(map.VoxelCount(), 1U);
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarCloud()).empty());
+}
+
+TEST(CollectVisualPoints, CloudAwayFromTheMapCollectsNothing) {
+  VoxelMap map(MakeParams());
+  map.Insert(MakePlanarCloud());
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakeCloud({{9.0, 9.0, 9.0}})).empty());
 }
 
 }  // namespace

@@ -36,7 +36,8 @@ TEST(State, BoxMinusInvertsBoxPlus) {
 
 TEST(State, ErrorDimensionsMatchBlockLayout) {
   EXPECT_EQ(kIdxRotation, 0);
-  EXPECT_EQ(kIdxGravity + 3, kErrorDim);
+  EXPECT_EQ(kIdxGravity + 3, kIdxInvExposure);
+  EXPECT_EQ(kIdxInvExposure + 1, kErrorDim);
 }
 
 }  // namespace

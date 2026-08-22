@@ -4,6 +4,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <cv_bridge/cv_bridge.hpp>
+#include <print>
+#include <sensor_msgs/image_encodings.hpp>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -72,7 +75,8 @@ ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg) {
   return sample;
 }
 
-std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg) {
+std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
+                            double time_shift) {
   using sensor_msgs::msg::PointField;
 
   const std::uint32_t x_offset = FieldOffset(msg, "x", PointField::FLOAT32);
@@ -82,7 +86,7 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg) {
       FieldOffset(msg, "intensity", PointField::FLOAT32);
   const std::uint32_t time_offset = FieldOffset(msg, "t", PointField::UINT32);
 
-  const double base_time = ToSeconds(msg.header.stamp);
+  const double base_time = ToSeconds(msg.header.stamp) + time_shift;
 
   std::vector<Point> points;
   points.reserve(static_cast<std::size_t>(msg.width) * msg.height);
@@ -115,13 +119,15 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg) {
   return points;
 }
 
-ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg) {
+ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift) {
   ImageFrame frame;
-  frame.timestamp = ToSeconds(msg.header.stamp);
-  frame.width = msg.width;
-  frame.height = msg.height;
-  frame.encoding = msg.encoding;
-  frame.data = msg.data;
+  frame.timestamp = ToSeconds(msg.header.stamp) + time_shift;
+  try {
+    frame.image =
+        cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8)->image;
+  } catch (const cv_bridge::Exception& error) {
+    std::println("cannot convert {} to mono8: {}", msg.encoding, error.what());
+  }
   return frame;
 }
 
