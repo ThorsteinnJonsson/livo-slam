@@ -2,27 +2,14 @@
 
 #include "core/estimator/camera/camera_residual.h"
 #include "core/estimator/iekf.h"
-#include "core/types/visual_point.h"
 
 namespace livo_slam {
 Estimate UpdateWithCamera(const Estimate& prior,
                           const std::vector<cv::Mat>& image_pyramid,
-                          const std::vector<Point>& points_imu,
-                          const VoxelMap& map,
+                          const std::vector<const VisualPoint*>& visual_points,
                           const CameraParams& camera_params,
                           const CameraUpdateParams& update_params) {
   Estimate posterior = prior;
-
-  // Collect candidate visual points
-  const Sophus::SE3d T_world_imu(posterior.state.rotation,
-                                 posterior.state.position);
-  std::vector<Point> points_world = points_imu;
-  for (Point& point : points_world) {
-    point.position = T_world_imu * point.position;
-  }
-
-  const std::vector<const VisualPoint*> visual_points =
-      map.CollectVisualPoints(points_world);
 
   for (std::size_t level = CameraUpdateParams::kPyramidLevels; level-- > 0;) {
     for (std::size_t iter = 0; iter < update_params.max_iterations; ++iter) {

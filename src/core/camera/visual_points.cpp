@@ -7,18 +7,19 @@ namespace livo_slam {
 std::vector<VisualPoint> BuildVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
     const State& state, const CameraParams& camera,
-    const CameraUpdateParams& params, const VoxelMap& map) {
-  // Mark the grid cells already covered by visual points in view, so they are
-  // not filled again
+    const CameraUpdateParams& params,
+    const std::vector<const VisualPoint*>& existing_visual_points) {
+  // Project the existing visual points and mark the cells they land in. Cells
+  // are grid_size-pixel squares of the image, one new point each.
   //
   // For each point
   //    Transform to the camera frame, Project, skip if behind
   //    Skip if not InFrame with a patch_size margin
-  //    Find its grid cell, skip if already covered or already claimed by a
-  //    better scoring point
-  //    Claim the cell with this point and its CornerScore
+  //    Find its cell, skip if that cell is marked or already holds a
+  //    higher-scoring candidate
+  //    Make this point the cell's candidate, with its CornerScore
   //
-  // For each claimed cell
+  // For each cell holding a candidate
   //    Skip if the score is below the minimum
   //    CreateVisualPatch at the projected pixel
   //    Append a VisualPoint holding that patch
