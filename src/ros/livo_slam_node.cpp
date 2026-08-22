@@ -170,10 +170,6 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       static_cast<std::size_t>(declare_parameter<int64_t>(
           "camera_update.patch_size",
           static_cast<int64_t>(camera_update_defaults.patch_size)));
-  config.camera_update.pyramid_levels =
-      static_cast<std::size_t>(declare_parameter<int64_t>(
-          "camera_update.pyramid_levels",
-          static_cast<int64_t>(camera_update_defaults.pyramid_levels)));
   config.camera_update.intensity_noise_std =
       declare_parameter<double>("camera_update.intensity_noise_std",
                                 camera_update_defaults.intensity_noise_std);

@@ -77,7 +77,6 @@
 
     camera_update.max_iterations: 5
     camera_update.patch_size: 8
-    camera_update.pyramid_levels: 3
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0
     camera_update.rotation_epsilon: 0.001

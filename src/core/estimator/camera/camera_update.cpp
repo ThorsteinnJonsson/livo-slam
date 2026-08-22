@@ -3,6 +3,7 @@
 #include <opencv2/imgproc.hpp>
 #include <print>
 
+#include "core/config/update_params.h"
 #include "core/estimator/camera/camera_residual.h"
 #include "core/estimator/iekf.h"
 #include "core/types/visual_point.h"
@@ -26,10 +27,13 @@ Estimate UpdateWithCamera(const Estimate& prior, const ImageFrame& image_frame,
 
   // Build image pyramid
   std::vector<cv::Mat> image_pyramid;
-  cv::buildPyramid(image_frame.image, image_pyramid,
-                   static_cast<int>(update_params.pyramid_levels - 1));
+  static_assert(CameraUpdateParams::kPyramidLevels > 0,
+                "Pyramid level needs to be larger than zero.");
+  constexpr int kMaxLevel =  // Minus one because 0-based index
+      static_cast<int>(CameraUpdateParams::kPyramidLevels - 1);
+  cv::buildPyramid(image_frame.image, image_pyramid, kMaxLevel);
 
-  for (std::size_t level = update_params.pyramid_levels; level-- > 0;) {
+  for (std::size_t level = CameraUpdateParams::kPyramidLevels; level-- > 0;) {
     for (std::size_t iter = 0; iter < update_params.max_iterations; ++iter) {
       const cv::Mat& image = image_pyramid[level];
       std::vector<PhotometricMatch> matches =

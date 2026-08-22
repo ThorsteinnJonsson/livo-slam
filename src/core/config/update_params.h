@@ -18,10 +18,10 @@ struct LidarUpdateParams {
 
 struct CameraUpdateParams {
   static constexpr std::size_t kMinMatches = 6;
+  static constexpr std::size_t kPyramidLevels = 3;
 
   std::size_t max_iterations = 5;
   std::size_t patch_size = 8;
-  std::size_t pyramid_levels = 3;
   double intensity_noise_std = 10.0;
   double outlier_threshold = 1000.0;
   double rotation_epsilon = 0.001;
