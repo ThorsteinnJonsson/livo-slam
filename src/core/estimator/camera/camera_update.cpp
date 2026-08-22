@@ -5,6 +5,7 @@
 #include "core/config/update_params.h"
 #include "core/estimator/camera/camera_residual.h"
 #include "core/estimator/iekf.h"
+#include "core/types/cloud.h"
 #include "core/types/visual_point.h"
 
 namespace livo_slam {
@@ -17,12 +18,13 @@ Estimate UpdateWithCamera(const Estimate& prior, const ImageFrame& image_frame,
   // Collect candidate visual points
   const Sophus::SE3d T_world_imu(posterior.state.rotation,
                                  posterior.state.position);
-  Cloud cloud_world = cloud_imu;
-  for (Point& point : cloud_world.points) {
+  std::vector<Point> points_world = cloud_imu.points;
+  for (Point& point : points_world) {
     point.position = T_world_imu * point.position;
   }
+
   const std::vector<const VisualPoint*> visual_points =
-      map.CollectVisualPoints(cloud_world);
+      map.CollectVisualPoints(points_world);
 
   // Build image pyramid
   std::vector<cv::Mat> image_pyramid;

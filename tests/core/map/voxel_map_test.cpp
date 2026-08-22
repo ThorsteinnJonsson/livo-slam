@@ -14,14 +14,14 @@ VoxelMapParams MakeParams() {
   return params;
 }
 
-Cloud MakeCloud(const std::vector<Eigen::Vector3d>& positions) {
-  Cloud cloud;
+std::vector<Point> MakePoints(const std::vector<Eigen::Vector3d>& positions) {
+  std::vector<Point> points;
   for (const Eigen::Vector3d& position : positions) {
     Point point;
     point.position = position;
-    cloud.points.push_back(point);
+    points.push_back(point);
   }
-  return cloud;
+  return points;
 }
 
 TEST(VoxelMap, StartsEmpty) {
@@ -34,7 +34,7 @@ TEST(VoxelMap, StartsEmpty) {
 TEST(VoxelMap, EmptyCloudLeavesTheMapEmpty) {
   VoxelMap map(MakeParams());
 
-  map.Insert(Cloud{});
+  map.InsertPoints({});
 
   EXPECT_TRUE(map.Empty());
 }
@@ -42,7 +42,8 @@ TEST(VoxelMap, EmptyCloudLeavesTheMapEmpty) {
 TEST(VoxelMap, PointsInOneVoxelCreateOneVoxel) {
   VoxelMap map(MakeParams());
 
-  map.Insert(MakeCloud({{0.1, 0.1, 0.1}, {0.5, 0.5, 0.5}, {0.9, 0.9, 0.9}}));
+  map.InsertPoints(
+      MakePoints({{0.1, 0.1, 0.1}, {0.5, 0.5, 0.5}, {0.9, 0.9, 0.9}}));
 
   EXPECT_EQ(map.VoxelCount(), 1U);
 }
@@ -50,7 +51,8 @@ TEST(VoxelMap, PointsInOneVoxelCreateOneVoxel) {
 TEST(VoxelMap, PointsInDifferentVoxelsCreateSeparateVoxels) {
   VoxelMap map(MakeParams());
 
-  map.Insert(MakeCloud({{0.5, 0.5, 0.5}, {1.5, 0.5, 0.5}, {0.5, 1.5, 0.5}}));
+  map.InsertPoints(
+      MakePoints({{0.5, 0.5, 0.5}, {1.5, 0.5, 0.5}, {0.5, 1.5, 0.5}}));
 
   EXPECT_EQ(map.VoxelCount(), 3U);
 }
@@ -58,49 +60,51 @@ TEST(VoxelMap, PointsInDifferentVoxelsCreateSeparateVoxels) {
 TEST(VoxelMap, NegativeCoordinatesGetTheirOwnVoxels) {
   VoxelMap map(MakeParams());
 
-  map.Insert(MakeCloud({{-0.5, 0.5, 0.5}, {0.5, 0.5, 0.5}}));
+  map.InsertPoints(MakePoints({{-0.5, 0.5, 0.5}, {0.5, 0.5, 0.5}}));
 
   EXPECT_EQ(map.VoxelCount(), 2U);
 }
 
 TEST(VoxelMap, ReinsertingTheSameRegionReusesVoxels) {
   VoxelMap map(MakeParams());
-  const Cloud cloud = MakeCloud({{0.5, 0.5, 0.5}, {1.5, 0.5, 0.5}});
+  const std::vector<Point> cloud =
+      MakePoints({{0.5, 0.5, 0.5}, {1.5, 0.5, 0.5}});
 
-  map.Insert(cloud);
-  map.Insert(cloud);
+  map.InsertPoints(cloud);
+  map.InsertPoints(cloud);
 
   EXPECT_EQ(map.VoxelCount(), 2U);
 }
 
 TEST(VoxelMap, VoxelSizeDeterminesHowPointsAreGrouped) {
-  const Cloud cloud = MakeCloud({{0.25, 0.25, 0.25}, {0.75, 0.75, 0.75}});
+  const std::vector<Point> cloud =
+      MakePoints({{0.25, 0.25, 0.25}, {0.75, 0.75, 0.75}});
 
   VoxelMapParams coarse = MakeParams();
   coarse.voxel_size = 1.0;
   VoxelMap coarse_map(coarse);
-  coarse_map.Insert(cloud);
+  coarse_map.InsertPoints(cloud);
 
   VoxelMapParams fine = MakeParams();
   fine.voxel_size = 0.5;
   VoxelMap fine_map(fine);
-  fine_map.Insert(cloud);
+  fine_map.InsertPoints(cloud);
 
   EXPECT_EQ(coarse_map.VoxelCount(), 1U);
   EXPECT_EQ(fine_map.VoxelCount(), 2U);
 }
 
 // Sixteen coplanar points at z = 0.5, all inside the voxel at index (0, 0, 0).
-Cloud MakePlanarCloud() {
-  Cloud cloud;
+std::vector<Point> MakePlanarPoints() {
+  std::vector<Point> points;
   for (double x : {0.2, 0.4, 0.6, 0.8}) {
     for (double y : {0.2, 0.4, 0.6, 0.8}) {
       Point point;
       point.position = {x, y, 0.5};
-      cloud.points.push_back(point);
+      points.push_back(point);
     }
   }
-  return cloud;
+  return points;
 }
 
 TEST(FindPlane, EmptyMapMatchesNothing) {
@@ -111,7 +115,7 @@ TEST(FindPlane, EmptyMapMatchesNothing) {
 
 TEST(FindPlane, MatchesAPlaneInTheContainingVoxel) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
 
   const auto plane = map.FindPlane({0.5, 0.5, 0.55});
 
@@ -124,7 +128,7 @@ TEST(FindPlane, RejectsPointsBeyondTheMatchDistance) {
   VoxelMapParams params = MakeParams();
   params.max_match_distance = 0.1;
   VoxelMap map(params);
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
 
   EXPECT_TRUE(map.FindPlane({0.5, 0.5, 0.55}).has_value());
   EXPECT_FALSE(map.FindPlane({0.5, 0.5, 0.9}).has_value());
@@ -132,7 +136,7 @@ TEST(FindPlane, RejectsPointsBeyondTheMatchDistance) {
 
 TEST(FindPlane, FallsBackToTheNeighborVoxel) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
   ASSERT_EQ(map.VoxelCount(), 1U);
 
   // Just inside the empty voxel at (1, 0, 0), close to the shared face.
@@ -144,7 +148,7 @@ TEST(FindPlane, FallsBackToTheNeighborVoxel) {
 
 TEST(FindPlane, DoesNotLeaveAVoxelFromItsMiddle) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
 
   // Center of the empty voxel at (1, 0, 0): no axis is past a quarter, so no
   // neighbor is tried even though the plane next door is within range.
@@ -153,20 +157,20 @@ TEST(FindPlane, DoesNotLeaveAVoxelFromItsMiddle) {
 
 TEST(FindPlane, MatchesNothingFarFromTheMap) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
 
   EXPECT_FALSE(map.FindPlane({9.0, 9.0, 9.0}).has_value());
 }
 
 TEST(FindPlane, MatchesNothingWhileVoxelsAreStillAccumulating) {
   VoxelMap map(MakeParams());
-  Cloud cloud;
+  std::vector<Point> cloud;
   for (double x : {0.2, 0.4, 0.6}) {
     Point point;
     point.position = {x, 0.2, 0.5};
-    cloud.points.push_back(point);
+    cloud.push_back(point);
   }
-  map.Insert(cloud);
+  map.InsertPoints(cloud);
 
   ASSERT_EQ(map.VoxelCount(), 1U);
   EXPECT_FALSE(map.FindPlane({0.4, 0.2, 0.5}).has_value());
@@ -175,29 +179,29 @@ TEST(FindPlane, MatchesNothingWhileVoxelsAreStillAccumulating) {
 TEST(CollectVisualPoints, EmptyMapCollectsNothing) {
   const VoxelMap map(MakeParams());
 
-  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarCloud()).empty());
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarPoints()).empty());
 }
 
 TEST(CollectVisualPoints, EmptyCloudCollectsNothing) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
 
-  EXPECT_TRUE(map.CollectVisualPoints(Cloud{}).empty());
+  EXPECT_TRUE(map.CollectVisualPoints({}).empty());
 }
 
 TEST(CollectVisualPoints, VoxelsWithoutVisualPointsCollectNothing) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
   ASSERT_EQ(map.VoxelCount(), 1U);
 
-  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarCloud()).empty());
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarPoints()).empty());
 }
 
 TEST(CollectVisualPoints, CloudAwayFromTheMapCollectsNothing) {
   VoxelMap map(MakeParams());
-  map.Insert(MakePlanarCloud());
+  map.InsertPoints(MakePlanarPoints());
 
-  EXPECT_TRUE(map.CollectVisualPoints(MakeCloud({{9.0, 9.0, 9.0}})).empty());
+  EXPECT_TRUE(map.CollectVisualPoints(MakePoints({{9.0, 9.0, 9.0}})).empty());
 }
 
 }  // namespace

@@ -128,10 +128,10 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       for (Point& point : deskewed_world.points) {
         point.position = T_world_imu * point.position;
       }
-      local_map_.Insert(deskewed_world);
+      local_map_.InsertPoints(deskewed_world.points);
 
       //   Update visual map in map (new patches)
-      //     TODO
+      local_map_.InsertVisualPoints();
 
       //   Map sliding/culling if moved far enough
       //     TODO

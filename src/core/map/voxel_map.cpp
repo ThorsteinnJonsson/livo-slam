@@ -9,8 +9,8 @@ namespace livo_slam {
 
 VoxelMap::VoxelMap(const VoxelMapParams& params) : params_(params) {}
 
-void VoxelMap::Insert(const Cloud& cloud) {
-  for (const Point& point : cloud.points) {
+void VoxelMap::InsertPoints(const std::vector<Point>& points) {
+  for (const Point& point : points) {
     const Eigen::Vector3i voxel_index =
         voxel::VoxelIndex(point.position, params_.voxel_size);
     const auto flat_index = voxel::PackKey(voxel_index);
@@ -22,13 +22,15 @@ void VoxelMap::Insert(const Cloud& cloud) {
     auto [it, inserted] =
         voxels_.try_emplace(flat_index, center, params_.voxel_size / 4.0, 0);
 
-    it->second.Insert(point, params_);
+    it->second.InsertPoint(point, params_);
   }
 
   for (auto& [_key, voxel] : voxels_) {
     voxel.Update(params_);
   }
 }
+
+void VoxelMap::InsertVisualPoints() {}
 
 std::vector<Plane> VoxelMap::CollectPlanes() const {
   std::vector<Plane> planes;
@@ -96,11 +98,11 @@ std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
 }
 
 std::vector<const VisualPoint*> VoxelMap::CollectVisualPoints(
-    const Cloud& cloud) const {
+    const std::vector<Point>& points) const {
   std::vector<const VisualPoint*> visual_points;
 
   std::unordered_set<std::int64_t> seen;
-  for (const auto& point : cloud.points) {
+  for (const auto& point : points) {
     const auto key =
         voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size));
     if (!seen.insert(key).second) continue;

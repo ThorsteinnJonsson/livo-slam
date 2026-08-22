@@ -22,7 +22,7 @@ class VoxelOctree {
   VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
               std::size_t layer);
 
-  void Insert(const Point& point, const VoxelMapParams& params);
+  void InsertPoint(const Point& point, const VoxelMapParams& params);
   void Update(const VoxelMapParams& params);
 
   // Descends to the deepest node covering the point that holds a plane.

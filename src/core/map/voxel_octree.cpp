@@ -11,13 +11,14 @@ VoxelOctree::VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
                          std::size_t layer)
     : center_(center), quarter_length_(quarter_length), layer_(layer) {}
 
-void VoxelOctree::Insert(const Point& point, const VoxelMapParams& params) {
+void VoxelOctree::InsertPoint(const Point& point,
+                              const VoxelMapParams& params) {
   if (!update_enabled_) return;
 
   if (IsSubdivided()) {
     const auto child_index = ChildIndex(point.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point, params);
+    child.InsertPoint(point, params);
   } else if (points_.size() < params.max_points_per_voxel) {
     points_.push_back(point);
     ++new_points_;
@@ -105,7 +106,7 @@ void VoxelOctree::Subdivide(const VoxelMapParams& params) {
   for (const Point& point : points_) {
     const auto child_index = ChildIndex(point.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point, params);
+    child.InsertPoint(point, params);
   }
   points_.clear();
 }

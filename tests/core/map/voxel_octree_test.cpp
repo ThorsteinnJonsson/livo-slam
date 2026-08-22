@@ -29,7 +29,7 @@ Point MakePoint(const Eigen::Vector3d& position) {
 void InsertPlanarPoints(VoxelOctree& node, const VoxelMapParams& params) {
   for (double x : {0.2, 0.4, 0.6}) {
     for (double y : {0.2, 0.4, 0.6}) {
-      node.Insert(MakePoint({x, y, 0.5}), params);
+      node.InsertPoint(MakePoint({x, y, 0.5}), params);
     }
   }
 }
@@ -39,7 +39,7 @@ void InsertScatteredPoints(VoxelOctree& node, const VoxelMapParams& params) {
   for (double x : {0.2, 0.8}) {
     for (double y : {0.2, 0.8}) {
       for (double z : {0.2, 0.8}) {
-        node.Insert(MakePoint({x, y, z}), params);
+        node.InsertPoint(MakePoint({x, y, z}), params);
       }
     }
   }
@@ -67,7 +67,7 @@ TEST(VoxelOctree, NeverStoresMoreThanTheCap) {
   VoxelOctree node = MakeRoot();
 
   for (int i = 0; i < 100; ++i) {
-    node.Insert(MakePoint({0.5, 0.5, 0.5}), params);
+    node.InsertPoint(MakePoint({0.5, 0.5, 0.5}), params);
   }
 
   EXPECT_EQ(node.PointCount(), 10U);
@@ -138,7 +138,7 @@ TEST(VoxelOctree, PointsDescendPastASubdividedNode) {
   InsertScatteredPoints(node, params);
   node.Update(params);
 
-  node.Insert(MakePoint({0.3, 0.3, 0.3}), params);
+  node.InsertPoint(MakePoint({0.3, 0.3, 0.3}), params);
 
   EXPECT_EQ(node.PointCount(), 0U);
 }
@@ -151,7 +151,7 @@ TEST(VoxelOctree, RefitKeepsThePlaneWhenPointsStayCoplanar) {
   node.Update(params);
   ASSERT_TRUE(node.plane().has_value());
 
-  node.Insert(MakePoint({0.8, 0.8, 0.5}), params);
+  node.InsertPoint(MakePoint({0.8, 0.8, 0.5}), params);
   node.Update(params);
 
   ASSERT_TRUE(node.plane().has_value());
@@ -176,12 +176,12 @@ TEST(VoxelOctree, UpdateWithoutNewPointsLeavesThePlaneUnchanged) {
 // Six points spread along the axes, which no plane fits. They land in four of
 // the eight octants, leaving the other four without children.
 void InsertCrossPoints(VoxelOctree& node, const VoxelMapParams& params) {
-  node.Insert(MakePoint({0.1, 0.5, 0.5}), params);
-  node.Insert(MakePoint({0.9, 0.5, 0.5}), params);
-  node.Insert(MakePoint({0.5, 0.1, 0.5}), params);
-  node.Insert(MakePoint({0.5, 0.9, 0.5}), params);
-  node.Insert(MakePoint({0.5, 0.5, 0.1}), params);
-  node.Insert(MakePoint({0.5, 0.5, 0.9}), params);
+  node.InsertPoint(MakePoint({0.1, 0.5, 0.5}), params);
+  node.InsertPoint(MakePoint({0.9, 0.5, 0.5}), params);
+  node.InsertPoint(MakePoint({0.5, 0.1, 0.5}), params);
+  node.InsertPoint(MakePoint({0.5, 0.9, 0.5}), params);
+  node.InsertPoint(MakePoint({0.5, 0.5, 0.1}), params);
+  node.InsertPoint(MakePoint({0.5, 0.5, 0.9}), params);
 }
 
 TEST(FindCorrespondence, ReturnsNullWhileStillAccumulating) {
@@ -235,7 +235,7 @@ TEST(FindCorrespondence, DescendsToAChildPlane) {
   // Fill the (-x, -y, -z) octant with points coplanar at z = 0.2.
   for (double x : {0.05, 0.15, 0.25, 0.35}) {
     for (double y : {0.05, 0.15, 0.25}) {
-      node.Insert(MakePoint({x, y, 0.2}), params);
+      node.InsertPoint(MakePoint({x, y, 0.2}), params);
     }
   }
   node.Update(params);

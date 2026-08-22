@@ -1,8 +1,8 @@
 #include "core/estimator/lidar/lidar_update.h"
 
-#include "core/estimator/lidar/lidar_residual.h"
-
 #include <gtest/gtest.h>
+
+#include "core/estimator/lidar/lidar_residual.h"
 
 namespace livo_slam {
 namespace {
@@ -38,7 +38,7 @@ VoxelMap MakeMapWithPlane() {
       cloud.points.push_back(point);
     }
   }
-  map.Insert(cloud);
+  map.InsertPoints(cloud.points);
   return map;
 }
 
@@ -106,8 +106,8 @@ TEST(UpdateWithLidar, LeavesAnAlignedPoseAlone) {
   const VoxelMap map = MakeMapWithPlane();
   const Estimate prior = MakePrior({0.0, 0.0, 0.0});
 
-  const Estimate posterior = UpdateWithLidar(prior, MakeAlignedCloud(), map,
-                                             MakeUpdateParams());
+  const Estimate posterior =
+      UpdateWithLidar(prior, MakeAlignedCloud(), map, MakeUpdateParams());
 
   EXPECT_LT((posterior.state.position - prior.state.position).norm(), 1e-9);
 }
@@ -116,8 +116,8 @@ TEST(UpdateWithLidar, ShrinksTheCovariance) {
   const VoxelMap map = MakeMapWithPlane();
   const Estimate prior = MakePrior({0.0, 0.0, 0.1});
 
-  const Estimate posterior = UpdateWithLidar(prior, MakeAlignedCloud(), map,
-                                             MakeUpdateParams());
+  const Estimate posterior =
+      UpdateWithLidar(prior, MakeAlignedCloud(), map, MakeUpdateParams());
 
   EXPECT_LT(posterior.covariance(kIdxPosition + 2, kIdxPosition + 2),
             prior.covariance(kIdxPosition + 2, kIdxPosition + 2));
@@ -127,8 +127,8 @@ TEST(UpdateWithLidar, KeepsTheTimestamp) {
   const VoxelMap map = MakeMapWithPlane();
   const Estimate prior = MakePrior({0.0, 0.0, 0.1});
 
-  const Estimate posterior = UpdateWithLidar(prior, MakeAlignedCloud(), map,
-                                             MakeUpdateParams());
+  const Estimate posterior =
+      UpdateWithLidar(prior, MakeAlignedCloud(), map, MakeUpdateParams());
 
   EXPECT_DOUBLE_EQ(posterior.timestamp, prior.timestamp);
 }
@@ -137,8 +137,8 @@ TEST(UpdateWithLidar, ReturnsThePriorWhenTheMapHasNoPlanes) {
   const VoxelMap empty_map(MakeMapParams());
   const Estimate prior = MakePrior({0.0, 0.0, 0.1});
 
-  const Estimate posterior = UpdateWithLidar(prior, MakeAlignedCloud(),
-                                             empty_map, MakeUpdateParams());
+  const Estimate posterior =
+      UpdateWithLidar(prior, MakeAlignedCloud(), empty_map, MakeUpdateParams());
 
   EXPECT_EQ(posterior.state.position, prior.state.position);
   EXPECT_TRUE(posterior.covariance.isApprox(prior.covariance));
