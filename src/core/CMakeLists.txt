@@ -10,9 +10,9 @@ add_library(
     lidar/range_filter.cpp
     camera/projection.cpp
     camera/undistort.cpp
-    camera/visual_points.cpp
     map/voxel_octree.cpp
     map/voxel_map.cpp
+    map/camera/visual_points.cpp
     estimator/iekf.cpp
     estimator/initial_estimate.cpp
     estimator/lidar/lidar_residual.cpp

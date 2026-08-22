@@ -3,7 +3,6 @@
 #include <opencv2/imgproc.hpp>
 #include <print>
 
-#include "core/camera/visual_points.h"
 #include "core/estimator/camera/camera_update.h"
 #include "core/estimator/initial_estimate.h"
 #include "core/estimator/lidar/lidar_update.h"
@@ -11,6 +10,7 @@
 #include "core/lidar/deskew.h"
 #include "core/lidar/downsample.h"
 #include "core/lidar/range_filter.h"
+#include "core/map/camera/visual_points.h"
 #include "core/types/visual_point.h"
 
 namespace livo_slam {
