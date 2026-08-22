@@ -105,7 +105,7 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 
     if (!reference_patch) continue;  // Never observed
 
-    const PhotometricMatch match =
+    PhotometricMatch match =
         CreatePhotometricMatch(image, pixel, p_imu, *reference_patch,
                                pyramid_level, update_params.patch_size);
 
