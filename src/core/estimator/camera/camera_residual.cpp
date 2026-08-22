@@ -38,8 +38,6 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     const std::vector<const VisualPoint*>& visual_points,
     const CameraParams& camera_params,
     const CameraUpdateParams& update_params) {
-  std::vector<PhotometricMatch> matches;
-
   const std::size_t margin = update_params.patch_size / 2 + 1;
   const int half_patch = static_cast<int>(update_params.patch_size) / 2;
   const Eigen::Index total_patch_size = static_cast<Eigen::Index>(
@@ -53,6 +51,8 @@ std::vector<PhotometricMatch> BuildCameraMatches(
   const Eigen::Vector3d cam_position =
       (T_world_imu * camera_params.T_imu_cam).translation();
 
+  std::vector<PhotometricMatch> matches;
+  matches.reserve(visual_points.size());
   for (const VisualPoint* visual_point : visual_points) {
     const Eigen::Vector3d p_imu =
         R_inv * (visual_point->position - state.position);
@@ -106,6 +106,7 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     }
   }
 
+  matches.shrink_to_fit();
   return matches;
 }
 
