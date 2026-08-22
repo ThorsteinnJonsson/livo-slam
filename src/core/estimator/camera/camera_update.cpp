@@ -1,7 +1,6 @@
 #include "camera_update.h"
 
 #include <opencv2/imgproc.hpp>
-#include <print>
 
 #include "core/config/update_params.h"
 #include "core/estimator/camera/camera_residual.h"
