@@ -458,5 +458,127 @@ TEST(BuildCameraMatches, UsesTheReferencePatchForTheRequestedLevel) {
   EXPECT_FLOAT_EQ((*matches[0].reference_patch)(0), 55.0F);
 }
 
+// A reference observation whose stored patch is `intensity` at every level.
+VisualPatch MakeReferencePatch(float intensity, std::size_t patch_size) {
+  VisualPatch patch;
+  patch.inv_exposure = 0.8;
+  for (Eigen::VectorXf& level : patch.intensities) {
+    level = Eigen::VectorXf::Constant(
+        static_cast<Eigen::Index>(patch_size * patch_size), intensity);
+  }
+  return patch;
+}
+
+TEST(CreatePhotometricMatch, SizesThePatchAndGradients) {
+  const std::size_t patch_size = 4;
+  const VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+
+  const PhotometricMatch match =
+      CreatePhotometricMatch(MakeUniformImage(120), {320.0, 240.0},
+                             {0.0, 0.0, 5.0}, reference, 0, patch_size);
+
+  EXPECT_EQ(match.current_patch.size(), 16);
+  EXPECT_EQ(match.gradients.rows(), 16);
+  EXPECT_EQ(match.gradients.cols(), 2);
+}
+
+TEST(CreatePhotometricMatch, CarriesThePointAndReferenceThrough) {
+  const std::size_t patch_size = 4;
+  const VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+
+  const PhotometricMatch match =
+      CreatePhotometricMatch(MakeUniformImage(120), {320.0, 240.0},
+                             {0.7, 1.3, 4.0}, reference, 0, patch_size);
+
+  EXPECT_EQ(match.point_imu, Eigen::Vector3d(0.7, 1.3, 4.0));
+  EXPECT_EQ(match.reference_patch, &reference.intensities[0]);
+  EXPECT_DOUBLE_EQ(match.reference_inv_exposure, reference.inv_exposure);
+}
+
+TEST(CreatePhotometricMatch, PointsAtTheRequestedLevel) {
+  const std::size_t patch_size = 4;
+  VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+  reference.intensities[2] = Eigen::VectorXf::Constant(16, 55.0F);
+
+  const PhotometricMatch match =
+      CreatePhotometricMatch(MakeUniformImage(120), {320.0, 240.0},
+                             {0.0, 0.0, 5.0}, reference, 2, patch_size);
+
+  EXPECT_EQ(match.reference_patch, &reference.intensities[2]);
+  EXPECT_FLOAT_EQ((*match.reference_patch)(0), 55.0F);
+}
+
+TEST(CreatePhotometricMatch, SamplesAUniformImage) {
+  const std::size_t patch_size = 4;
+  const VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+
+  const PhotometricMatch match =
+      CreatePhotometricMatch(MakeUniformImage(137), {320.0, 240.0},
+                             {0.0, 0.0, 5.0}, reference, 0, patch_size);
+
+  EXPECT_TRUE(match.current_patch.isApproxToConstant(137.0F));
+  EXPECT_TRUE(match.gradients.isZero());
+}
+
+// Intensity = 2 * column, so dI/du is 2 and dI/dv is 0.
+cv::Mat MakeHorizontalRamp() {
+  cv::Mat ramp(480, 640, CV_8UC1);
+  for (int row = 0; row < ramp.rows; ++row) {
+    for (int col = 0; col < ramp.cols; ++col) {
+      ramp.at<std::uint8_t>(row, col) =
+          static_cast<std::uint8_t>(col % 128 * 2);
+    }
+  }
+  return ramp;
+}
+
+TEST(CreatePhotometricMatch, GradientsFollowAHorizontalRamp) {
+  const std::size_t patch_size = 4;
+  const VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+
+  const PhotometricMatch match =
+      CreatePhotometricMatch(MakeHorizontalRamp(), {320.0, 240.0},
+                             {0.0, 0.0, 5.0}, reference, 0, patch_size);
+
+  for (Eigen::Index i = 0; i < match.gradients.rows(); ++i) {
+    EXPECT_NEAR(match.gradients(i, 0), 2.0, 1e-9) << "index " << i;
+    EXPECT_NEAR(match.gradients(i, 1), 0.0, 1e-9) << "index " << i;
+  }
+}
+
+TEST(CreatePhotometricMatch, SamplesInRowMajorOrderAroundThePixel) {
+  const std::size_t patch_size = 4;
+  const VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+
+  // Intensity encodes the column, so each sample reveals where it came from.
+  const cv::Mat ramp = MakeHorizontalRamp();
+  const PhotometricMatch match = CreatePhotometricMatch(
+      ramp, {320.0, 240.0}, {0.0, 0.0, 5.0}, reference, 0, patch_size);
+
+  // du runs -2..1 within each row, and the ramp value is (column % 128) * 2.
+  for (Eigen::Index row = 0; row < 4; ++row) {
+    for (Eigen::Index col = 0; col < 4; ++col) {
+      const int column = 320 - 2 + static_cast<int>(col);
+      const double expected = 2.0 * (column % 128);
+      EXPECT_NEAR(match.current_patch(row * 4 + col), expected, 1e-6)
+          << "row " << row << " col " << col;
+    }
+  }
+}
+
+TEST(CreatePhotometricMatch, SamplesAreCenteredOnThePixel) {
+  const std::size_t patch_size = 4;
+  const VisualPatch reference = MakeReferencePatch(100.0F, patch_size);
+  const cv::Mat ramp = MakeHorizontalRamp();
+
+  const PhotometricMatch left = CreatePhotometricMatch(
+      ramp, {320.0, 240.0}, {0.0, 0.0, 5.0}, reference, 0, patch_size);
+  const PhotometricMatch right = CreatePhotometricMatch(
+      ramp, {330.0, 240.0}, {0.0, 0.0, 5.0}, reference, 0, patch_size);
+
+  // Ten columns further right on a ramp of 2 per column.
+  EXPECT_NEAR(right.current_patch(0) - left.current_patch(0), 20.0, 1e-6);
+}
+
 }  // namespace
 }  // namespace livo_slam
