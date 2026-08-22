@@ -121,24 +121,28 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Map update
       //   Update map with deskewed points in world frame
-      //   Update visual map in map (new patches)
-      //   Map sliding/culling if moved far enough
       const Sophus::SE3d T_world_imu(estimate_.state.rotation,
                                      estimate_.state.position);
-      const Sophus::SE3d T_world_lidar =
-          T_world_imu * config_.lidar.T_imu_lidar;
-
-      Cloud cloud_world = cloud;
-      for (Point& point : cloud_world.points) {
-        point.position = T_world_lidar * point.position;
-      }
 
       Cloud deskewed_world = downsampled;
       for (Point& point : deskewed_world.points) {
         point.position = T_world_imu * point.position;
       }
-
       local_map_.Insert(deskewed_world);
+
+      //   Update visual map in map (new patches)
+      //     TODO
+
+      //   Map sliding/culling if moved far enough
+      //     TODO
+
+      // Process output for visualization
+      const Sophus::SE3d T_world_lidar =
+          T_world_imu * config_.lidar.T_imu_lidar;
+      Cloud cloud_world = cloud;
+      for (Point& point : cloud_world.points) {
+        point.position = T_world_lidar * point.position;
+      }
 
       return {estimate_, std::move(cloud_world), local_map_.CollectPlanes()};
     }
