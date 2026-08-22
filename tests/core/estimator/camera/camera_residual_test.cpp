@@ -43,12 +43,14 @@ PhotometricMatch MakeMatch() {
   match.current_patch = Eigen::VectorXf::Constant(1, 130.0F);
   match.gradients = Eigen::Matrix<double, Eigen::Dynamic, 2>(1, 2);
   match.gradients.row(0) = Eigen::RowVector2d(3.5, -2.1);
+  match.reference_inv_exposure = 0.8;
   return match;
 }
 
 double Residual(const PhotometricMatch& match, const State& state) {
-  return static_cast<double>(match.current_patch[0]) -
-         state.inv_exposure * static_cast<double>((*match.reference_patch)[0]);
+  return match.reference_inv_exposure *
+             static_cast<double>((*match.reference_patch)[0]) -
+         state.inv_exposure * static_cast<double>(match.current_patch[0]);
 }
 
 // htz = weight * jacobian * -residual, so the jacobian divides back out.
@@ -84,7 +86,7 @@ TEST(BuildCameraSystem, TouchesOnlyThePoseAndExposureEntries) {
   EXPECT_TRUE(jacobian.segment<3>(kIdxGravity).isZero());
 }
 
-TEST(BuildCameraSystem, ExposureEntryIsTheNegatedReferenceIntensity) {
+TEST(BuildCameraSystem, ExposureEntryIsTheNegatedCurrentIntensity) {
   const PhotometricMatch match = MakeMatch();
   const State state = MakeState();
 
@@ -93,7 +95,7 @@ TEST(BuildCameraSystem, ExposureEntryIsTheNegatedReferenceIntensity) {
   const ErrorState jacobian = RecoverJacobian(system, match, state, 10.0);
 
   EXPECT_NEAR(jacobian(kIdxInvExposure),
-              -static_cast<double>((*match.reference_patch)[0]), 1e-9);
+              -static_cast<double>(match.current_patch[0]), 1e-9);
 }
 
 TEST(BuildCameraSystem, JacobianMatchesFiniteDifferences) {
@@ -122,8 +124,9 @@ TEST(BuildCameraSystem, JacobianMatchesFiniteDifferences) {
         *Project(camera, camera.T_imu_cam.inverse() * point_imu);
     const double intensity = static_cast<double>(match.current_patch[0]) +
                              gradient.dot(pixel - base_pixel);
-    return intensity - perturbed.inv_exposure *
-                           static_cast<double>((*match.reference_patch)[0]);
+    return match.reference_inv_exposure *
+               static_cast<double>((*match.reference_patch)[0]) -
+           perturbed.inv_exposure * intensity;
   };
 
   const double eps = 1e-7;
@@ -204,17 +207,26 @@ TEST(BuildCameraSystem, ResidualOpposesTheIntensityDifference) {
 
   PhotometricMatch brighter = MakeMatch();
   PhotometricMatch darker = MakeMatch();
-  // Mirror the residual about zero: current = inv_exposure * reference +- 10.
+  // Mirror the residual about zero: it vanishes when
+  // state.inv_exposure * current == reference_inv_exposure * reference.
   const float balanced =
-      static_cast<float>(state.inv_exposure) * (*brighter.reference_patch)[0];
+      static_cast<float>(brighter.reference_inv_exposure / state.inv_exposure) *
+      (*brighter.reference_patch)[0];
   brighter.current_patch = Eigen::VectorXf::Constant(1, balanced + 10.0F);
   darker.current_patch = Eigen::VectorXf::Constant(1, balanced - 10.0F);
 
   const IekfSystem up = BuildCameraSystem({brighter}, state, camera, 10.0);
   const IekfSystem down = BuildCameraSystem({darker}, state, camera, 10.0);
 
-  EXPECT_TRUE(up.htz.isApprox(-down.htz));
-  EXPECT_TRUE(up.hth.isApprox(down.hth));
+  // Only the pose block mirrors. The exposure entry is -current, so it differs
+  // between the two and its rows of hth and htz do not. The tolerance is for
+  // `balanced` being rounded to float, which leaves the two residuals mirrored
+  // to about seven digits rather than exactly.
+  const Eigen::Matrix<double, 6, 6> up_pose = up.hth.block<6, 6>(0, 0);
+  const Eigen::Matrix<double, 6, 6> down_pose = down.hth.block<6, 6>(0, 0);
+
+  EXPECT_TRUE(up.htz.head<6>().isApprox(-down.htz.head<6>(), 1e-6));
+  EXPECT_TRUE(up_pose.isApprox(down_pose));
 }
 
 // An observation made from `camera_position`, looking at the origin.

@@ -110,7 +110,8 @@ std::vector<PhotometricMatch> BuildCameraMatches(
                                pyramid_level, update_params.patch_size);
 
     const double photometric_error =
-        (match.current_patch - state.inv_exposure * (*match.reference_patch))
+        (match.reference_inv_exposure * (*match.reference_patch) -
+         state.inv_exposure * match.current_patch)
             .squaredNorm();
 
     if (photometric_error < update_params.outlier_threshold) {
@@ -149,14 +150,17 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
         -R_cam_imu * state.rotation.matrix().transpose();
 
     for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {
-      const auto residual = match.current_patch[i] -
-                            state.inv_exposure * (*match.reference_patch)[i];
+      const auto residual =
+          match.reference_inv_exposure * (*match.reference_patch)[i] -
+          state.inv_exposure * match.current_patch[i];
       const Eigen::RowVector3d row = match.gradients.row(i) * dU_dp;
 
       ErrorState jacobian = ErrorState::Zero();
-      jacobian.segment<3>(kIdxRotation) = (row * dP_dtheta).transpose();
-      jacobian.segment<3>(kIdxPosition) = (row * dP_dp).transpose();
-      jacobian(kIdxInvExposure) = -(*match.reference_patch)[i];
+      jacobian.segment<3>(kIdxRotation) =
+          -state.inv_exposure * (row * dP_dtheta).transpose();
+      jacobian.segment<3>(kIdxPosition) =
+          -state.inv_exposure * (row * dP_dp).transpose();
+      jacobian(kIdxInvExposure) = -match.current_patch[i];
 
       system.hth += weight * jacobian * jacobian.transpose();
       system.htz += weight * jacobian * -residual;
