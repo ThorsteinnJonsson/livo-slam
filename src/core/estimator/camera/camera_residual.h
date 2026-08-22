@@ -22,6 +22,13 @@ struct PhotometricMatch {
 const VisualPatch* SelectReferencePatch(const VisualPoint& visual_point,
                                         const Eigen::Vector3d& camera_position);
 
+PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
+                                        const Eigen::Vector2d& pixel,
+                                        const Eigen::Vector3d& point_imu,
+                                        const VisualPatch& reference_patch,
+                                        std::size_t pyramid_level,
+                                        std::size_t patch_size);
+
 std::vector<PhotometricMatch> BuildCameraMatches(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,

@@ -2,7 +2,6 @@
 
 #include <Eigen/src/Core/Matrix.h>
 
-#include <cstdint>
 #include <limits>
 #include <optional>
 
@@ -33,15 +32,49 @@ const VisualPatch* SelectReferencePatch(
   return best_match;
 }
 
+PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
+                                        const Eigen::Vector2d& pixel,
+                                        const Eigen::Vector3d& point_imu,
+                                        const VisualPatch& reference_patch,
+                                        std::size_t pyramid_level,
+                                        std::size_t patch_size) {
+  const int half_patch = static_cast<int>(patch_size) / 2;
+  const Eigen::Index total_patch_size =
+      static_cast<Eigen::Index>(patch_size * patch_size);
+
+  PhotometricMatch match;
+  match.point_imu = point_imu;
+  match.reference_patch = &reference_patch.intensities[pyramid_level];
+  match.reference_inv_exposure = reference_patch.inv_exposure;
+  match.current_patch.resize(total_patch_size);
+  match.gradients.resize(total_patch_size, 2);
+
+  Eigen::Index index = 0;
+  for (int dv = -half_patch; dv < half_patch; ++dv) {
+    for (int du = -half_patch; du < half_patch; ++du) {
+      const Eigen::Vector2d sample_pixel = pixel + Eigen::Vector2d(du, dv);
+      match.current_patch(index) =
+          static_cast<float>(SampleBilinear(image, sample_pixel));
+      match.gradients(index, 0) =
+          0.5 *
+          (SampleBilinear(image, sample_pixel + Eigen::Vector2d::UnitX()) -
+           SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitX()));
+      match.gradients(index, 1) =
+          0.5 *
+          (SampleBilinear(image, sample_pixel + Eigen::Vector2d::UnitY()) -
+           SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitY()));
+      ++index;
+    }
+  }
+  return match;
+}
+
 std::vector<PhotometricMatch> BuildCameraMatches(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,
     const CameraParams& camera_params,
     const CameraUpdateParams& update_params) {
   const std::size_t margin = update_params.patch_size / 2 + 1;
-  const int half_patch = static_cast<int>(update_params.patch_size) / 2;
-  const Eigen::Index total_patch_size = static_cast<Eigen::Index>(
-      update_params.patch_size * update_params.patch_size);
   const double scale =
       1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
 
@@ -72,30 +105,9 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 
     if (!reference_patch) continue;  // Never observed
 
-    PhotometricMatch match;
-    match.point_imu = p_imu;
-    match.reference_patch = &reference_patch->intensities[pyramid_level];
-    match.reference_inv_exposure = reference_patch->inv_exposure;
-    match.current_patch.resize(total_patch_size);
-    match.gradients.resize(total_patch_size, 2);
-
-    Eigen::Index index = 0;
-    for (int dv = -half_patch; dv < half_patch; ++dv) {
-      for (int du = -half_patch; du < half_patch; ++du) {
-        const Eigen::Vector2d sample_pixel = pixel + Eigen::Vector2d(du, dv);
-        const double sample = SampleBilinear(image, sample_pixel);
-        match.current_patch(index) = static_cast<float>(sample);
-        match.gradients(index, 0) =
-            0.5 *
-            (SampleBilinear(image, sample_pixel + Eigen::Vector2d::UnitX()) -
-             SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitX()));
-        match.gradients(index, 1) =
-            0.5 *
-            (SampleBilinear(image, sample_pixel + Eigen::Vector2d::UnitY()) -
-             SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitY()));
-        ++index;
-      }
-    }
+    const PhotometricMatch match =
+        CreatePhotometricMatch(image, pixel, p_imu, *reference_patch,
+                               pyramid_level, update_params.patch_size);
 
     const double photometric_error =
         (match.current_patch - state.inv_exposure * (*match.reference_patch))
