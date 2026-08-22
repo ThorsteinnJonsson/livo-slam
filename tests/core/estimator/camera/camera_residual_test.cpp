@@ -28,11 +28,18 @@ State MakeState() {
   return state;
 }
 
+// The match points at the reference patch, so the caller owns it and must
+// keep it alive for as long as the match.
+const Eigen::VectorXf& SingleReference() {
+  static const Eigen::VectorXf reference = Eigen::VectorXf::Constant(1, 120.0F);
+  return reference;
+}
+
 // One patch pixel, so the Jacobian can be read straight back out of htz.
 PhotometricMatch MakeMatch() {
   PhotometricMatch match;
   match.point_imu = Eigen::Vector3d(0.7, 1.3, 4.0);
-  match.reference_patch = Eigen::VectorXf::Constant(1, 120.0F);
+  match.reference_patch = &SingleReference();
   match.current_patch = Eigen::VectorXf::Constant(1, 130.0F);
   match.gradients = Eigen::Matrix<double, Eigen::Dynamic, 2>(1, 2);
   match.gradients.row(0) = Eigen::RowVector2d(3.5, -2.1);
@@ -41,7 +48,7 @@ PhotometricMatch MakeMatch() {
 
 double Residual(const PhotometricMatch& match, const State& state) {
   return static_cast<double>(match.current_patch[0]) -
-         state.inv_exposure * static_cast<double>(match.reference_patch[0]);
+         state.inv_exposure * static_cast<double>((*match.reference_patch)[0]);
 }
 
 // htz = weight * jacobian * -residual, so the jacobian divides back out.
@@ -86,7 +93,7 @@ TEST(BuildCameraSystem, ExposureEntryIsTheNegatedReferenceIntensity) {
   const ErrorState jacobian = RecoverJacobian(system, match, state, 10.0);
 
   EXPECT_NEAR(jacobian(kIdxInvExposure),
-              -static_cast<double>(match.reference_patch[0]), 1e-9);
+              -static_cast<double>((*match.reference_patch)[0]), 1e-9);
 }
 
 TEST(BuildCameraSystem, JacobianMatchesFiniteDifferences) {
@@ -116,7 +123,7 @@ TEST(BuildCameraSystem, JacobianMatchesFiniteDifferences) {
     const double intensity = static_cast<double>(match.current_patch[0]) +
                              gradient.dot(pixel - base_pixel);
     return intensity - perturbed.inv_exposure *
-                           static_cast<double>(match.reference_patch[0]);
+                           static_cast<double>((*match.reference_patch)[0]);
   };
 
   const double eps = 1e-7;
@@ -159,8 +166,10 @@ TEST(BuildCameraSystem, AccumulatesOverPatchPixels) {
   const State state = MakeState();
   const CameraParams camera = MakeCamera();
 
+  static const Eigen::VectorXf wide_reference =
+      Eigen::VectorXf::Constant(4, 120.0F);
   PhotometricMatch wide = MakeMatch();
-  wide.reference_patch = Eigen::VectorXf::Constant(4, 120.0F);
+  wide.reference_patch = &wide_reference;
   wide.current_patch = Eigen::VectorXf::Constant(4, 130.0F);
   wide.gradients = Eigen::Matrix<double, Eigen::Dynamic, 2>(4, 2);
   for (Eigen::Index i = 0; i < 4; ++i) {
@@ -197,7 +206,7 @@ TEST(BuildCameraSystem, ResidualOpposesTheIntensityDifference) {
   PhotometricMatch darker = MakeMatch();
   // Mirror the residual about zero: current = inv_exposure * reference +- 10.
   const float balanced =
-      static_cast<float>(state.inv_exposure) * brighter.reference_patch[0];
+      static_cast<float>(state.inv_exposure) * (*brighter.reference_patch)[0];
   brighter.current_patch = Eigen::VectorXf::Constant(1, balanced + 10.0F);
   darker.current_patch = Eigen::VectorXf::Constant(1, balanced - 10.0F);
 

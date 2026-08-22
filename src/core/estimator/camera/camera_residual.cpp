@@ -2,6 +2,7 @@
 
 #include <Eigen/src/Core/Matrix.h>
 
+#include <cstdint>
 #include <limits>
 #include <optional>
 
@@ -59,6 +60,9 @@ std::vector<PhotometricMatch> BuildCameraMatches(
   std::vector<PhotometricMatch> matches;
 
   const std::size_t margin = update_params.patch_size / 2 + 1;
+  const int half_patch = static_cast<int>(update_params.patch_size) / 2;
+  const Eigen::Index total_patch_size = static_cast<Eigen::Index>(
+      update_params.patch_size * update_params.patch_size);
   const double scale =
       1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
 
@@ -87,8 +91,32 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 
     if (!reference_patch) continue;  // Never observed
 
-    // TODO: Continue "For each of the patch_size^2 offsets around the pixel"
+    PhotometricMatch match;
+    match.point_imu = p_imu;
+    match.reference_patch = &reference_patch->intensities[pyramid_level];
+    match.reference_inv_exposure = reference_patch->inv_exposure;
+    match.current_patch.resize(total_patch_size);
+    match.gradients.resize(total_patch_size, 2);
+
+    Eigen::Index index = 0;
+    for (int dv = -half_patch; dv < half_patch; ++dv) {
+      for (int du = -half_patch; du < half_patch; ++du) {
+        const Eigen::Vector2d sample_pixel = pixel + Eigen::Vector2d(du, dv);
+        const double sample = SampleBilinear(image, sample_pixel);
+        match.current_patch(index) = static_cast<float>(sample);
+        match.gradients(index, 0) =
+            0.5 *
+            (SampleBilinear(image, sample_pixel + Eigen::Vector2d::UnitX()) -
+             SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitX()));
+        match.gradients(index, 1) =
+            0.5 *
+            (SampleBilinear(image, sample_pixel + Eigen::Vector2d::UnitY()) -
+             SampleBilinear(image, sample_pixel - Eigen::Vector2d::UnitY()));
+        ++index;
+      }
+    }
   }
+
   return matches;
 }
 
@@ -120,13 +148,13 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
 
     for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {
       const auto residual = match.current_patch[i] -
-                            state.inv_exposure * match.reference_patch[i];
+                            state.inv_exposure * (*match.reference_patch)[i];
       const Eigen::RowVector3d row = match.gradients.row(i) * dU_dp;
 
       ErrorState jacobian = ErrorState::Zero();
       jacobian.segment<3>(kIdxRotation) = (row * dP_dtheta).transpose();
       jacobian.segment<3>(kIdxPosition) = (row * dP_dp).transpose();
-      jacobian(kIdxInvExposure) = -match.reference_patch[i];
+      jacobian(kIdxInvExposure) = -(*match.reference_patch)[i];
 
       system.hth += weight * jacobian * jacobian.transpose();
       system.htz += weight * jacobian * -residual;

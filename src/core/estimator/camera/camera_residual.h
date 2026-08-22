@@ -13,7 +13,7 @@ namespace livo_slam {
 
 struct PhotometricMatch {
   Eigen::Vector3d point_imu = Eigen::Vector3d::Zero();
-  Eigen::VectorXf reference_patch;
+  const Eigen::VectorXf* reference_patch = nullptr;
   Eigen::VectorXf current_patch;
   Eigen::Matrix<double, Eigen::Dynamic, 2> gradients;  // dI/du per patch pixel
   double reference_inv_exposure = 1.0;
