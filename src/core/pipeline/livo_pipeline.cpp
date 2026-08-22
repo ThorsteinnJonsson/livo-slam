@@ -1,7 +1,9 @@
 #include "core/pipeline/livo_pipeline.h"
 
+#include <opencv2/imgproc.hpp>
 #include <print>
 
+#include "core/camera/visual_points.h"
 #include "core/estimator/camera/camera_update.h"
 #include "core/estimator/initial_estimate.h"
 #include "core/estimator/lidar/lidar_update.h"
@@ -9,6 +11,7 @@
 #include "core/lidar/deskew.h"
 #include "core/lidar/downsample.h"
 #include "core/lidar/range_filter.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -113,10 +116,18 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Undistort image
       const auto undistorted_image = image_undistorter_.Undistort(image);
 
+      // Build image pyramid
+      std::vector<cv::Mat> image_pyramid;
+      static_assert(CameraUpdateParams::kPyramidLevels > 0,
+                    "Pyramid level needs to be larger than zero.");
+      constexpr int kMaxLevel =  // Minus one because 0-based index
+          static_cast<int>(CameraUpdateParams::kPyramidLevels - 1);
+      cv::buildPyramid(undistorted_image.image, image_pyramid, kMaxLevel);
+
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
       estimate_ =
-          UpdateWithCamera(estimate_, undistorted_image, downsampled,
+          UpdateWithCamera(estimate_, image_pyramid, downsampled.points,
                            local_map_, config_.camera, config_.camera_update);
 
       //   Map update
@@ -131,7 +142,10 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       local_map_.InsertPoints(deskewed_world.points);
 
       //   Update visual map in map (new patches)
-      local_map_.InsertVisualPoints();
+      std::vector<VisualPoint> visual_points = BuildVisualPoints(
+          deskewed_world.points, image_pyramid, estimate_.state, config_.camera,
+          config_.camera_update, local_map_);
+      local_map_.InsertVisualPoints(visual_points);
 
       //   Map sliding/culling if moved far enough
       //     TODO

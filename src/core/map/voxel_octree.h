@@ -23,6 +23,9 @@ class VoxelOctree {
               std::size_t layer);
 
   void InsertPoint(const Point& point, const VoxelMapParams& params);
+  void InsertVisualPoint(const VisualPoint& visual_point,
+                         const VoxelMapParams& params);
+
   void Update(const VoxelMapParams& params);
 
   // Descends to the deepest node covering the point that holds a plane.

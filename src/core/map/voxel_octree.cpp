@@ -25,6 +25,9 @@ void VoxelOctree::InsertPoint(const Point& point,
   }
 }
 
+void VoxelOctree::InsertVisualPoint(const VisualPoint& visual_point,
+                                    const VoxelMapParams& params) {}
+
 void VoxelOctree::Update(const VoxelMapParams& params) {
   if (IsSubdivided()) {
     for (const auto& child : children_) {

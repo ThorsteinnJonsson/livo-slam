@@ -30,7 +30,8 @@ void VoxelMap::InsertPoints(const std::vector<Point>& points) {
   }
 }
 
-void VoxelMap::InsertVisualPoints() {}
+void VoxelMap::InsertVisualPoints(
+    const std::vector<VisualPoint>& visual_points) {}
 
 std::vector<Plane> VoxelMap::CollectPlanes() const {
   std::vector<Plane> planes;
