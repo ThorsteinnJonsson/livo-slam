@@ -271,5 +271,192 @@ TEST(VisualPatch, HoldsOneIntensityVectorPerPyramidLevel) {
   EXPECT_EQ(patch.intensities.size(), CameraUpdateParams::kPyramidLevels);
 }
 
+// A camera at the world origin looking down +z, so a point at (0, 0, d)
+// projects to the principal point. Keeps the matching arithmetic checkable by
+// hand.
+CameraParams MakeSimpleCamera() {
+  CameraParams camera;
+  camera.width = 640;
+  camera.height = 480;
+  camera.fx = 400.0;
+  camera.fy = 400.0;
+  camera.cx = 320.0;
+  camera.cy = 240.0;
+  return camera;
+}
+
+CameraUpdateParams MakeUpdateParams() {
+  CameraUpdateParams params;
+  params.patch_size = 4;
+  params.intensity_noise_std = 10.0;
+  params.outlier_threshold = 1e9;  // Accept everything unless a test says so.
+  return params;
+}
+
+// A visual point at (0, 0, depth) in front of an identity-pose camera, with one
+// observation whose stored patch is `intensity` everywhere.
+VisualPoint MakeVisualPoint(double depth, float intensity,
+                            std::size_t patch_size) {
+  VisualPoint point;
+  point.position = Eigen::Vector3d(0.0, 0.0, depth);
+
+  VisualPatch patch;
+  patch.T_world_camera = Sophus::SE3d{};
+  for (Eigen::VectorXf& level : patch.intensities) {
+    level = Eigen::VectorXf::Constant(
+        static_cast<Eigen::Index>(patch_size * patch_size), intensity);
+  }
+  point.patches.push_back(patch);
+  return point;
+}
+
+cv::Mat MakeUniformImage(std::uint8_t value) {
+  return cv::Mat(480, 640, CV_8UC1, cv::Scalar(value));
+}
+
+TEST(BuildCameraMatches, NoVisualPointsGivesNoMatches) {
+  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {},
+                                 MakeSimpleCamera(), MakeUpdateParams())
+                  .empty());
+}
+
+TEST(BuildCameraMatches, MatchesAPointInFrontOfTheCamera) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  const VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+
+  State state;
+  state.inv_exposure = 1.0;
+
+  const auto matches = BuildCameraMatches(MakeUniformImage(100), 0, state,
+                                          {&point}, MakeSimpleCamera(), params);
+
+  ASSERT_EQ(matches.size(), 1U);
+  EXPECT_EQ(matches[0].point_imu, point.position);
+  EXPECT_EQ(matches[0].current_patch.size(),
+            static_cast<Eigen::Index>(params.patch_size * params.patch_size));
+  EXPECT_EQ(matches[0].gradients.rows(), matches[0].current_patch.size());
+}
+
+TEST(BuildCameraMatches, SkipsPointsBehindTheCamera) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  const VisualPoint point = MakeVisualPoint(-5.0, 100.0F, params.patch_size);
+
+  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {&point},
+                                 MakeSimpleCamera(), params)
+                  .empty());
+}
+
+TEST(BuildCameraMatches, SkipsPointsProjectingOutsideTheImage) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+  // Far off to the side: 400 * (20 / 5) + 320 is well past 640.
+  point.position = Eigen::Vector3d(20.0, 0.0, 5.0);
+
+  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {&point},
+                                 MakeSimpleCamera(), params)
+                  .empty());
+}
+
+TEST(BuildCameraMatches, SkipsPointsWithNoObservations) {
+  VisualPoint point;
+  point.position = Eigen::Vector3d(0.0, 0.0, 5.0);
+
+  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {&point},
+                                 MakeSimpleCamera(), MakeUpdateParams())
+                  .empty());
+}
+
+TEST(BuildCameraMatches, SamplesTheImageIntensity) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  const VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+
+  State state;
+  state.inv_exposure = 1.0;
+
+  const auto matches = BuildCameraMatches(MakeUniformImage(140), 0, state,
+                                          {&point}, MakeSimpleCamera(), params);
+
+  ASSERT_EQ(matches.size(), 1U);
+  for (Eigen::Index i = 0; i < matches[0].current_patch.size(); ++i) {
+    EXPECT_FLOAT_EQ(matches[0].current_patch(i), 140.0F) << "index " << i;
+  }
+}
+
+TEST(BuildCameraMatches, GradientsAreZeroOnAUniformImage) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  const VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+
+  State state;
+  state.inv_exposure = 1.0;
+
+  const auto matches = BuildCameraMatches(MakeUniformImage(100), 0, state,
+                                          {&point}, MakeSimpleCamera(), params);
+
+  ASSERT_EQ(matches.size(), 1U);
+  EXPECT_TRUE(matches[0].gradients.isZero());
+}
+
+TEST(BuildCameraMatches, GradientsFollowAHorizontalRamp) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  const VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+
+  // Intensity rises by 2 per column, so dI/du is 2 and dI/dv is 0.
+  cv::Mat ramp(480, 640, CV_8UC1);
+  for (int row = 0; row < ramp.rows; ++row) {
+    for (int col = 0; col < ramp.cols; ++col) {
+      ramp.at<std::uint8_t>(row, col) =
+          static_cast<std::uint8_t>(col % 128 * 2);
+    }
+  }
+
+  State state;
+  state.inv_exposure = 1.0;
+
+  const auto matches =
+      BuildCameraMatches(ramp, 0, state, {&point}, MakeSimpleCamera(), params);
+
+  ASSERT_EQ(matches.size(), 1U);
+  for (Eigen::Index i = 0; i < matches[0].gradients.rows(); ++i) {
+    EXPECT_NEAR(matches[0].gradients(i, 0), 2.0, 1e-9) << "index " << i;
+    EXPECT_NEAR(matches[0].gradients(i, 1), 0.0, 1e-9) << "index " << i;
+  }
+}
+
+TEST(BuildCameraMatches, RejectsPatchesBeyondTheOutlierThreshold) {
+  CameraUpdateParams params = MakeUpdateParams();
+  // Reference is 100, image is 200, so the error is 16 * 100^2 = 160000.
+  params.outlier_threshold = 1000.0;
+  const VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+
+  State state;
+  state.inv_exposure = 1.0;
+
+  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(200), 0, state, {&point},
+                                 MakeSimpleCamera(), params)
+                  .empty());
+  EXPECT_EQ(BuildCameraMatches(MakeUniformImage(100), 0, state, {&point},
+                               MakeSimpleCamera(), params)
+                .size(),
+            1U);
+}
+
+TEST(BuildCameraMatches, UsesTheReferencePatchForTheRequestedLevel) {
+  const CameraUpdateParams params = MakeUpdateParams();
+  VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
+  point.patches[0].intensities[1] = Eigen::VectorXf::Constant(
+      static_cast<Eigen::Index>(params.patch_size * params.patch_size), 55.0F);
+
+  State state;
+  state.inv_exposure = 1.0;
+
+  // Level 1 is half resolution, so the image must be too.
+  const cv::Mat level(240, 320, CV_8UC1, cv::Scalar(100));
+  const auto matches =
+      BuildCameraMatches(level, 1, state, {&point}, MakeSimpleCamera(), params);
+
+  ASSERT_EQ(matches.size(), 1U);
+  EXPECT_FLOAT_EQ((*matches[0].reference_patch)(0), 55.0F);
+}
+
 }  // namespace
 }  // namespace livo_slam
