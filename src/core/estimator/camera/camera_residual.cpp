@@ -12,17 +12,14 @@
 
 namespace livo_slam {
 
-const VisualPatch* SelectReferencePatch(const VisualPoint& visual_point,
-                                        const Eigen::Vector3d& camera_position,
-                                        std::size_t level) {
+const VisualPatch* SelectReferencePatch(
+    const VisualPoint& visual_point, const Eigen::Vector3d& camera_position) {
   const Eigen::Vector3d view_dir =
       (camera_position - visual_point.position).normalized();
 
   double max_cos_angle = std::numeric_limits<double>::lowest();
   const VisualPatch* best_match = nullptr;
   for (const VisualPatch& patch : visual_point.patches) {
-    if (patch.level != level) continue;
-
     const Eigen::Vector3d patch_dir =
         (patch.T_world_camera.translation() - visual_point.position)
             .normalized();
@@ -86,12 +83,10 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     if (!InFrame(image, pixel, margin)) continue;
 
     const VisualPatch* reference_patch =
-        SelectReferencePatch(*visual_point, cam_position, pyramid_level);
+        SelectReferencePatch(*visual_point, cam_position);
 
-    if (!reference_patch) continue;  // No patch at this pyramid level
+    if (!reference_patch) continue;  // Never observed
 
-    // TODO: Update visual point to store reference patch by level, and update
-    // SelectReferencePatch.
     // TODO: Continue "For each of the patch_size^2 offsets around the pixel"
   }
   return matches;

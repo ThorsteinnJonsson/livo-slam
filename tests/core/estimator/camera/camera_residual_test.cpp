@@ -208,71 +208,58 @@ TEST(BuildCameraSystem, ResidualOpposesTheIntensityDifference) {
   EXPECT_TRUE(up.hth.isApprox(down.hth));
 }
 
-// A patch observed from `camera_position`, looking at the origin.
-VisualPatch MakePatch(const Eigen::Vector3d& camera_position,
-                      std::size_t level) {
+// An observation made from `camera_position`, looking at the origin.
+VisualPatch MakePatch(const Eigen::Vector3d& camera_position) {
   VisualPatch patch;
   patch.T_world_camera = Sophus::SE3d(Sophus::SO3d{}, camera_position);
-  patch.level = level;
   return patch;
 }
 
 TEST(SelectReferencePatch, NoPatchesSelectsNothing) {
   const VisualPoint point;
 
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 0), nullptr);
+  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}), nullptr);
 }
 
-TEST(SelectReferencePatch, NoPatchAtTheRequestedLevelSelectsNothing) {
+TEST(SelectReferencePatch, SinglePatchIsSelected) {
   VisualPoint point;
-  point.patches.push_back(MakePatch({0.0, 0.0, 1.0}, 0));
-  point.patches.push_back(MakePatch({0.0, 0.0, 1.0}, 1));
+  point.patches.push_back(MakePatch({5.0, 5.0, 5.0}));
 
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 2), nullptr);
-}
-
-TEST(SelectReferencePatch, SinglePatchAtTheLevelIsSelected) {
-  VisualPoint point;
-  point.patches.push_back(MakePatch({5.0, 5.0, 5.0}, 1));
-
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 1), &point.patches[0]);
+  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}), &point.patches[0]);
 }
 
 TEST(SelectReferencePatch, PrefersTheClosestViewingDirection) {
   VisualPoint point;
-  point.patches.push_back(MakePatch({1.0, 0.0, 0.0}, 0));  // 90 degrees off
-  point.patches.push_back(MakePatch({0.2, 0.0, 1.0}, 0));  // nearly aligned
-  point.patches.push_back(MakePatch({0.0, 1.0, 0.0}, 0));  // 90 degrees off
+  point.patches.push_back(MakePatch({1.0, 0.0, 0.0}));  // 90 degrees off
+  point.patches.push_back(MakePatch({0.2, 0.0, 1.0}));  // nearly aligned
+  point.patches.push_back(MakePatch({0.0, 1.0, 0.0}));  // 90 degrees off
 
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 0), &point.patches[1]);
-}
-
-TEST(SelectReferencePatch, IgnoresOtherLevelsWhenChoosing) {
-  VisualPoint point;
-  // The best-aligned patch is at the wrong level, so the worse one wins.
-  point.patches.push_back(MakePatch({0.0, 0.0, 1.0}, 1));
-  point.patches.push_back(MakePatch({1.0, 0.0, 0.2}, 0));
-
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 0), &point.patches[1]);
+  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}), &point.patches[1]);
 }
 
 TEST(SelectReferencePatch, SelectsAPatchViewedFromBehind) {
   VisualPoint point;
   // FAST-LIVO2 floors the comparison at zero and would return an arbitrary
   // patch here; we return the least-bad one.
-  point.patches.push_back(MakePatch({0.0, 0.0, -1.0}, 0));  // opposite
-  point.patches.push_back(MakePatch({1.0, 0.0, -0.5}, 0));  // less opposite
+  point.patches.push_back(MakePatch({0.0, 0.0, -1.0}));  // opposite
+  point.patches.push_back(MakePatch({1.0, 0.0, -0.5}));  // less opposite
 
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 0), &point.patches[1]);
+  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}), &point.patches[1]);
 }
 
 TEST(SelectReferencePatch, DistanceAlongTheViewDirectionDoesNotMatter) {
   VisualPoint point;
-  point.patches.push_back(MakePatch({0.0, 0.0, 50.0}, 0));
-  point.patches.push_back(MakePatch({0.5, 0.0, 1.0}, 0));
+  point.patches.push_back(MakePatch({0.0, 0.0, 50.0}));
+  point.patches.push_back(MakePatch({0.5, 0.0, 1.0}));
 
-  // Both directions are normalised, so the far but aligned patch wins.
-  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}, 0), &point.patches[0]);
+  // Both directions are normalized, so the far but aligned patch wins.
+  EXPECT_EQ(SelectReferencePatch(point, {0.0, 0.0, 1.0}), &point.patches[0]);
+}
+
+TEST(VisualPatch, HoldsOneIntensityVectorPerPyramidLevel) {
+  const VisualPatch patch;
+
+  EXPECT_EQ(patch.intensities.size(), CameraUpdateParams::kPyramidLevels);
 }
 
 }  // namespace

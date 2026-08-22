@@ -1,17 +1,19 @@
 #pragma once
 
 #include <Eigen/Core>
-#include <cstddef>
+#include <array>
 #include <sophus/se3.hpp>
 #include <vector>
+
+#include "core/config/update_params.h"
 
 namespace livo_slam {
 
 struct VisualPatch {
-  Eigen::VectorXf intensities;
+  std::array<Eigen::VectorXf, CameraUpdateParams::kPyramidLevels>
+      intensities;  // Intensity patch per-level
   Sophus::SE3d T_world_camera;
   Eigen::Vector2d pixel = Eigen::Vector2d::Zero();
-  std::size_t level = 0;
   double inv_exposure = 1.0;
 };
 
