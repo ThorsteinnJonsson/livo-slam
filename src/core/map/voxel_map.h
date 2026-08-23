@@ -20,7 +20,9 @@ class VoxelMap {
   explicit VoxelMap(const VoxelMapParams& params);
 
   void InsertPoints(const std::vector<Point>& points);
-  void InsertVisualPoints(const std::vector<VisualPoint>& visual_points);
+  void InsertVisualPoints(
+      const std::vector<VisualPoint>& new_points,
+      const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches);
 
   // Returns the plane the point should be matched against, or nullopt when
   // no voxel near the point holds a suitable one.

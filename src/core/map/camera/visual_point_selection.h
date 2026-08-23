@@ -9,7 +9,12 @@
 
 namespace livo_slam {
 
-std::vector<VisualPoint> BuildVisualPoints(
+struct VisualMapUpdate {
+  std::vector<VisualPoint> new_points;
+  std::vector<std::pair<Eigen::Vector3d, VisualPatch>> new_patches;
+};
+
+VisualMapUpdate SelectVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
     const State& state, const CameraParams& camera,
     const CameraUpdateParams& params,

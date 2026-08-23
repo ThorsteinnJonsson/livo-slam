@@ -31,12 +31,15 @@ void VoxelMap::InsertPoints(const std::vector<Point>& points) {
 }
 
 void VoxelMap::InsertVisualPoints(
-    const std::vector<VisualPoint>& visual_points) {
-  // For each visual point
+    const std::vector<VisualPoint>& new_points,
+    const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches) {
+  // For each new visual point
   //    Find the voxel index and key for its position
   //    Skip if the voxel does not exist. The candidates come from the cloud
   //    inserted by InsertPoints just before, so it always should.
   //    Insert the visual point into it
+  // For each new patch
+  //    Add the patch to the corresponding visual point
 }
 
 std::vector<Plane> VoxelMap::CollectPlanes() const {
