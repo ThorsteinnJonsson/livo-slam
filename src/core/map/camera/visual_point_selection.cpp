@@ -31,7 +31,7 @@ VisualMapUpdate SelectVisualPoints(
   // For each cell with a candidate
   //    Skip if the score is below the minimum
   //    CreateVisualPatch at the projected pixel
-  //    Append a VisualPoint holding that patch and the voxel's plane normal
+  //    Append a VisualPoint holding that patch
   return {};  // TODO: Implement
 }
 
