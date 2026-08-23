@@ -1,6 +1,7 @@
 #include "voxel_octree.h"
 
 #include <Eigen/Eigenvalues>
+#include <algorithm>
 
 #include "core/config/map_params.h"
 #include "core/types/visual_point.h"
@@ -25,8 +26,19 @@ void VoxelOctree::InsertPoint(const Point& point,
   }
 }
 
-void VoxelOctree::InsertVisualPoint(const VisualPoint& visual_point,
-                                    const VoxelMapParams& params) {}
+void VoxelOctree::InsertVisualPoint(const VisualPoint& visual_point) {
+  visual_points_.push_back(visual_point);
+}
+
+void VoxelOctree::AddVisualPatch(const Eigen::Vector3d& position,
+                                 const VisualPatch& visual_patch) {
+  auto found = std::find_if(
+      visual_points_.begin(), visual_points_.end(),
+      [&](const VisualPoint& p) { return p.position == position; });
+  if (found != visual_points_.end()) {
+    found->patches.push_back(visual_patch);
+  }
+}
 
 void VoxelOctree::Update(const VoxelMapParams& params) {
   if (IsSubdivided()) {

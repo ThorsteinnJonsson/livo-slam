@@ -23,8 +23,9 @@ class VoxelOctree {
               std::size_t layer);
 
   void InsertPoint(const Point& point, const VoxelMapParams& params);
-  void InsertVisualPoint(const VisualPoint& visual_point,
-                         const VoxelMapParams& params);
+  void InsertVisualPoint(const VisualPoint& visual_point);
+  void AddVisualPatch(const Eigen::Vector3d& position,
+                      const VisualPatch& visual_patch);
 
   void Update(const VoxelMapParams& params);
 

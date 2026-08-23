@@ -19,7 +19,7 @@ class VoxelMap {
  public:
   explicit VoxelMap(const VoxelMapParams& params);
 
-  void InsertPoints(const std::vector<Point>& points);
+  void InsertPoints(const std::vector<Point>& new_points);
   void InsertVisualPoints(
       const std::vector<VisualPoint>& new_points,
       const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches);

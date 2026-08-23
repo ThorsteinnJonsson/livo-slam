@@ -9,8 +9,8 @@ namespace livo_slam {
 
 VoxelMap::VoxelMap(const VoxelMapParams& params) : params_(params) {}
 
-void VoxelMap::InsertPoints(const std::vector<Point>& points) {
-  for (const Point& point : points) {
+void VoxelMap::InsertPoints(const std::vector<Point>& new_points) {
+  for (const Point& point : new_points) {
     const Eigen::Vector3i voxel_index =
         voxel::VoxelIndex(point.position, params_.voxel_size);
     const auto flat_index = voxel::PackKey(voxel_index);
@@ -40,6 +40,24 @@ void VoxelMap::InsertVisualPoints(
   //    Insert the visual point into it
   // For each new patch
   //    Add the patch to the corresponding visual point
+
+  for (const VisualPoint& point : new_points) {
+    const auto voxel_it = voxels_.find(
+        voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size)));
+    if (voxel_it == voxels_.cend()) {
+      continue;
+    }
+    voxel_it->second.InsertVisualPoint(point);
+  }
+
+  for (const auto& [position, patch] : new_patches) {
+    const auto voxel_it = voxels_.find(
+        voxel::PackKey(voxel::VoxelIndex(position, params_.voxel_size)));
+    if (voxel_it == voxels_.cend()) {
+      continue;
+    }
+    voxel_it->second.AddVisualPatch(position, patch);
+  }
 }
 
 std::vector<Plane> VoxelMap::CollectPlanes() const {
