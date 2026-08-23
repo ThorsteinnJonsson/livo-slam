@@ -204,5 +204,103 @@ TEST(CollectVisualPoints, CloudAwayFromTheMapCollectsNothing) {
   EXPECT_TRUE(map.CollectVisualPoints(MakePoints({{9.0, 9.0, 9.0}})).empty());
 }
 
+VisualPoint MakeVisualPoint(const Eigen::Vector3d& position) {
+  VisualPoint visual_point;
+  visual_point.position = position;
+  return visual_point;
+}
+
+VisualPatch MakeVisualPatch(double inv_exposure) {
+  VisualPatch patch;
+  patch.inv_exposure = inv_exposure;
+  return patch;
+}
+
+TEST(InsertVisualPoints, StoresAPointInItsVoxel) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePlanarPoints());
+
+  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {});
+
+  const auto collected = map.CollectVisualPoints(MakePlanarPoints());
+  ASSERT_EQ(collected.size(), 1U);
+  EXPECT_EQ(collected[0]->position, Eigen::Vector3d(0.5, 0.5, 0.5));
+}
+
+TEST(InsertVisualPoints, SkipsPositionsWithNoVoxel) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePlanarPoints());
+  ASSERT_EQ(map.VoxelCount(), 1U);
+
+  // Nothing was ever inserted at (9, 9, 9), so there is no voxel to hold it.
+  map.InsertVisualPoints({MakeVisualPoint({9.0, 9.0, 9.0})}, {});
+
+  EXPECT_EQ(map.VoxelCount(), 1U);
+  EXPECT_TRUE(map.CollectVisualPoints(MakePoints({{9.0, 9.0, 9.0}})).empty());
+}
+
+TEST(InsertVisualPoints, PointsGoToTheVoxelHoldingTheirPosition) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePoints({{0.5, 0.5, 0.5}, {1.5, 0.5, 0.5}}));
+
+  map.InsertVisualPoints(
+      {MakeVisualPoint({0.5, 0.5, 0.5}), MakeVisualPoint({1.5, 0.5, 0.5})}, {});
+
+  EXPECT_EQ(map.CollectVisualPoints(MakePoints({{0.5, 0.5, 0.5}})).size(), 1U);
+  EXPECT_EQ(map.CollectVisualPoints(MakePoints({{1.5, 0.5, 0.5}})).size(), 1U);
+}
+
+TEST(InsertVisualPoints, AppendsAPatchToAnExistingPoint) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePlanarPoints());
+  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {});
+
+  map.InsertVisualPoints({}, {{{0.5, 0.5, 0.5}, MakeVisualPatch(0.7)}});
+
+  const auto collected = map.CollectVisualPoints(MakePlanarPoints());
+  ASSERT_EQ(collected.size(), 1U);
+  ASSERT_EQ(collected[0]->patches.size(), 1U);
+  EXPECT_DOUBLE_EQ(collected[0]->patches[0].inv_exposure, 0.7);
+}
+
+TEST(InsertVisualPoints, AddsPointsAndPatchesInOneCall) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePlanarPoints());
+  map.InsertVisualPoints({MakeVisualPoint({0.2, 0.2, 0.5})}, {});
+
+  map.InsertVisualPoints({MakeVisualPoint({0.8, 0.8, 0.5})},
+                         {{{0.2, 0.2, 0.5}, MakeVisualPatch(0.7)}});
+
+  const auto collected = map.CollectVisualPoints(MakePlanarPoints());
+  ASSERT_EQ(collected.size(), 2U);
+
+  std::size_t with_patch = 0;
+  for (const VisualPoint* point : collected) {
+    with_patch += point->patches.size();
+  }
+  EXPECT_EQ(with_patch, 1U);
+}
+
+TEST(InsertVisualPoints, IgnoresAPatchWithNoMatchingPoint) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePlanarPoints());
+  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {});
+
+  map.InsertVisualPoints({}, {{{0.2, 0.2, 0.5}, MakeVisualPatch(0.7)}});
+
+  const auto collected = map.CollectVisualPoints(MakePlanarPoints());
+  ASSERT_EQ(collected.size(), 1U);
+  EXPECT_TRUE(collected[0]->patches.empty());
+}
+
+TEST(InsertVisualPoints, EmptyInputChangesNothing) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePlanarPoints());
+
+  map.InsertVisualPoints({}, {});
+
+  EXPECT_TRUE(map.CollectVisualPoints(MakePlanarPoints()).empty());
+}
+
 }  // namespace
 }  // namespace livo_slam
