@@ -3,6 +3,7 @@
 #include <opencv2/core.hpp>
 
 #include "core/config/camera_params.h"
+#include "core/config/map_params.h"
 #include "core/types/cloud.h"
 #include "core/types/state.h"
 #include "core/types/visual_point.h"
@@ -17,7 +18,8 @@ struct VisualMapUpdate {
 VisualMapUpdate SelectVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
     const State& state, const CameraParams& camera,
-    const CameraUpdateParams& params,
+    const CameraUpdateParams& camera_update_params,
+    const VisualMapParams& visual_map_params,
     const std::vector<const VisualPoint*>& existing_visual_points);
 
 VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,

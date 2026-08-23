@@ -16,4 +16,11 @@ struct VoxelMapParams {
   double max_match_distance = 0.5;
 };
 
+struct VisualMapParams {
+  std::size_t grid_size = 30;
+  double min_corner_score = 50.0;
+  std::size_t min_frames_between_patches = 20;
+  double min_patch_pixel_distance = 40.0;
+};
+
 }  // namespace livo_slam

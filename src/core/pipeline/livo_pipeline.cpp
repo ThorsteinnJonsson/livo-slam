@@ -158,7 +158,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Add/update new visual points in map (new patches)
       const auto& [new_visual_points, new_visual_patches] = SelectVisualPoints(
           points_deskewed_world, image_pyramid, estimate_.state, config_.camera,
-          config_.camera_update, visual_points);
+          config_.camera_update, config_.visual_map, visual_points);
       local_map_.InsertVisualPoints(new_visual_points, new_visual_patches);
 
       //   Map sliding/culling if moved far enough
