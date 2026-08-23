@@ -6,7 +6,7 @@ namespace livo_slam {
 
 VisualMapUpdate SelectVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
-    const State& state, const CameraParams& camera,
+    double timestamp, const State& state, const CameraParams& camera,
     const CameraUpdateParams& camera_update_params,
     const VisualMapParams& visual_map_params, const VoxelMapParams& map_params,
     const std::vector<const VisualPoint*>& existing_visual_points) {
@@ -23,9 +23,10 @@ VisualMapUpdate SelectVisualPoints(
   //    far, and its depth the smallest of the candidates in its voxel
   //
   // For each covered cell
-  //    Add a patch for its visual point if more than min_frames_between_patches
-  //    have passed since its last patch, or the projection has moved further
-  //    than min_patch_pixel_distance from where that patch was taken
+  //    Add a patch for its visual point if more than
+  //    min_seconds_between_patches have passed since its last patch, or the
+  //    projection has moved further than min_patch_pixel_distance from where
+  //    that patch was taken
   //
   // For each cell with a candidate
   //    Skip if the score is below the minimum
@@ -42,7 +43,7 @@ VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
 }
 
 double CornerScore(const cv::Mat& image, const Eigen::Vector2d& pixel) {
-  return std::numeric_limits<double>::signaling_NaN();  // TODO: Implement
+  return std::numeric_limits<double>::quiet_NaN();  // TODO: Implement
 }
 
 }  // namespace livo_slam

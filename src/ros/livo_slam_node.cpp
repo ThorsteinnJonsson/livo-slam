@@ -156,11 +156,9 @@ PipelineConfig LivoSlamNode::ReadConfig() {
           static_cast<int64_t>(visual_map_defaults.grid_size)));
   config.visual_map.min_corner_score = declare_parameter<double>(
       "visual_map.min_corner_score", visual_map_defaults.min_corner_score);
-  config.visual_map.min_frames_between_patches =
-      static_cast<std::size_t>(declare_parameter<int64_t>(
-          "visual_map.min_frames_between_patches",
-          static_cast<int64_t>(
-              visual_map_defaults.min_frames_between_patches)));
+  config.visual_map.min_seconds_between_patches = declare_parameter<double>(
+      "visual_map.min_seconds_between_patches",
+      visual_map_defaults.min_seconds_between_patches);
   config.visual_map.min_patch_pixel_distance =
       declare_parameter<double>("visual_map.min_patch_pixel_distance",
                                 visual_map_defaults.min_patch_pixel_distance);

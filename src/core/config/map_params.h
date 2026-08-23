@@ -19,7 +19,7 @@ struct VoxelMapParams {
 struct VisualMapParams {
   std::size_t grid_size = 30;
   double min_corner_score = 50.0;
-  std::size_t min_frames_between_patches = 20;
+  double min_seconds_between_patches = 2.0;
   double min_patch_pixel_distance = 40.0;
 };
 
