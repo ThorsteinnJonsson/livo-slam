@@ -8,7 +8,7 @@ VisualMapUpdate SelectVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
     const State& state, const CameraParams& camera,
     const CameraUpdateParams& camera_update_params,
-    const VisualMapParams& visual_map_params,
+    const VisualMapParams& visual_map_params, const VoxelMapParams& map_params,
     const std::vector<const VisualPoint*>& existing_visual_points) {
   // Cells are grid_size-pixel squares of the image.
   //
