@@ -1,5 +1,6 @@
 #include "visual_point_selection.h"
 
+#include <cassert>
 #include <cstddef>
 #include <limits>
 
@@ -15,6 +16,8 @@ struct Cell {
   const Point* candidate = nullptr;
   double score = 0.0;
   Eigen::Vector2d pixel = Eigen::Vector2d::Zero();
+  const VisualPoint* visual_point = nullptr;
+  double distance = std::numeric_limits<double>::max();
 };
 }  // namespace
 
@@ -46,6 +49,8 @@ VisualMapUpdate SelectVisualPoints(
   //    Skip if the score is below the minimum
   //    CreateVisualPatch at the projected pixel
   //    Append a VisualPoint holding that patch
+
+  VisualMapUpdate update;
 
   const Sophus::SE3d T_world_imu(state.rotation, state.position);
   const Sophus::SE3d T_world_camera = T_world_imu * camera_params.T_imu_cam;
@@ -81,6 +86,11 @@ VisualMapUpdate SelectVisualPoints(
     const std::size_t flat_index =
         pixel.y() / grid_size * cols + pixel.x() / grid_size;
     cells[flat_index].covered = true;
+    if (cells[flat_index].distance > point_camera.norm()) {
+      cells[flat_index].visual_point = visual_point;
+      cells[flat_index].distance = point_camera.norm();
+      cells[flat_index].pixel = *projected;
+    }
   }
 
   // Find candidate point from lidar points.
@@ -107,7 +117,29 @@ VisualMapUpdate SelectVisualPoints(
     }
   }
 
-  return {};  // TODO: Implement
+  // Update covered cells, create new patches
+  for (const Cell& cell : cells) {
+    if (!cell.covered) {
+      continue;
+    }
+
+    assert(!cell.visual_point->patches.empty());
+    const VisualPatch& last_patch = cell.visual_point->patches.back();
+    const bool stale = timestamp - last_patch.timestamp >
+                       visual_map_params.min_seconds_between_patches;
+    const bool moved = (cell.pixel - last_patch.pixel).norm() >
+                       visual_map_params.min_patch_pixel_distance;
+    if (!stale && !moved) {
+      continue;
+    }
+
+    update.new_patches.emplace_back(
+        cell.visual_point->position,
+        CreateVisualPatch(image_pyramid, cell.pixel, T_world_camera,
+                          state.inv_exposure, camera_update_params.patch_size));
+  }
+
+  return update;
 }
 
 VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
