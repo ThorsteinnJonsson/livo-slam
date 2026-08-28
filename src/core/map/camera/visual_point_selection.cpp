@@ -1,7 +1,9 @@
 #include "visual_point_selection.h"
 
 #include <cassert>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 
 #include "core/camera/projection.h"
@@ -143,11 +145,48 @@ VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
                               const Sophus::SE3d& T_world_camera,
                               double timestamp, double inv_exposure,
                               std::size_t patch_size) {
+  // The pixel is at full resolution, the pose, exposure and timestamp are the
+  // ones the image was taken with.
+  //
+  // For each pyramid level
+  //    Scale the pixel by 1 / 2^level
+  //    Resize intensities[level] to patch_size * patch_size
+  //    Fill it with SampleBilinear over the patch_size square centered on the
+  //    scaled pixel, in the same order as CreatePhotometricMatch
+  //
+  // Store T_world_camera, the full-resolution pixel, inv_exposure and timestamp
   return {};  // TODO: Implement
 }
 
 double CornerScore(const cv::Mat& image, const Eigen::Vector2d& pixel) {
-  return std::numeric_limits<double>::quiet_NaN();  // TODO: Implement
+  constexpr int kCornerWindow = 8;
+  constexpr int kCornerHalfWindow = kCornerWindow / 2;
+  constexpr double kNormalizer = 2.0 * kCornerWindow * kCornerWindow;
+
+  const int u = static_cast<int>(pixel.x());
+  const int v = static_cast<int>(pixel.y());
+  double dxx = 0.0;
+  double dyy = 0.0;
+  double dxy = 0.0;
+  for (int dv = -kCornerHalfWindow; dv < kCornerHalfWindow; ++dv) {
+    for (int du = -kCornerHalfWindow; du < kCornerHalfWindow; ++du) {
+      const int c = u + du;
+      const int r = v + dv;
+      const double dx =
+          image.at<std::uint8_t>(r, c + 1) - image.at<std::uint8_t>(r, c - 1);
+      const double dy =
+          image.at<std::uint8_t>(r + 1, c) - image.at<std::uint8_t>(r - 1, c);
+      dxx += dx * dx;
+      dyy += dy * dy;
+      dxy += dx * dy;
+    }
+  }
+
+  dxx /= kNormalizer;
+  dyy /= kNormalizer;
+  dxy /= kNormalizer;
+
+  return 0.5 * (dxx + dyy - std::sqrt(std::pow(dxx - dyy, 2) + 4 * dxy * dxy));
 }
 
 }  // namespace livo_slam

@@ -28,6 +28,7 @@ VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
                               double timestamp, double inv_exposure,
                               std::size_t patch_size);
 
+// Calculates Shi-Tomasi score
 double CornerScore(const cv::Mat& image, const Eigen::Vector2d& pixel);
 
 }  // namespace livo_slam
