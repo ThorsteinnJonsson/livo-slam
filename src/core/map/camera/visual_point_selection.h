@@ -19,13 +19,14 @@ VisualMapUpdate SelectVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
     double timestamp, const State& state, const CameraParams& camera_params,
     const CameraUpdateParams& camera_update_params,
-    const VisualMapParams& visual_map_params, const VoxelMapParams& map_params,
+    const VisualMapParams& visual_map_params,
     const std::vector<const VisualPoint*>& existing_visual_points);
 
 VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
                               const Eigen::Vector2d& pixel,
                               const Sophus::SE3d& T_world_camera,
-                              double inv_exposure, std::size_t patch_size);
+                              double timestamp, double inv_exposure,
+                              std::size_t patch_size);
 
 double CornerScore(const cv::Mat& image, const Eigen::Vector2d& pixel);
 

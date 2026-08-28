@@ -25,31 +25,8 @@ VisualMapUpdate SelectVisualPoints(
     const std::vector<Point>& points, const std::vector<cv::Mat>& image_pyramid,
     double timestamp, const State& state, const CameraParams& camera_params,
     const CameraUpdateParams& camera_update_params,
-    const VisualMapParams& visual_map_params, const VoxelMapParams& map_params,
+    const VisualMapParams& visual_map_params,
     const std::vector<const VisualPoint*>& existing_visual_points) {
-  // Cells are grid_size-pixel squares of the image.
-  //
-  // For each existing visual point
-  //    Project, skip if behind or not InFrame with a patch_size margin
-  //    Mark its cell as covered, and remember the point and its pixel
-  //
-  // For each candidate point
-  //    Project, skip if behind or not InFrame with a patch_size margin
-  //    Skip if its cell is covered
-  //    Keep it as the cell's candidate if its CornerScore is the highest so
-  //    far, and its depth the smallest of the candidates in its voxel
-  //
-  // For each covered cell
-  //    Add a patch for its visual point if more than
-  //    min_seconds_between_patches have passed since its last patch, or the
-  //    projection has moved further than min_patch_pixel_distance from where
-  //    that patch was taken
-  //
-  // For each cell with a candidate
-  //    Skip if the score is below the minimum
-  //    CreateVisualPatch at the projected pixel
-  //    Append a VisualPoint holding that patch
-
   VisualMapUpdate update;
 
   const Sophus::SE3d T_world_imu(state.rotation, state.position);
@@ -60,6 +37,7 @@ VisualMapUpdate SelectVisualPoints(
 
   // Full-resolution image is split into a grid of cells.
   // New visual points will be generated in empty cells.
+  // Cells are grid_size-pixel squares of the image.
   const std::size_t grid_size = visual_map_params.grid_size;
   const auto& full_res_image = image_pyramid[0];
   const std::size_t cols =
@@ -117,7 +95,7 @@ VisualMapUpdate SelectVisualPoints(
     }
   }
 
-  // Update covered cells, create new patches
+  // Create new patches for existing visual points
   for (const Cell& cell : cells) {
     if (!cell.covered) {
       continue;
@@ -135,8 +113,26 @@ VisualMapUpdate SelectVisualPoints(
 
     update.new_patches.emplace_back(
         cell.visual_point->position,
-        CreateVisualPatch(image_pyramid, cell.pixel, T_world_camera,
+        CreateVisualPatch(image_pyramid, cell.pixel, T_world_camera, timestamp,
                           state.inv_exposure, camera_update_params.patch_size));
+  }
+
+  // Create new visual points
+  for (const Cell& cell : cells) {
+    if (cell.covered) {
+      continue;
+    }
+
+    if (!cell.candidate || cell.score < visual_map_params.min_corner_score) {
+      continue;
+    }
+
+    VisualPoint visual_point;
+    visual_point.position = cell.candidate->position;
+    visual_point.patches.push_back(
+        CreateVisualPatch(image_pyramid, cell.pixel, T_world_camera, timestamp,
+                          state.inv_exposure, camera_update_params.patch_size));
+    update.new_points.push_back(std::move(visual_point));
   }
 
   return update;
@@ -145,7 +141,8 @@ VisualMapUpdate SelectVisualPoints(
 VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
                               const Eigen::Vector2d& pixel,
                               const Sophus::SE3d& T_world_camera,
-                              double inv_exposure, std::size_t patch_size) {
+                              double timestamp, double inv_exposure,
+                              std::size_t patch_size) {
   return {};  // TODO: Implement
 }
 

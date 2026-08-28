@@ -14,3 +14,4 @@
 ## TODO
 
 - Implement slide-function in local map
+- Limit patches to 30 per visual point
