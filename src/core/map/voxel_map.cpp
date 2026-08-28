@@ -33,14 +33,7 @@ void VoxelMap::InsertPoints(const std::vector<Point>& new_points) {
 void VoxelMap::InsertVisualPoints(
     const std::vector<VisualPoint>& new_points,
     const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches) {
-  // For each new visual point
-  //    Find the voxel index and key for its position
-  //    Skip if the voxel does not exist. The candidates come from the cloud
-  //    inserted by InsertPoints just before, so it always should.
-  //    Insert the visual point into it
-  // For each new patch
-  //    Add the patch to the corresponding visual point
-
+  // Insert new visual points
   for (const VisualPoint& point : new_points) {
     const auto voxel_it = voxels_.find(
         voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size)));
@@ -50,6 +43,7 @@ void VoxelMap::InsertVisualPoints(
     voxel_it->second.InsertVisualPoint(point);
   }
 
+  // Add new patches to existing visual points
   for (const auto& [position, patch] : new_patches) {
     const auto voxel_it = voxels_.find(
         voxel::PackKey(voxel::VoxelIndex(position, params_.voxel_size)));

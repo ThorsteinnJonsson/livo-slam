@@ -4,6 +4,7 @@
 #include <limits>
 
 #include "core/camera/projection.h"
+#include "core/types/cloud.h"
 #include "core/types/visual_point.h"
 
 namespace livo_slam {
@@ -13,6 +14,7 @@ struct Cell {
   bool covered = false;
   const Point* candidate = nullptr;
   double score = 0.0;
+  Eigen::Vector2d pixel = Eigen::Vector2d::Zero();
 };
 }  // namespace
 
@@ -51,6 +53,8 @@ VisualMapUpdate SelectVisualPoints(
 
   const std::size_t patch_margin = camera_update_params.patch_size / 2 + 1;
 
+  // Full-resolution image is split into a grid of cells.
+  // New visual points will be generated in empty cells.
   const std::size_t grid_size = visual_map_params.grid_size;
   const auto& full_res_image = image_pyramid[0];
   const std::size_t cols =
@@ -77,6 +81,30 @@ VisualMapUpdate SelectVisualPoints(
     const std::size_t flat_index =
         pixel.y() / grid_size * cols + pixel.x() / grid_size;
     cells[flat_index].covered = true;
+  }
+
+  // Find candidate point from lidar points.
+  for (const Point& point : points) {
+    // Project visual point into pixel
+    const Eigen::Vector3d point_camera = T_camera_world * point.position;
+    const auto projected = Project(camera_params, point_camera);
+
+    if (!projected || !InFrame(full_res_image, *projected, patch_margin)) {
+      continue;
+    }
+    const auto pixel = projected->cast<std::size_t>();
+    const std::size_t flat_index =
+        pixel.y() / grid_size * cols + pixel.x() / grid_size;
+    if (cells[flat_index].covered) {
+      continue;
+    }
+
+    const double corner_score = CornerScore(full_res_image, *projected);
+    if (cells[flat_index].score < corner_score) {
+      cells[flat_index].score = corner_score;
+      cells[flat_index].candidate = &point;
+      cells[flat_index].pixel = *projected;
+    }
   }
 
   return {};  // TODO: Implement
