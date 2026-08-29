@@ -114,7 +114,13 @@ std::vector<PhotometricMatch> BuildCameraMatches(
          state.inv_exposure * match.current_patch)
             .squaredNorm();
 
-    if (photometric_error < update_params.outlier_threshold) {
+    // The threshold is per pixel, the error is summed over the patch.
+    const double outlier_threshold =
+        update_params.outlier_threshold *
+        static_cast<double>(update_params.patch_size *
+                            update_params.patch_size);
+
+    if (photometric_error < outlier_threshold) {
       matches.push_back(std::move(match));
     }
   }
