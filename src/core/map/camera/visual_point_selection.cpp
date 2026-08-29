@@ -1,10 +1,12 @@
 #include "visual_point_selection.h"
 
+#include <Eigen/Core>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <opencv2/core/mat.hpp>
 
 #include "core/camera/projection.h"
 #include "core/types/cloud.h"
@@ -35,7 +37,10 @@ VisualMapUpdate SelectVisualPoints(
   const Sophus::SE3d T_world_camera = T_world_imu * camera_params.T_imu_cam;
   const Sophus::SE3d T_camera_world = T_world_camera.inverse();
 
-  const std::size_t patch_margin = camera_update_params.patch_size / 2 + 1;
+  // Patch margin needs to cover the deepest level of the image pyramid.
+  const std::size_t patch_margin =
+      (camera_update_params.patch_size / 2 + 1) *
+      (std::size_t{1} << (CameraUpdateParams::kPyramidLevels - 1));
 
   // Full-resolution image is split into a grid of cells.
   // New visual points will be generated in empty cells.
@@ -145,17 +150,34 @@ VisualPatch CreateVisualPatch(const std::vector<cv::Mat>& image_pyramid,
                               const Sophus::SE3d& T_world_camera,
                               double timestamp, double inv_exposure,
                               std::size_t patch_size) {
-  // The pixel is at full resolution, the pose, exposure and timestamp are the
-  // ones the image was taken with.
-  //
-  // For each pyramid level
-  //    Scale the pixel by 1 / 2^level
-  //    Resize intensities[level] to patch_size * patch_size
-  //    Fill it with SampleBilinear over the patch_size square centered on the
-  //    scaled pixel, in the same order as CreatePhotometricMatch
-  //
-  // Store T_world_camera, the full-resolution pixel, inv_exposure and timestamp
-  return {};  // TODO: Implement
+  VisualPatch patch;
+  patch.pixel = pixel;
+  patch.timestamp = timestamp;
+  patch.inv_exposure = inv_exposure;
+  patch.T_world_camera = T_world_camera;
+
+  const int half_patch = static_cast<int>(patch_size) / 2;
+  for (std::size_t level = CameraUpdateParams::kPyramidLevels; level-- > 0;) {
+    const double scale = 1.0 / static_cast<double>(std::size_t{1} << level);
+    const Eigen::Vector2d scaled_pixel = scale * pixel;
+
+    const cv::Mat& image = image_pyramid[level];
+
+    patch.intensities[level].resize(
+        static_cast<Eigen::Index>(patch_size * patch_size));
+    Eigen::Index index = 0;
+    for (int dv = -half_patch; dv < half_patch; ++dv) {
+      for (int du = -half_patch; du < half_patch; ++du) {
+        const Eigen::Vector2d sample_pixel =
+            scaled_pixel + Eigen::Vector2d(du, dv);
+        patch.intensities[level][index] =
+            static_cast<float>(SampleBilinear(image, sample_pixel));
+        ++index;
+      }
+    }
+  }
+
+  return patch;
 }
 
 double CornerScore(const cv::Mat& image, const Eigen::Vector2d& pixel) {
