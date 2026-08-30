@@ -12,3 +12,5 @@ evaluation/**/trajectory.tum
 evaluation/**/estimate_gt.tum
 
 __pycache__/
+config/active.yaml
+datasets/active

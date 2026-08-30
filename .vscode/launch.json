@@ -9,10 +9,10 @@
       "args": [
         "--ros-args",
         "--params-file",
-        "${workspaceFolder}/config/default.yaml"
+        "${workspaceFolder}/config/active.yaml"
       ],
       "cwd": "${workspaceFolder}",
-      "preLaunchTask": "build"
+      "preLaunchTask": "build and select dataset"
     },
     {
       "name": "livo_slam + rerun",
@@ -22,7 +22,7 @@
       "args": [
         "--ros-args",
         "--params-file",
-        "${workspaceFolder}/config/default.yaml"
+        "${workspaceFolder}/config/active.yaml"
       ],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "build and start rerun",
@@ -36,7 +36,7 @@
       "args": [
         "--ros-args",
         "--params-file",
-        "${workspaceFolder}/config/default.yaml"
+        "${workspaceFolder}/config/active.yaml"
       ],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "build, start rerun and play bag",
