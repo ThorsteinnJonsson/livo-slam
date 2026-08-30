@@ -36,13 +36,19 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 ./build/relwithdebinfo/src/livo_slam # Or debug/release
 ```
 
-In VS Code, F5 builds and launches under the debugger.
+In VS Code, F5 builds and launches under the debugger, asking which dataset to
+run first.
 
-Topics come from `config/default.yaml`:
+`config/` holds one file per dataset. Topics and calibration come from the one
+you pass:
 
 ```bash
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/default.yaml
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/ntu_viral.yaml
 ```
+
+`scripts/select_dataset.sh ntu_viral/eee_03_mcap` points `config/active.yaml`
+and `datasets/active` at a dataset and sequence. This is what F5 uses, and what
+`scripts/play_bag.sh` plays when given no argument.
 
 ## Visualization
 
