@@ -149,6 +149,20 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.map.max_match_distance = declare_parameter<double>(
       "map.max_match_distance", map_defaults.max_match_distance);
 
+  const VisualMapParams visual_map_defaults;
+  config.visual_map.grid_size =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "visual_map.grid_size",
+          static_cast<int64_t>(visual_map_defaults.grid_size)));
+  config.visual_map.min_corner_score = declare_parameter<double>(
+      "visual_map.min_corner_score", visual_map_defaults.min_corner_score);
+  config.visual_map.min_seconds_between_patches = declare_parameter<double>(
+      "visual_map.min_seconds_between_patches",
+      visual_map_defaults.min_seconds_between_patches);
+  config.visual_map.min_patch_pixel_distance =
+      declare_parameter<double>("visual_map.min_patch_pixel_distance",
+                                visual_map_defaults.min_patch_pixel_distance);
+
   const LidarUpdateParams update_defaults;
   config.lidar_update.max_iterations =
       static_cast<std::size_t>(declare_parameter<int64_t>(

@@ -1,5 +1,6 @@
 #include "core/pipeline/livo_pipeline.h"
 
+#include <opencv2/imgproc.hpp>
 #include <print>
 
 #include "core/estimator/camera/camera_update.h"
@@ -9,6 +10,8 @@
 #include "core/lidar/deskew.h"
 #include "core/lidar/downsample.h"
 #include "core/lidar/range_filter.h"
+#include "core/map/camera/visual_point_selection.h"
+#include "core/types/visual_point.h"
 
 namespace livo_slam {
 
@@ -113,32 +116,65 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Undistort image
       const auto undistorted_image = image_undistorter_.Undistort(image);
 
+      // Build image pyramid
+      std::vector<cv::Mat> image_pyramid;
+      static_assert(CameraUpdateParams::kPyramidLevels > 0,
+                    "Pyramid level needs to be larger than zero.");
+      constexpr int kMaxLevel =  // Minus one because 0-based index
+          static_cast<int>(CameraUpdateParams::kPyramidLevels - 1);
+      cv::buildPyramid(undistorted_image.image, image_pyramid, kMaxLevel);
+
+      // Collect candidate visual points
+      std::vector<Point> points_world = downsampled.points;
+      {
+        const Sophus::SE3d T_world_imu(estimate_.state.rotation,
+                                       estimate_.state.position);
+        for (Point& point : points_world) {
+          point.position = T_world_imu * point.position;
+        }
+      }
+      const std::vector<const VisualPoint*> visual_points =
+          local_map_.CollectVisualPoints(points_world);
+
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
-      estimate_ =
-          UpdateWithCamera(estimate_, undistorted_image, downsampled,
-                           local_map_, config_.camera, config_.camera_update);
+      estimate_ = UpdateWithCamera(estimate_, image_pyramid, visual_points,
+                                   config_.camera, config_.camera_update);
 
       //   Map update
       //   Update map with deskewed points in world frame
-      //   Update visual map in map (new patches)
+
+      std::vector<Point> points_deskewed_world = downsampled.points;
+      {
+        const Sophus::SE3d T_world_imu(estimate_.state.rotation,
+                                       estimate_.state.position);
+        for (Point& point : points_deskewed_world) {
+          point.position = T_world_imu * point.position;
+        }
+      }
+
+      local_map_.InsertPoints(points_deskewed_world);
+
+      //   Add new visual points in map and update existing ones with new
+      //   patches
+      const auto& [new_visual_points, new_visual_patches] = SelectVisualPoints(
+          points_deskewed_world, image_pyramid, image.timestamp,
+          estimate_.state, config_.camera, config_.camera_update,
+          config_.visual_map, visual_points);
+      local_map_.InsertVisualPoints(new_visual_points, new_visual_patches);
+
       //   Map sliding/culling if moved far enough
+      //     TODO
+
+      // Process output for visualization
       const Sophus::SE3d T_world_imu(estimate_.state.rotation,
                                      estimate_.state.position);
       const Sophus::SE3d T_world_lidar =
           T_world_imu * config_.lidar.T_imu_lidar;
-
       Cloud cloud_world = cloud;
       for (Point& point : cloud_world.points) {
         point.position = T_world_lidar * point.position;
       }
-
-      Cloud deskewed_world = downsampled;
-      for (Point& point : deskewed_world.points) {
-        point.position = T_world_imu * point.position;
-      }
-
-      local_map_.Insert(deskewed_world);
 
       return {estimate_, std::move(cloud_world), local_map_.CollectPlanes()};
     }

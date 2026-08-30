@@ -1,6 +1,7 @@
 #include "voxel_octree.h"
 
 #include <Eigen/Eigenvalues>
+#include <algorithm>
 
 #include "core/config/map_params.h"
 #include "core/types/visual_point.h"
@@ -11,16 +12,31 @@ VoxelOctree::VoxelOctree(const Eigen::Vector3d& center, double quarter_length,
                          std::size_t layer)
     : center_(center), quarter_length_(quarter_length), layer_(layer) {}
 
-void VoxelOctree::Insert(const Point& point, const VoxelMapParams& params) {
+void VoxelOctree::InsertPoint(const Point& point,
+                              const VoxelMapParams& params) {
   if (!update_enabled_) return;
 
   if (IsSubdivided()) {
     const auto child_index = ChildIndex(point.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point, params);
+    child.InsertPoint(point, params);
   } else if (points_.size() < params.max_points_per_voxel) {
     points_.push_back(point);
     ++new_points_;
+  }
+}
+
+void VoxelOctree::InsertVisualPoint(const VisualPoint& visual_point) {
+  visual_points_.push_back(visual_point);
+}
+
+void VoxelOctree::AddVisualPatch(const Eigen::Vector3d& position,
+                                 const VisualPatch& visual_patch) {
+  auto found = std::find_if(
+      visual_points_.begin(), visual_points_.end(),
+      [&](const VisualPoint& p) { return p.position == position; });
+  if (found != visual_points_.end()) {
+    found->patches.push_back(visual_patch);
   }
 }
 
@@ -105,7 +121,7 @@ void VoxelOctree::Subdivide(const VoxelMapParams& params) {
   for (const Point& point : points_) {
     const auto child_index = ChildIndex(point.position);
     VoxelOctree& child = GetChild(child_index);
-    child.Insert(point, params);
+    child.InsertPoint(point, params);
   }
   points_.clear();
 }

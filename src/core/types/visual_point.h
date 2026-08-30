@@ -2,6 +2,7 @@
 
 #include <Eigen/Core>
 #include <array>
+#include <limits>
 #include <sophus/se3.hpp>
 #include <vector>
 
@@ -15,6 +16,7 @@ struct VisualPatch {
   Sophus::SE3d T_world_camera;
   Eigen::Vector2d pixel = Eigen::Vector2d::Zero();
   double inv_exposure = 1.0;
+  double timestamp = std::numeric_limits<double>::quiet_NaN();
 };
 
 struct VisualPoint {

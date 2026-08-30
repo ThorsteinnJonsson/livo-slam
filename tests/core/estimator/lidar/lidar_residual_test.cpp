@@ -27,7 +27,7 @@ VoxelMap MakeMapWithPlane() {
       cloud.points.push_back(point);
     }
   }
-  map.Insert(cloud);
+  map.InsertPoints(cloud.points);
   return map;
 }
 

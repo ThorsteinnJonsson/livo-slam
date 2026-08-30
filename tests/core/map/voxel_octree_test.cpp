@@ -29,7 +29,7 @@ Point MakePoint(const Eigen::Vector3d& position) {
 void InsertPlanarPoints(VoxelOctree& node, const VoxelMapParams& params) {
   for (double x : {0.2, 0.4, 0.6}) {
     for (double y : {0.2, 0.4, 0.6}) {
-      node.Insert(MakePoint({x, y, 0.5}), params);
+      node.InsertPoint(MakePoint({x, y, 0.5}), params);
     }
   }
 }
@@ -39,7 +39,7 @@ void InsertScatteredPoints(VoxelOctree& node, const VoxelMapParams& params) {
   for (double x : {0.2, 0.8}) {
     for (double y : {0.2, 0.8}) {
       for (double z : {0.2, 0.8}) {
-        node.Insert(MakePoint({x, y, z}), params);
+        node.InsertPoint(MakePoint({x, y, z}), params);
       }
     }
   }
@@ -67,7 +67,7 @@ TEST(VoxelOctree, NeverStoresMoreThanTheCap) {
   VoxelOctree node = MakeRoot();
 
   for (int i = 0; i < 100; ++i) {
-    node.Insert(MakePoint({0.5, 0.5, 0.5}), params);
+    node.InsertPoint(MakePoint({0.5, 0.5, 0.5}), params);
   }
 
   EXPECT_EQ(node.PointCount(), 10U);
@@ -138,7 +138,7 @@ TEST(VoxelOctree, PointsDescendPastASubdividedNode) {
   InsertScatteredPoints(node, params);
   node.Update(params);
 
-  node.Insert(MakePoint({0.3, 0.3, 0.3}), params);
+  node.InsertPoint(MakePoint({0.3, 0.3, 0.3}), params);
 
   EXPECT_EQ(node.PointCount(), 0U);
 }
@@ -151,7 +151,7 @@ TEST(VoxelOctree, RefitKeepsThePlaneWhenPointsStayCoplanar) {
   node.Update(params);
   ASSERT_TRUE(node.plane().has_value());
 
-  node.Insert(MakePoint({0.8, 0.8, 0.5}), params);
+  node.InsertPoint(MakePoint({0.8, 0.8, 0.5}), params);
   node.Update(params);
 
   ASSERT_TRUE(node.plane().has_value());
@@ -176,12 +176,12 @@ TEST(VoxelOctree, UpdateWithoutNewPointsLeavesThePlaneUnchanged) {
 // Six points spread along the axes, which no plane fits. They land in four of
 // the eight octants, leaving the other four without children.
 void InsertCrossPoints(VoxelOctree& node, const VoxelMapParams& params) {
-  node.Insert(MakePoint({0.1, 0.5, 0.5}), params);
-  node.Insert(MakePoint({0.9, 0.5, 0.5}), params);
-  node.Insert(MakePoint({0.5, 0.1, 0.5}), params);
-  node.Insert(MakePoint({0.5, 0.9, 0.5}), params);
-  node.Insert(MakePoint({0.5, 0.5, 0.1}), params);
-  node.Insert(MakePoint({0.5, 0.5, 0.9}), params);
+  node.InsertPoint(MakePoint({0.1, 0.5, 0.5}), params);
+  node.InsertPoint(MakePoint({0.9, 0.5, 0.5}), params);
+  node.InsertPoint(MakePoint({0.5, 0.1, 0.5}), params);
+  node.InsertPoint(MakePoint({0.5, 0.9, 0.5}), params);
+  node.InsertPoint(MakePoint({0.5, 0.5, 0.1}), params);
+  node.InsertPoint(MakePoint({0.5, 0.5, 0.9}), params);
 }
 
 TEST(FindCorrespondence, ReturnsNullWhileStillAccumulating) {
@@ -235,7 +235,7 @@ TEST(FindCorrespondence, DescendsToAChildPlane) {
   // Fill the (-x, -y, -z) octant with points coplanar at z = 0.2.
   for (double x : {0.05, 0.15, 0.25, 0.35}) {
     for (double y : {0.05, 0.15, 0.25}) {
-      node.Insert(MakePoint({x, y, 0.2}), params);
+      node.InsertPoint(MakePoint({x, y, 0.2}), params);
     }
   }
   node.Update(params);
@@ -245,6 +245,103 @@ TEST(FindCorrespondence, DescendsToAChildPlane) {
   EXPECT_NE(found, &node);
   ASSERT_TRUE(found->plane().has_value());
   EXPECT_NEAR(std::abs(found->plane()->normal.z()), 1.0, 1e-9);
+}
+
+VisualPoint MakeVisualPoint(const Eigen::Vector3d& position) {
+  VisualPoint visual_point;
+  visual_point.position = position;
+  return visual_point;
+}
+
+// Marked by its inverse exposure so tests can tell patches apart.
+VisualPatch MakeVisualPatch(double inv_exposure) {
+  VisualPatch patch;
+  patch.inv_exposure = inv_exposure;
+  return patch;
+}
+
+std::vector<const VisualPoint*> Collect(const VoxelOctree& node) {
+  std::vector<const VisualPoint*> visual_points;
+  node.CollectVisualPoints(visual_points);
+  return visual_points;
+}
+
+TEST(InsertVisualPoint, StoresThePoint) {
+  VoxelOctree node = MakeRoot();
+
+  node.InsertVisualPoint(MakeVisualPoint({0.5, 0.5, 0.5}));
+
+  const auto collected = Collect(node);
+  ASSERT_EQ(collected.size(), 1U);
+  EXPECT_EQ(collected[0]->position, Eigen::Vector3d(0.5, 0.5, 0.5));
+}
+
+TEST(InsertVisualPoint, KeepsSeveralPoints) {
+  VoxelOctree node = MakeRoot();
+
+  node.InsertVisualPoint(MakeVisualPoint({0.2, 0.2, 0.2}));
+  node.InsertVisualPoint(MakeVisualPoint({0.8, 0.8, 0.8}));
+
+  EXPECT_EQ(Collect(node).size(), 2U);
+}
+
+TEST(InsertVisualPoint, StaysAtThisNodeWhenSubdivided) {
+  const VoxelMapParams params = MakeParams();
+  VoxelOctree node = MakeRoot();
+  InsertScatteredPoints(node, params);
+  node.Update(params);
+  ASSERT_EQ(node.PointCount(), 0U);
+
+  // Visual points are flat: subdivision does not push them into children.
+  node.InsertVisualPoint(MakeVisualPoint({0.2, 0.2, 0.2}));
+
+  EXPECT_EQ(Collect(node).size(), 1U);
+}
+
+TEST(AddVisualPatch, AppendsToTheMatchingPoint) {
+  VoxelOctree node = MakeRoot();
+  node.InsertVisualPoint(MakeVisualPoint({0.2, 0.2, 0.2}));
+  node.InsertVisualPoint(MakeVisualPoint({0.8, 0.8, 0.8}));
+
+  node.AddVisualPatch({0.8, 0.8, 0.8}, MakeVisualPatch(0.7));
+
+  const auto collected = Collect(node);
+  ASSERT_EQ(collected.size(), 2U);
+  EXPECT_TRUE(collected[0]->patches.empty());
+  ASSERT_EQ(collected[1]->patches.size(), 1U);
+  EXPECT_DOUBLE_EQ(collected[1]->patches[0].inv_exposure, 0.7);
+}
+
+TEST(AddVisualPatch, AccumulatesPatchesOnOnePoint) {
+  VoxelOctree node = MakeRoot();
+  node.InsertVisualPoint(MakeVisualPoint({0.5, 0.5, 0.5}));
+
+  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.7));
+  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.6));
+
+  const auto collected = Collect(node);
+  ASSERT_EQ(collected[0]->patches.size(), 2U);
+  EXPECT_DOUBLE_EQ(collected[0]->patches[0].inv_exposure, 0.7);
+  EXPECT_DOUBLE_EQ(collected[0]->patches[1].inv_exposure, 0.6);
+}
+
+TEST(AddVisualPatch, DoesNothingWhenNoPointMatches) {
+  VoxelOctree node = MakeRoot();
+  node.InsertVisualPoint(MakeVisualPoint({0.2, 0.2, 0.2}));
+
+  node.AddVisualPatch({0.9, 0.9, 0.9}, MakeVisualPatch(0.7));
+
+  const auto collected = Collect(node);
+  ASSERT_EQ(collected.size(), 1U);
+  EXPECT_TRUE(collected[0]->patches.empty());
+}
+
+TEST(AddVisualPatch, DoesNothingOnAnEmptyNode) {
+  VoxelOctree node = MakeRoot();
+
+  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.7));
+
+  EXPECT_TRUE(Collect(node).empty());
 }
 
 }  // namespace

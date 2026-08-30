@@ -70,13 +70,18 @@
     map.max_plane_variance: 0.01
     map.max_match_distance: 0.5
 
+    visual_map.grid_size: 30
+    visual_map.min_corner_score: 50.0
+    visual_map.min_seconds_between_patches: 2.0
+    visual_map.min_patch_pixel_distance: 40.0
+
     lidar_update.max_iterations: 5
     lidar_update.point_noise_std: 0.03
     lidar_update.rotation_epsilon: 0.001
     lidar_update.position_epsilon: 0.001
 
     camera_update.max_iterations: 5
-    camera_update.patch_size: 8
+    camera_update.patch_size: 8 # Must be >= 8
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0
     camera_update.rotation_epsilon: 0.001

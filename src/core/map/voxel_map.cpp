@@ -9,8 +9,8 @@ namespace livo_slam {
 
 VoxelMap::VoxelMap(const VoxelMapParams& params) : params_(params) {}
 
-void VoxelMap::Insert(const Cloud& cloud) {
-  for (const Point& point : cloud.points) {
+void VoxelMap::InsertPoints(const std::vector<Point>& new_points) {
+  for (const Point& point : new_points) {
     const Eigen::Vector3i voxel_index =
         voxel::VoxelIndex(point.position, params_.voxel_size);
     const auto flat_index = voxel::PackKey(voxel_index);
@@ -22,11 +22,35 @@ void VoxelMap::Insert(const Cloud& cloud) {
     auto [it, inserted] =
         voxels_.try_emplace(flat_index, center, params_.voxel_size / 4.0, 0);
 
-    it->second.Insert(point, params_);
+    it->second.InsertPoint(point, params_);
   }
 
   for (auto& [_key, voxel] : voxels_) {
     voxel.Update(params_);
+  }
+}
+
+void VoxelMap::InsertVisualPoints(
+    const std::vector<VisualPoint>& new_points,
+    const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches) {
+  // Insert new visual points
+  for (const VisualPoint& point : new_points) {
+    const auto voxel_it = voxels_.find(
+        voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size)));
+    if (voxel_it == voxels_.cend()) {
+      continue;
+    }
+    voxel_it->second.InsertVisualPoint(point);
+  }
+
+  // Add new patches to existing visual points
+  for (const auto& [position, patch] : new_patches) {
+    const auto voxel_it = voxels_.find(
+        voxel::PackKey(voxel::VoxelIndex(position, params_.voxel_size)));
+    if (voxel_it == voxels_.cend()) {
+      continue;
+    }
+    voxel_it->second.AddVisualPatch(position, patch);
   }
 }
 
@@ -96,11 +120,11 @@ std::optional<Plane> VoxelMap::FindPlane(const Eigen::Vector3d& point) const {
 }
 
 std::vector<const VisualPoint*> VoxelMap::CollectVisualPoints(
-    const Cloud& cloud) const {
+    const std::vector<Point>& points) const {
   std::vector<const VisualPoint*> visual_points;
 
   std::unordered_set<std::int64_t> seen;
-  for (const auto& point : cloud.points) {
+  for (const auto& point : points) {
     const auto key =
         voxel::PackKey(voxel::VoxelIndex(point.position, params_.voxel_size));
     if (!seen.insert(key).second) continue;
