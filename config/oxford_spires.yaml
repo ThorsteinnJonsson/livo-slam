@@ -1,0 +1,88 @@
+/**:
+  ros__parameters:
+    imu_topic: /imu/imu
+    lidar_topic: /os1_cloud_node1/points
+    camera_topic: /left/image_raw
+
+    ros.output_trajectory: true
+    ros.trajectory_path: /workspace/evaluation/trajectory.tum
+
+    # Pipeline config
+    imu_init.window_size: 200
+    imu_init.gravity_magnitude: 9.81
+    imu_init.max_accel_var: 0.05
+    imu_init.max_gyro_var: 0.01
+    initial_state.rotation_std: 0.017
+    initial_state.position_std: 0.001
+    initial_state.velocity_std: 0.01
+    initial_state.gyro_bias_std: 0.001
+    initial_state.accel_bias_std: 0.01
+    initial_state.gravity_std: 0.01
+    initial_state.inv_exposure_std: 0.1
+
+    process_noise.gyro_noise_std: 0.3162
+    process_noise.accel_noise_std: 0.3162
+    process_noise.gyro_random_walk_std: 0.01
+    process_noise.accel_random_walk_std: 0.01
+    process_noise.inv_exposure_random_walk_std: 0.1
+
+    # prettier-ignore
+    lidar.T_body_lidar: [
+      1.0, 0.0, 0.0, -0.050,
+      0.0, 1.0, 0.0,  0.000,
+      0.0, 0.0, 1.0,  0.055,
+      0.0, 0.0, 0.0,  1.000]
+
+    # prettier-ignore
+    camera.T_body_cam: [
+       0.02183084, -0.01312053,  0.99967558,  0.00552943,
+       0.99975965,  0.00230088, -0.02180248, -0.12431302,
+      -0.00201407,  0.99991127,  0.01316761,  0.01614686,
+       0.00000000,  0.00000000,  0.00000000,  1.00000000]
+
+    camera.width: 752
+    camera.height: 480
+    camera.fx: 425.0258563372763
+    camera.fy: 426.7976260903337
+    camera.cx: 386.0151866550880
+    camera.cy: 241.9130336743440
+    camera.k1: -0.288105327549552
+    camera.k2: 0.074578284234601
+    camera.p1: 0.0007784489598138802
+    camera.p2: -0.0002277853975035461
+
+    # t_imu = t_cam + time_shift
+    camera.time_shift: -0.0199575325817
+
+    viz.enabled: true
+    viz.grpc_url: rerun+http://127.0.0.1:9877/proxy
+
+    lidar.min_range: 1.0
+    lidar.max_range: 60.0
+    lidar.voxel_leaf_size: 0.1
+
+    # t_imu = t_lidar_header + time_shift
+    lidar.time_shift: -0.1
+
+    map.voxel_size: 0.5
+    map.layer_init_points: [5, 5, 5]
+    map.max_points_per_voxel: 50
+    map.max_plane_variance: 0.01
+    map.max_match_distance: 0.5
+
+    visual_map.grid_size: 30
+    visual_map.min_corner_score: 50.0
+    visual_map.min_seconds_between_patches: 2.0
+    visual_map.min_patch_pixel_distance: 40.0
+
+    lidar_update.max_iterations: 5
+    lidar_update.point_noise_std: 0.03
+    lidar_update.rotation_epsilon: 0.001
+    lidar_update.position_epsilon: 0.001
+
+    camera_update.max_iterations: 5
+    camera_update.patch_size: 8 # Must be >= 8
+    camera_update.intensity_noise_std: 10.0
+    camera_update.outlier_threshold: 1000.0
+    camera_update.rotation_epsilon: 0.001
+    camera_update.position_epsilon: 0.001
