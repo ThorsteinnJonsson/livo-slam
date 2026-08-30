@@ -8,10 +8,12 @@
 
 ## Goals
 
-- Fully implement livo-odometry inspired by FAST-LIVO2
+- (Done) Fully implement livo-odometry inspired by FAST-LIVO2
 - Support multi-lidar, multi-camera
 
 ## TODO
 
-- Implement slide-function in local map
+- Add real color to pointcloud
 - Limit patches to 30 per visual point
+- Implement slide-function in local map
+- Test more datasets
