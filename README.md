@@ -38,10 +38,10 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 
 In VS Code, F5 builds and launches under the debugger.
 
-Topics come from `config/livo_slam.yaml`:
+Topics come from `config/default.yaml`:
 
 ```bash
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/default.yaml
 ```
 
 ## Visualization
@@ -50,7 +50,7 @@ Rerun runs entirely inside the container. Start the viewer, then the node:
 
 ```bash
 rerun --serve-web --port 9877 --web-viewer-port 9091 &
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/default.yaml
 ```
 
 Open the URL that `rerun --serve-web` prints on startup. It carries the gRPC

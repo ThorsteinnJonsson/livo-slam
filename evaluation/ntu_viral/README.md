@@ -13,7 +13,7 @@ world-frame motion against body-frame motion.
 Produce a trajectory, then evaluate:
 
 ```bash
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml \
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/default.yaml \
     -p ros.output_trajectory:=true &
 ros2 bag play /data/ntu_viral/eee_03_mcap
 
