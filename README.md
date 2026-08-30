@@ -86,6 +86,9 @@ the visualizer as no-ops.
 ```bash
 docker build --target runtime -t livo-slam:runtime .
 docker run --rm --network=host --ipc=host livo-slam:runtime
+# Or with a specific config instead of the default one
+docker run --rm --network=host --ipc=host \
+  -e LIVO_SLAM_CONFIG=/opt/livo-slam/config/ntu_viral.yaml livo-slam:runtime
 ```
 
 The image entrypoint starts the Rerun viewer, waits for it, prints the viewer
@@ -107,6 +110,7 @@ replays a recording against the node itself:
 
 ```bash
 docker run --rm --network=host --ipc=host -v $PWD/datasets:/data \
+  -e LIVO_SLAM_CONFIG=/opt/livo-slam/config/ntu_viral.yaml \
   -e LIVO_SLAM_BAG=/data/ntu_viral/eee_03_mcap livo-slam:runtime
 ```
 
