@@ -16,6 +16,7 @@
 
 - Test more datasets
   - Oxford Spires
+    - Support for fish-eye camera model
 - Add real color to pointcloud
 - Refactoring
   - Helper for transforming points (instead of a for-loop everywhere)
