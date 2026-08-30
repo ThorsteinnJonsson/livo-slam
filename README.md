@@ -101,7 +101,7 @@ replays a recording against the node itself:
 
 ```bash
 docker run --rm --network=host --ipc=host -v $PWD/datasets:/data \
-  -e LIVO_SLAM_BAG=/data/eee_03_mcap livo-slam:runtime
+  -e LIVO_SLAM_BAG=/data/ntu_viral/eee_03_mcap livo-slam:runtime
 ```
 
 The launcher waits for the node to appear in `ros2 node list` before starting

@@ -3,7 +3,7 @@
 # the "play bag" VS Code task; stopped by killing its process group.
 set -euo pipefail
 
-BAG="${1:-/workspace/datasets/eee_03_mcap}"
+BAG="${1:-/workspace/datasets/ntu_viral/eee_03_mcap}"
 
 echo "$$" >/tmp/livo_bag.pid
 echo "waiting for /livo_slam"
