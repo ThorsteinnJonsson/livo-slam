@@ -6,13 +6,69 @@
 
 namespace livo_slam {
 
+namespace impl {
+
+Eigen::Vector2d DistortRadTan(const CameraParams& params,
+                              const Eigen::Vector2d& normalized) {
+  // Distortion model is (following OpenCV's coefficient order, r² = x² + y²):
+  //   radial = 1 + k1*r² + k2*r⁴
+  //   x_d = x*radial + 2*p1*x*y + p2*(r² + 2x²)
+  //   y_d = y*radial + p1*(r² + 2y²) + 2*p2*x*y
+
+  const double x = normalized.x();
+  const double y = normalized.y();
+  const double r2 = x * x + y * y;
+  const double radial = 1.0 + params.k1 * r2 + params.k2 * r2 * r2;
+
+  const double x_d =
+      x * radial + 2.0 * params.p1 * x * y + params.p2 * (r2 + 2.0 * x * x);
+  const double y_d =
+      y * radial + 2.0 * params.p2 * x * y * params.p1 * (r2 + 2.0 * y * y);
+
+  return {x_d, y_d};
+}
+
+Eigen::Matrix2d RadTanDistortionJacobian(const CameraParams& params,
+                                         const Eigen::Vector2d& normalized) {
+  // Derivative of DistortRadTan, with a = k1 + 2*k2*r²:
+  //   d(x_d)/dx = radial + 2x²a + 2*p1*y + 6*p2*x
+  //   d(x_d)/dy = 2xy*a + 2*p1*x + 2*p2*y
+  //   d(y_d)/dx = 2xy*a + 2*p1*x + 2*p2*y
+  //   d(y_d)/dy = radial + 2y²a + 6*p1*y + 2*p2*x
+  // The factors of 6 come from differentiating p2*(r² + 2x²), where both the r²
+  // and the 2x² contribute: 2*p2*x + 4*p2*x.
+
+  const double x = normalized.x();
+  const double y = normalized.y();
+  const double r2 = x * x + y * y;
+  const double radial = 1.0 + params.k1 * r2 + params.k2 * r2 * r2;
+  const double a = params.k1 + 2.0 * params.k2 * r2;
+
+  // Symmetric, so the cross term is shared.
+  const double cross =
+      2.0 * x * y * a + 2.0 * params.p1 * x + 2.0 * params.p2 * y;
+
+  Eigen::Matrix2d jacobian;
+  jacobian(0, 0) =
+      radial + 2.0 * x * x * a + 2.0 * params.p1 * y + 6.0 * params.p2 * x;
+  jacobian(0, 1) = cross;
+  jacobian(1, 0) = cross;
+  jacobian(1, 1) =
+      radial + 2.0 * y * y * a + 6.0 * params.p1 * y + 2.0 * params.p2 * x;
+  return jacobian;
+}
+
+}  // namespace impl
+
 std::optional<Eigen::Vector2d> Project(const CameraParams& params,
                                        const Eigen::Vector3d& point_cam) {
   if (point_cam.z() <= 0.0) return std::nullopt;
 
-  const double u = params.fx * point_cam.x() / point_cam.z() + params.cx;
-  const double v = params.fy * point_cam.y() / point_cam.z() + params.cy;
-  return Eigen::Vector2d(u, v);
+  const Eigen::Vector2d distorted = impl::DistortRadTan(
+      params, {point_cam.x() / point_cam.z(), point_cam.y() / point_cam.z()});
+
+  return Eigen::Vector2d(params.fx * distorted.x() + params.cx,
+                         params.fy * distorted.y() + params.cy);
 }
 
 bool InFrame(const cv::Mat& image, const Eigen::Vector2d& pixel,
@@ -44,20 +100,35 @@ double SampleBilinear(const cv::Mat& image, const Eigen::Vector2d& pixel) {
 
 Eigen::Matrix<double, 2, 3> ProjectionJacobian(
     const CameraParams& params, const Eigen::Vector3d& point_cam) {
-  // Projection is:
-  // u = fx * x/z + cx
-  // v = fy * y/z + cy
-  // So jacobian is:
-  // [ fx/z,    0, -fx*x/z² ]
-  // [    0, fy/z, -fy*y/z² ]
+  // For pinhole with distortion, the projection is:
+  // u = fx * x_distorted + cx
+  // v = fy * y_distorted + cy
+  // where (x_distorted, y_distorted) = Distort(x, y), see DistortionJacobian.
+  //
+  // By the chain rule the jacobian is diag(fx, fy) * D * N, where D is
+  // d(x_distorted, y_distorted)/d(x, y) and N is d(x, y)/d(point_cam):
+  // N = 1/z * [ 1, 0, -x ]
+  //           [ 0, 1, -y ]
+  //
+  // With zero distortion D is the identity and this reduces to the pinhole
+  // form:
+  // [ fx/z,    0, -fx*x/z ]
+  // [    0, fy/z, -fy*y/z ]
 
-  Eigen::Matrix<double, 2, 3> jacobian = Eigen::Matrix<double, 2, 3>::Zero();
-  jacobian(0, 0) = params.fx / point_cam.z();
-  jacobian(1, 1) = params.fy / point_cam.z();
-  jacobian(0, 2) = -params.fx * point_cam.x() / (point_cam.z() * point_cam.z());
-  jacobian(1, 2) = -params.fy * point_cam.y() / (point_cam.z() * point_cam.z());
+  const double inverse_z = 1.0 / point_cam.z();
+  const Eigen::Vector2d normalized(point_cam.x() * inverse_z,
+                                   point_cam.y() * inverse_z);
 
-  return jacobian;
+  // clang-format off
+  Eigen::Matrix<double, 2, 3> normalization;
+  normalization << 1.0, 0.0, -normalized.x(),
+                   0.0, 1.0, -normalized.y();
+  normalization *= inverse_z;
+  // clang-format on
+
+  const Eigen::Vector2d focal(params.fx, params.fy);
+  return focal.asDiagonal() *
+         impl::RadTanDistortionJacobian(params, normalized) * normalization;
 }
 
 }  // namespace livo_slam
