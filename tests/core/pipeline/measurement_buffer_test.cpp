@@ -150,5 +150,34 @@ TEST(MeasurementBuffer, OverlappingScansKeepAllPoints) {
   EXPECT_EQ(group->cloud.points.size(), expected);
 }
 
+
+TEST(MeasurementBuffer, DropsImagesOlderThanTheOldestPoint) {
+  MeasurementBuffer buffer;
+
+  // Only the second image can be bracketed by points.
+  buffer.PushImage(MakeImage(0.5));
+  buffer.PushImage(MakeImage(1.5));
+  buffer.PushPoints(MakePoints(1.0, 2.0, 10));
+  PushImuRange(buffer, 1.0, 2.0, 0.1);
+
+  const auto group = buffer.PopMeasureGroup();
+
+  ASSERT_TRUE(group.has_value());
+  EXPECT_DOUBLE_EQ(group->image.timestamp, 1.5);
+}
+
+TEST(MeasurementBuffer, KeepsImagesTheOldestPointStillCovers) {
+  MeasurementBuffer buffer;
+
+  buffer.PushImage(MakeImage(1.0));
+  buffer.PushPoints(MakePoints(1.0, 2.0, 10));
+  PushImuRange(buffer, 1.0, 2.0, 0.1);
+
+  const auto group = buffer.PopMeasureGroup();
+
+  ASSERT_TRUE(group.has_value());
+  EXPECT_DOUBLE_EQ(group->image.timestamp, 1.0);
+}
+
 }  // namespace
 }  // namespace livo_slam
