@@ -1,8 +1,8 @@
 /**:
   ros__parameters:
-    imu_topic: /alphasense_driver_ros/imu
-    lidar_topic: /hesai/pandar
-    camera_topic: /alphasense_driver_ros/cam0/debayered/image/compressed
+    ros.imu_topic: /alphasense_driver_ros/imu
+    ros.lidar_topic: /hesai/pandar
+    ros.camera_topic: /alphasense_driver_ros/cam0/debayered/image/compressed
 
     ros.output_trajectory: true
     ros.trajectory_path: /workspace/evaluation/trajectory.tum
