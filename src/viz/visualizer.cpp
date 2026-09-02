@@ -36,8 +36,10 @@ struct Visualizer::Impl {
                              static_cast<float>(point.position.y()),
                              static_cast<float>(point.position.z()));
     }
-    rec.log(entity,
-            rerun::Points3D(positions).with_colors(color).with_radii(0.075F));
+
+    rec.log_static(
+        entity,
+        rerun::Points3D(positions).with_colors(color).with_radii(0.075F));
   }
 };
 
