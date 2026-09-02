@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <cv_bridge/cv_bridge.hpp>
+#include <optional>
 #include <print>
 #include <sensor_msgs/image_encodings.hpp>
 #include <stdexcept>
@@ -17,6 +18,17 @@ namespace {
 double ToSeconds(const builtin_interfaces::msg::Time& stamp) {
   return static_cast<double>(stamp.sec) +
          static_cast<double>(stamp.nanosec) * 1e-9;
+}
+
+std::optional<std::uint32_t> FindField(const sensor_msgs::msg::PointCloud2& msg,
+                                       std::string_view name,
+                                       std::uint8_t datatype) {
+  for (const auto& field : msg.fields) {
+    if (field.name == name && field.datatype == datatype) {
+      return field.offset;
+    }
+  }
+  return std::nullopt;
 }
 
 std::uint32_t FieldOffset(const sensor_msgs::msg::PointCloud2& msg,
@@ -84,7 +96,16 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
   const std::uint32_t z_offset = FieldOffset(msg, "z", PointField::FLOAT32);
   const std::uint32_t intensity_offset =
       FieldOffset(msg, "intensity", PointField::FLOAT32);
-  const std::uint32_t time_offset = FieldOffset(msg, "t", PointField::UINT32);
+
+  // Ouster stamps 't' in nanoseconds from the header, Hesai stamps 'timestamp'
+  // in absolute seconds.
+  const auto offset_time = FindField(msg, "t", PointField::UINT32);
+  const auto absolute_time = FindField(msg, "timestamp", PointField::FLOAT64);
+  if (!offset_time && !absolute_time) {
+    throw std::runtime_error(
+        "point cloud has neither a 't' (uint32) nor a 'timestamp' (float64) "
+        "field");
+  }
 
   const double base_time = ToSeconds(msg.header.stamp) + time_shift;
 
@@ -111,8 +132,10 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
       point.position = Eigen::Vector3d(x, y, z);
       point.intensity = ReadAt<float>(raw, intensity_offset);
       point.timestamp =
-          base_time +
-          static_cast<double>(ReadAt<std::uint32_t>(raw, time_offset)) * 1e-9;
+          offset_time ? base_time + static_cast<double>(ReadAt<std::uint32_t>(
+                                        raw, *offset_time)) *
+                                        1e-9
+                      : ReadAt<double>(raw, *absolute_time) + time_shift;
       points.push_back(point);
     }
   }

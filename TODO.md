@@ -16,6 +16,7 @@
 
 - Test more datasets
   - Oxford Spires
+    - Parsing the messages (Hesai points, CompressedImage)
     - Support for fish-eye camera model
 - Add real color to pointcloud
 - Refactoring
