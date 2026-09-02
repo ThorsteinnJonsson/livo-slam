@@ -36,13 +36,19 @@ Build output goes to `build/<preset>/`. Tests are controlled by
 ./build/relwithdebinfo/src/livo_slam # Or debug/release
 ```
 
-In VS Code, F5 builds and launches under the debugger.
+In VS Code, F5 builds and launches under the debugger, asking which dataset to
+run first.
 
-Topics come from `config/livo_slam.yaml`:
+`config/` holds one file per dataset. Topics and calibration come from the one
+you pass:
 
 ```bash
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/ntu_viral.yaml
 ```
+
+`scripts/select_dataset.sh ntu_viral/eee_03_mcap` points `config/active.yaml`
+and `datasets/active` at a dataset and sequence. This is what F5 uses, and what
+`scripts/play_bag.sh` plays when given no argument.
 
 ## Visualization
 
@@ -50,7 +56,7 @@ Rerun runs entirely inside the container. Start the viewer, then the node:
 
 ```bash
 rerun --serve-web --port 9877 --web-viewer-port 9091 &
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/default.yaml
 ```
 
 Open the URL that `rerun --serve-web` prints on startup. It carries the gRPC
@@ -80,6 +86,9 @@ the visualizer as no-ops.
 ```bash
 docker build --target runtime -t livo-slam:runtime .
 docker run --rm --network=host --ipc=host livo-slam:runtime
+# Or with a specific config instead of the default one
+docker run --rm --network=host --ipc=host \
+  -e LIVO_SLAM_CONFIG=/opt/livo-slam/config/ntu_viral.yaml livo-slam:runtime
 ```
 
 The image entrypoint starts the Rerun viewer, waits for it, prints the viewer
@@ -101,7 +110,8 @@ replays a recording against the node itself:
 
 ```bash
 docker run --rm --network=host --ipc=host -v $PWD/datasets:/data \
-  -e LIVO_SLAM_BAG=/data/eee_03_mcap livo-slam:runtime
+  -e LIVO_SLAM_CONFIG=/opt/livo-slam/config/ntu_viral.yaml \
+  -e LIVO_SLAM_BAG=/data/ntu_viral/eee_03_mcap livo-slam:runtime
 ```
 
 The launcher waits for the node to appear in `ros2 node list` before starting

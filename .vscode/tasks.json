@@ -24,6 +24,12 @@
       }
     },
     {
+      "label": "select dataset",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/select_dataset.sh ${input:sequence}",
+      "problemMatcher": []
+    },
+    {
       "label": "start rerun",
       "type": "shell",
       "command": "setsid bash -c 'echo $$ > /tmp/livo_rerun.pid; exec rerun --serve-web --port 9877 --web-viewer-port 9091' > /tmp/livo_rerun.log 2>&1 & for i in $(seq 1 40); do curl -sf -o /dev/null http://127.0.0.1:9091/ && break; sleep 0.25; done",
@@ -46,6 +52,7 @@
       "dependsOrder": "sequence",
       "dependsOn": [
         "build",
+        "select dataset",
         "start rerun",
         "open viewer"
       ],
@@ -68,6 +75,7 @@
       "dependsOrder": "sequence",
       "dependsOn": [
         "build",
+        "select dataset",
         "start rerun",
         "play bag",
         "open viewer"
@@ -81,6 +89,27 @@
         "stop bag"
       ],
       "problemMatcher": []
+    },
+    {
+      "label": "build and select dataset",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "build",
+        "select dataset"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "sequence",
+      "type": "pickString",
+      "description": "Dataset / sequence",
+      "options": [
+        "ntu_viral/eee_03_mcap",
+        "oxford_spires/2024-05-20-bodleian-library-02"
+      ],
+      "default": "ntu_viral/eee_03_mcap"
     }
   ]
 }

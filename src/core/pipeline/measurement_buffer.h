@@ -31,6 +31,9 @@ class MeasurementBuffer {
   void Shutdown();
 
  private:
+  // Images older than the oldest point can never be grouped, since
+  // FormGroup needs points on both sides of the image time.
+  void DropStaleImages() REQUIRES(mutex_);
   bool CanFormGroup() const REQUIRES(mutex_);
   MeasureGroup FormGroup() REQUIRES(mutex_);
 

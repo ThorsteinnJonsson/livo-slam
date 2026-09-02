@@ -15,11 +15,11 @@ LivoSlamNode::LivoSlamNode()
       pipeline_(config_),
       visualizer_(config_.viz) {
   const auto imu_topic =
-      declare_parameter<std::string>("imu_topic", "/imu/imu");
-  const auto lidar_topic =
-      declare_parameter<std::string>("lidar_topic", "/os1_cloud_node1/points");
+      declare_parameter<std::string>("ros.imu_topic", "/imu/imu");
+  const auto lidar_topic = declare_parameter<std::string>(
+      "ros.lidar_topic", "/os1_cloud_node1/points");
   const auto camera_topic =
-      declare_parameter<std::string>("camera_topic", "/left/image_raw");
+      declare_parameter<std::string>("ros.camera_topic", "/left/image_raw");
 
   imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
       imu_topic, rclcpp::QoS(rclcpp::KeepLast(2000)).reliable(),
@@ -33,11 +33,22 @@ LivoSlamNode::LivoSlamNode()
         LidarCallback(msg);
       });
 
-  camera_sub_ = create_subscription<sensor_msgs::msg::Image>(
-      camera_topic, rclcpp::QoS(rclcpp::KeepLast(50)).reliable(),
-      [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-        CameraCallback(msg);
-      });
+  const auto camera_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
+  if (declare_parameter<bool>("ros.camera_compressed", false)) {
+    compressed_camera_sub_ =
+        create_subscription<sensor_msgs::msg::CompressedImage>(
+            camera_topic, camera_qos,
+            [this](
+                const sensor_msgs::msg::CompressedImage::ConstSharedPtr& msg) {
+              CompressedCameraCallback(msg);
+            });
+  } else {
+    camera_sub_ = create_subscription<sensor_msgs::msg::Image>(
+        camera_topic, camera_qos,
+        [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
+          CameraCallback(msg);
+        });
+  }
 
   if (declare_parameter<bool>("ros.output_trajectory", false)) {
     const auto path = declare_parameter<std::string>(
@@ -281,6 +292,11 @@ void LivoSlamNode::LidarCallback(
 
 void LivoSlamNode::CameraCallback(
     const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
+  buffer_.PushImage(ToImageFrame(*msg, config_.camera.time_shift));
+}
+
+void LivoSlamNode::CompressedCameraCallback(
+    const sensor_msgs::msg::CompressedImage::ConstSharedPtr& msg) {
   buffer_.PushImage(ToImageFrame(*msg, config_.camera.time_shift));
 }
 

@@ -1,8 +1,9 @@
 /**:
   ros__parameters:
-    imu_topic: /imu/imu
-    lidar_topic: /os1_cloud_node1/points
-    camera_topic: /left/image_raw
+    ros.imu_topic: /alphasense_driver_ros/imu
+    ros.lidar_topic: /hesai/pandar
+    ros.camera_topic: /alphasense_driver_ros/cam0/debayered/image/compressed
+    ros.camera_compressed: true
 
     ros.output_trajectory: true
     ros.trajectory_path: /workspace/evaluation/trajectory.tum
@@ -26,33 +27,42 @@
     process_noise.accel_random_walk_std: 0.01
     process_noise.inv_exposure_random_walk_std: 0.1
 
+    # Derived from calibration/cam-lidar-imu.yaml, which gives T_cam_imu and
+    # T_cam_lidar for cam0. T_body_lidar = T_imu_cam * T_cam_lidar.
     # prettier-ignore
     lidar.T_body_lidar: [
-      1.0, 0.0, 0.0, -0.050,
-      0.0, 1.0, 0.0,  0.000,
-      0.0, 0.0, 1.0,  0.055,
-      0.0, 0.0, 0.0,  1.000]
+      -0.01663805, -0.99986011,  0.00171598, -0.00065171,
+       0.99985526, -0.01663181,  0.00358431, -0.01551034,
+      -0.00355527,  0.00177537,  0.99999210,  0.08463266,
+       0.00000000,  0.00000000,  0.00000000,  1.00000000]
 
     # prettier-ignore
     camera.T_body_cam: [
-       0.02183084, -0.01312053,  0.99967558,  0.00552943,
-       0.99975965,  0.00230088, -0.02180248, -0.12431302,
-      -0.00201407,  0.99991127,  0.01316761,  0.01614686,
+      -0.99996258, -0.00531093,  0.00682875, -0.00035616,
+      -0.00685019,  0.00402822, -0.99996842, -0.06901176,
+       0.00528325, -0.99997778, -0.00406445,  0.00483975,
        0.00000000,  0.00000000,  0.00000000,  1.00000000]
 
-    camera.width: 752
-    camera.height: 480
-    camera.fx: 425.0258563372763
-    camera.fy: 426.7976260903337
-    camera.cx: 386.0151866550880
-    camera.cy: 241.9130336743440
-    camera.k1: -0.288105327549552
-    camera.k2: 0.074578284234601
-    camera.p1: 0.0007784489598138802
-    camera.p2: -0.0002277853975035461
+    camera.width: 1440
+    camera.height: 1080
+    camera.fx: 698.1692094914263
+    camera.fy: 698.5147584873237
+    camera.cx: 712.7646767255006
+    camera.cy: 560.5751284820508
 
+    # cam0 is equidistant (Kannala-Brandt), not radtan, and the undistorter
+    # only implements radtan. Left at zero until the fisheye path exists.
+    # Real coefficients k1..k4 from calibration/cam0.yaml:
+    #   -0.04114225009462773, -0.002421765984053725,
+    #    0.003400355152679783, -0.0018518822347983275
+    camera.k1: 0.0
+    camera.k2: 0.0
+    camera.p1: 0.0
+    camera.p2: 0.0
+
+    # Cameras and IMU are FPGA-synchronised in the Alphasense unit.
     # t_imu = t_cam + time_shift
-    camera.time_shift: -0.0199575325817
+    camera.time_shift: 0.0
 
     viz.enabled: true
     viz.grpc_url: rerun+http://127.0.0.1:9877/proxy
@@ -61,8 +71,10 @@
     lidar.max_range: 60.0
     lidar.voxel_leaf_size: 0.1
 
+    # The Hesai header is stamped at the start of the scan and its per-point
+    # timestamps are absolute, so no scan-period correction is needed.
     # t_imu = t_lidar_header + time_shift
-    lidar.time_shift: -0.1
+    lidar.time_shift: 0.0
 
     map.voxel_size: 0.5
     map.layer_init_points: [5, 5, 5]
@@ -80,7 +92,7 @@
     lidar_update.rotation_epsilon: 0.001
     lidar_update.position_epsilon: 0.001
 
-    camera_update.max_iterations: 5
+    camera_update.max_iterations: 0 # Turned off until fisheye model is implemented.
     camera_update.patch_size: 8 # Must be >= 8
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0

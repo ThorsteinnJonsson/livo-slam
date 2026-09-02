@@ -13,9 +13,9 @@ world-frame motion against body-frame motion.
 Produce a trajectory, then evaluate:
 
 ```bash
-./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/livo_slam.yaml \
+./build/relwithdebinfo/src/livo_slam --ros-args --params-file config/default.yaml \
     -p ros.output_trajectory:=true &
-ros2 bag play /data/eee_03_mcap
+ros2 bag play /data/ntu_viral/eee_03_mcap
 
 cd evaluation/ntu_viral
 ./apply_prism_offset.py ../trajectory.tum eee_03/estimate_gt.tum

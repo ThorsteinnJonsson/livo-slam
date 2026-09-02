@@ -4,6 +4,7 @@
 #include <fstream>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -30,6 +31,8 @@ class LivoSlamNode : public rclcpp::Node {
   void ImuCallback(const sensor_msgs::msg::Imu::ConstSharedPtr& msg);
   void LidarCallback(const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg);
   void CameraCallback(const sensor_msgs::msg::Image::ConstSharedPtr& msg);
+  void CompressedCameraCallback(
+      const sensor_msgs::msg::CompressedImage::ConstSharedPtr& msg);
 
   void Run();
   void WriteTrajectory(const Estimate& estimate);
@@ -46,6 +49,8 @@ class LivoSlamNode : public rclcpp::Node {
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr lidar_sub_;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr camera_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr
+      compressed_camera_sub_;
 
   std::ofstream trajectory_file_;
 

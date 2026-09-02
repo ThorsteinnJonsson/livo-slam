@@ -3,7 +3,7 @@ set -euo pipefail
 
 GRPC_PORT="${RERUN_GRPC_PORT:-9877}"
 WEB_PORT="${RERUN_WEB_PORT:-9091}"
-CONFIG="${LIVO_SLAM_CONFIG:-/opt/livo-slam/config/livo_slam.yaml}"
+CONFIG="${LIVO_SLAM_CONFIG:-/opt/livo-slam/config/default.yaml}"
 BAG="${LIVO_SLAM_BAG:-}"
 
 rerun --serve-web --port "${GRPC_PORT}" --web-viewer-port "${WEB_PORT}" \

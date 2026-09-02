@@ -36,8 +36,10 @@ struct Visualizer::Impl {
                              static_cast<float>(point.position.y()),
                              static_cast<float>(point.position.z()));
     }
-    rec.log(entity,
-            rerun::Points3D(positions).with_colors(color).with_radii(0.075F));
+
+    rec.log_static(
+        entity,
+        rerun::Points3D(positions).with_colors(color).with_radii(0.075F));
   }
 };
 
@@ -142,7 +144,7 @@ void Visualizer::LogMap(const std::vector<Plane>& planes) {
     colors.push_back(HeightColor(plane.centroid.z()));
   }
 
-  impl_->rec.log(
+  impl_->rec.log_static(
       "world/map",
       rerun::Points3D(positions).with_colors(colors).with_radii(0.075F));
 }

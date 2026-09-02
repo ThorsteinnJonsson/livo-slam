@@ -84,8 +84,10 @@ void MeasurementBuffer::PushImage(ImageFrame image) {
 
 std::optional<MeasureGroup> MeasurementBuffer::PopMeasureGroup() {
   MutexLock lock(mutex_);
+  DropStaleImages();
   while (!shutdown_ && !CanFormGroup()) {
     cv_.wait(lock.native());
+    DropStaleImages();
   }
   if (!CanFormGroup()) {
     return std::nullopt;
@@ -99,6 +101,13 @@ void MeasurementBuffer::Shutdown() {
     shutdown_ = true;
   }
   cv_.notify_all();
+}
+
+void MeasurementBuffer::DropStaleImages() {
+  while (!images_.empty() && !points_.empty() &&
+         images_.front().timestamp < points_.front().timestamp) {
+    images_.pop_front();
+  }
 }
 
 bool MeasurementBuffer::CanFormGroup() const {
