@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -20,5 +21,8 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
                             double time_shift);
 
 ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift);
+
+ImageFrame ToImageFrame(const sensor_msgs::msg::CompressedImage& msg,
+                        double time_shift);
 
 }  // namespace livo_slam

@@ -154,4 +154,17 @@ ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift) {
   return frame;
 }
 
+ImageFrame ToImageFrame(const sensor_msgs::msg::CompressedImage& msg,
+                        double time_shift) {
+  ImageFrame frame;
+  frame.timestamp = ToSeconds(msg.header.stamp) + time_shift;
+  try {
+    frame.image =
+        cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8)->image;
+  } catch (const cv_bridge::Exception& error) {
+    std::println("cannot decode {} to mono8: {}", msg.format, error.what());
+  }
+  return frame;
+}
+
 }  // namespace livo_slam
