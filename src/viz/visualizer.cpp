@@ -144,7 +144,7 @@ void Visualizer::LogMap(const std::vector<Plane>& planes) {
     colors.push_back(HeightColor(plane.centroid.z()));
   }
 
-  impl_->rec.log(
+  impl_->rec.log_static(
       "world/map",
       rerun::Points3D(positions).with_colors(colors).with_radii(0.075F));
 }
