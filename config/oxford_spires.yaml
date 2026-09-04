@@ -90,7 +90,7 @@
     lidar_update.rotation_epsilon: 0.001
     lidar_update.position_epsilon: 0.001
 
-    camera_update.max_iterations: 0 # Turned off until fisheye model is implemented.
+    camera_update.max_iterations: 5
     camera_update.patch_size: 8 # Must be >= 8
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0
