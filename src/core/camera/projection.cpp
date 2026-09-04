@@ -3,7 +3,6 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
-#include <stdexcept>
 #include <variant>
 
 namespace livo_slam {
