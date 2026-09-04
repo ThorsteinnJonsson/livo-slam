@@ -8,7 +8,7 @@
 
 namespace livo_slam {
 
-namespace impl {
+namespace {
 
 Eigen::Vector2d Distort(const RadTanParams& params,
                         const Eigen::Vector2d& normalized) {
@@ -28,11 +28,6 @@ Eigen::Vector2d Distort(const RadTanParams& params,
       y * radial + params.p1 * (r2 + 2.0 * y * y) + 2.0 * params.p2 * x * y;
 
   return {x_d, y_d};
-}
-
-Eigen::Vector2d Distort(const EquidistantParams& /*params*/,
-                        const Eigen::Vector2d& /*normalized*/) {
-  throw std::runtime_error("equidistant distortion is not implemented");
 }
 
 Eigen::Matrix2d DistortionJacobian(const RadTanParams& params,
@@ -63,27 +58,32 @@ Eigen::Matrix2d DistortionJacobian(const RadTanParams& params,
   return jacobian;
 }
 
+Eigen::Vector2d Distort(const EquidistantParams& /*params*/,
+                        const Eigen::Vector2d& /*normalized*/) {
+  throw std::runtime_error("equidistant distortion is not implemented");
+}
+
 Eigen::Matrix2d DistortionJacobian(const EquidistantParams& /*params*/,
                                    const Eigen::Vector2d& /*normalized*/) {
   throw std::runtime_error("equidistant distortion is not implemented");
 }
 
-}  // namespace impl
-
-Eigen::Vector2d Distort(const CameraParams& params,
-                        const Eigen::Vector2d& normalized) {
-  return std::visit(
-      [&normalized](const auto& distortion) {
-        return impl::Distort(distortion, normalized);
-      },
-      params.distortion);
-}
+}  // namespace
 
 Eigen::Matrix2d DistortionJacobian(const CameraParams& params,
                                    const Eigen::Vector2d& normalized) {
   return std::visit(
       [&normalized](const auto& distortion) {
-        return impl::DistortionJacobian(distortion, normalized);
+        return DistortionJacobian(distortion, normalized);
+      },
+      params.distortion);
+}
+
+Eigen::Vector2d Distort(const CameraParams& params,
+                        const Eigen::Vector2d& normalized) {
+  return std::visit(
+      [&normalized](const auto& distortion) {
+        return Distort(distortion, normalized);
       },
       params.distortion);
 }

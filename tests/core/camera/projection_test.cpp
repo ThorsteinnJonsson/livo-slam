@@ -2,6 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <opencv2/calib3d.hpp>
+#include <vector>
+
 namespace livo_slam {
 namespace {
 
@@ -207,107 +210,67 @@ TEST(ProjectionJacobian, DepthColumnOpposesTheOffsetFromTheCenter) {
   EXPECT_GT(jacobian(1, 2), 0.0);
 }
 
-TEST(DistortRadTan, ZeroCoefficientsLeaveThePointUnchanged) {
-  const Eigen::Vector2d normalized(0.3, -0.2);
+// OpenCV is the reference for the model, so this pins the coefficient order and
+// the polynomial rather than checking the code against itself.
+TEST(Project, MatchesOpenCvProjectPoints) {
+  const CameraParams params = MakeDistortedParams();
+  const RadTanParams radtan = MakeRadTan();
 
-  const Eigen::Vector2d distorted = impl::Distort(RadTanParams{}, normalized);
-
-  EXPECT_DOUBLE_EQ(distorted.x(), normalized.x());
-  EXPECT_DOUBLE_EQ(distorted.y(), normalized.y());
-}
-
-TEST(DistortRadTan, TheOpticalAxisIsAFixedPoint) {
-  const Eigen::Vector2d distorted = impl::Distort(MakeRadTan(), {0.0, 0.0});
-
-  EXPECT_DOUBLE_EQ(distorted.x(), 0.0);
-  EXPECT_DOUBLE_EQ(distorted.y(), 0.0);
-}
-
-TEST(DistortRadTan, PurelyRadialDistortionKeepsTheDirection) {
-  RadTanParams params = MakeRadTan();
-  params.p1 = 0.0;
-  params.p2 = 0.0;
-  const Eigen::Vector2d normalized(0.3, -0.2);
-
-  const Eigen::Vector2d distorted = impl::Distort(params, normalized);
-
-  // Only the magnitude changes, so the cross product with the original is zero.
-  EXPECT_NEAR(normalized.x() * distorted.y() - normalized.y() * distorted.x(),
-              0.0, 1e-15);
-}
-
-TEST(DistortRadTan, NegativeK1PullsPointsTowardTheCenter) {
-  RadTanParams params;
-  params.k1 = -0.3;
-  const Eigen::Vector2d normalized(0.4, 0.3);
-
-  const Eigen::Vector2d distorted = impl::Distort(params, normalized);
-
-  EXPECT_LT(distorted.norm(), normalized.norm());
-}
-
-TEST(DistortRadTan, GrowsWithDistanceFromTheCenter) {
-  const RadTanParams params = MakeRadTan();
-
-  const Eigen::Vector2d near(0.1, 0.0);
-  const Eigen::Vector2d far(0.5, 0.0);
-
-  const double near_shift = (impl::Distort(params, near) - near).norm();
-  const double far_shift = (impl::Distort(params, far) - far).norm();
-
-  EXPECT_GT(far_shift, near_shift);
-}
-
-TEST(RadTanDistortionJacobian, ZeroCoefficientsGiveTheIdentity) {
-  const Eigen::Matrix2d jacobian =
-      impl::DistortionJacobian(RadTanParams{}, {0.3, -0.2});
-
-  EXPECT_TRUE(jacobian.isApprox(Eigen::Matrix2d::Identity()));
-}
-
-TEST(RadTanDistortionJacobian, IsSymmetric) {
-  const Eigen::Matrix2d jacobian =
-      impl::DistortionJacobian(MakeRadTan(), {0.3, -0.2});
-
-  EXPECT_DOUBLE_EQ(jacobian(0, 1), jacobian(1, 0));
-}
-
-TEST(RadTanDistortionJacobian, MatchesFiniteDifferences) {
-  const RadTanParams params = MakeRadTan();
-  const double eps = 1e-7;
-
-  for (const Eigen::Vector2d& point :
-       {Eigen::Vector2d(0.0, 0.0), Eigen::Vector2d(0.3, -0.2),
-        Eigen::Vector2d(-0.6, 0.5), Eigen::Vector2d(0.8, 0.8)}) {
-    const Eigen::Matrix2d analytic = impl::DistortionJacobian(params, point);
-
-    Eigen::Matrix2d numeric;
-    for (int axis = 0; axis < 2; ++axis) {
-      Eigen::Vector2d plus = point;
-      Eigen::Vector2d minus = point;
-      plus(axis) += eps;
-      minus(axis) -= eps;
-      numeric.col(axis) =
-          (impl::Distort(params, plus) - impl::Distort(params, minus)) /
-          (2.0 * eps);
+  std::vector<cv::Point3d> object;
+  std::vector<Eigen::Vector3d> points;
+  for (const double z : {1.5, 4.2, 12.0}) {
+    for (const double x : {-2.0, -0.4, 0.0, 0.7, 2.5}) {
+      for (const double y : {-1.3, 0.0, 1.8}) {
+        points.emplace_back(x, y, z);
+        object.emplace_back(x, y, z);
+      }
     }
+  }
 
-    EXPECT_LT((analytic - numeric).cwiseAbs().maxCoeff(), 1e-6)
-        << "at " << point.transpose();
+  const cv::Mat camera_matrix =
+      (cv::Mat_<double>(3, 3) << params.fx, 0.0, params.cx, 0.0, params.fy,
+       params.cy, 0.0, 0.0, 1.0);
+  const cv::Mat distortion =
+      (cv::Mat_<double>(1, 4) << radtan.k1, radtan.k2, radtan.p1, radtan.p2);
+  std::vector<cv::Point2d> expected;
+  cv::projectPoints(object, cv::Vec3d::all(0.0), cv::Vec3d::all(0.0),
+                    camera_matrix, distortion, expected);
+
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    const auto pixel = Project(params, points[i]);
+    ASSERT_TRUE(pixel.has_value());
+    EXPECT_NEAR(pixel->x(), expected[i].x, 1e-9) << "point " << i;
+    EXPECT_NEAR(pixel->y(), expected[i].y, 1e-9) << "point " << i;
   }
 }
 
-TEST(Project, AppliesDistortionBeforeTheIntrinsics) {
-  const CameraParams params = MakeDistortedParams();
-  const Eigen::Vector3d point(0.7, -1.3, 4.2);
+TEST(Project, NegativeRadialDistortionPullsPointsTowardTheCenter) {
+  CameraParams params = MakeParams();
+  params.distortion = RadTanParams{-0.3, 0.0, 0.0, 0.0};
+  const Eigen::Vector3d point(1.2, 0.9, 3.0);
 
-  const auto pixel = Project(params, point);
+  const auto distorted = Project(params, point);
+  const auto undistorted = Project(MakeParams(), point);
 
-  const Eigen::Vector2d distorted =
-      Distort(params, {point.x() / point.z(), point.y() / point.z()});
-  ASSERT_TRUE(pixel.has_value());
-  EXPECT_DOUBLE_EQ(pixel->x(), params.fx * distorted.x() + params.cx);
-  EXPECT_DOUBLE_EQ(pixel->y(), params.fy * distorted.y() + params.cy);
+  ASSERT_TRUE(distorted.has_value());
+  ASSERT_TRUE(undistorted.has_value());
+  const Eigen::Vector2d center(params.cx, params.cy);
+  EXPECT_LT((*distorted - center).norm(), (*undistorted - center).norm());
+}
+
+TEST(Project, DistortionGrowsWithDistanceFromTheCenter) {
+  const CameraParams distorted = MakeDistortedParams();
+  const CameraParams pinhole = MakeParams();
+
+  const Eigen::Vector3d near(0.3, 0.0, 3.0);
+  const Eigen::Vector3d far(1.5, 0.0, 3.0);
+
+  const double near_shift =
+      (*Project(distorted, near) - *Project(pinhole, near)).norm();
+  const double far_shift =
+      (*Project(distorted, far) - *Project(pinhole, far)).norm();
+
+  EXPECT_GT(far_shift, near_shift);
 }
 
 TEST(Project, DistortionDoesNotMoveThePrincipalPoint) {
@@ -343,6 +306,17 @@ TEST(ProjectionJacobian, MatchesFiniteDifferencesWithDistortion) {
     EXPECT_LT((analytic - numeric).cwiseAbs().maxCoeff(), 1e-3)
         << "at " << point.transpose();
   }
+}
+
+// The distortion jacobian is symmetric, so the projection cross terms differ
+// only by the focal lengths.
+TEST(ProjectionJacobian, CrossTermsDifferOnlyByFocalLength) {
+  const CameraParams params = MakeDistortedParams();
+
+  const Eigen::Matrix<double, 2, 3> jacobian =
+      ProjectionJacobian(params, {0.7, -1.3, 4.2});
+
+  EXPECT_NEAR(jacobian(0, 1) / params.fx, jacobian(1, 0) / params.fy, 1e-15);
 }
 
 TEST(ProjectionJacobian, DistortionIntroducesCrossTerms) {
