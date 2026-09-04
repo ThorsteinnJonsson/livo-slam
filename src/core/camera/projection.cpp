@@ -35,8 +35,6 @@ Eigen::Matrix2d RadTanDistortionJacobian(const CameraParams& params,
   //   d(x_d)/dy = 2xy*a + 2*p1*x + 2*p2*y
   //   d(y_d)/dx = 2xy*a + 2*p1*x + 2*p2*y
   //   d(y_d)/dy = radial + 2y²a + 6*p1*y + 2*p2*x
-  // The factors of 6 come from differentiating p2*(r² + 2x²), where both the r²
-  // and the 2x² contribute: 2*p2*x + 4*p2*x.
 
   const double x = normalized.x();
   const double y = normalized.y();
