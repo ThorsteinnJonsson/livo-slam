@@ -210,6 +210,97 @@ TEST(ProjectionJacobian, DepthColumnOpposesTheOffsetFromTheCenter) {
   EXPECT_GT(jacobian(1, 2), 0.0);
 }
 
+TEST(Distort, ZeroCoefficientsLeaveThePointUnchanged) {
+  const Eigen::Vector2d normalized(0.3, -0.2);
+
+  const Eigen::Vector2d distorted = Distort(MakeParams(), normalized);
+
+  EXPECT_DOUBLE_EQ(distorted.x(), normalized.x());
+  EXPECT_DOUBLE_EQ(distorted.y(), normalized.y());
+}
+
+TEST(Distort, TheOpticalAxisIsAFixedPoint) {
+  const Eigen::Vector2d distorted = Distort(MakeDistortedParams(), {0.0, 0.0});
+
+  EXPECT_DOUBLE_EQ(distorted.x(), 0.0);
+  EXPECT_DOUBLE_EQ(distorted.y(), 0.0);
+}
+
+TEST(Distort, PurelyRadialDistortionKeepsTheDirection) {
+  CameraParams params = MakeParams();
+  RadTanParams radtan = MakeRadTan();
+  radtan.p1 = 0.0;
+  radtan.p2 = 0.0;
+  params.distortion = radtan;
+  const Eigen::Vector2d normalized(0.3, -0.2);
+
+  const Eigen::Vector2d distorted = Distort(params, normalized);
+
+  // Only the magnitude changes, so the cross product with the original is zero.
+  EXPECT_NEAR(normalized.x() * distorted.y() - normalized.y() * distorted.x(),
+              0.0, 1e-15);
+}
+
+TEST(Distort, NegativeK1PullsPointsTowardTheCenter) {
+  CameraParams params = MakeParams();
+  params.distortion = RadTanParams{-0.3, 0.0, 0.0, 0.0};
+  const Eigen::Vector2d normalized(0.4, 0.3);
+
+  const Eigen::Vector2d distorted = Distort(params, normalized);
+
+  EXPECT_LT(distorted.norm(), normalized.norm());
+}
+
+TEST(Distort, GrowsWithDistanceFromTheCenter) {
+  const CameraParams params = MakeDistortedParams();
+
+  const Eigen::Vector2d near(0.1, 0.0);
+  const Eigen::Vector2d far(0.5, 0.0);
+
+  const double near_shift = (Distort(params, near) - near).norm();
+  const double far_shift = (Distort(params, far) - far).norm();
+
+  EXPECT_GT(far_shift, near_shift);
+}
+
+TEST(DistortionJacobian, ZeroCoefficientsGiveTheIdentity) {
+  const Eigen::Matrix2d jacobian =
+      DistortionJacobian(MakeParams(), {0.3, -0.2});
+
+  EXPECT_TRUE(jacobian.isApprox(Eigen::Matrix2d::Identity()));
+}
+
+TEST(DistortionJacobian, IsSymmetric) {
+  const Eigen::Matrix2d jacobian =
+      DistortionJacobian(MakeDistortedParams(), {0.3, -0.2});
+
+  EXPECT_DOUBLE_EQ(jacobian(0, 1), jacobian(1, 0));
+}
+
+TEST(DistortionJacobian, MatchesFiniteDifferences) {
+  const CameraParams params = MakeDistortedParams();
+  const double eps = 1e-7;
+
+  for (const Eigen::Vector2d& point :
+       {Eigen::Vector2d(0.0, 0.0), Eigen::Vector2d(0.3, -0.2),
+        Eigen::Vector2d(-0.6, 0.5), Eigen::Vector2d(0.8, 0.8)}) {
+    const Eigen::Matrix2d analytic = DistortionJacobian(params, point);
+
+    Eigen::Matrix2d numeric;
+    for (int axis = 0; axis < 2; ++axis) {
+      Eigen::Vector2d plus = point;
+      Eigen::Vector2d minus = point;
+      plus(axis) += eps;
+      minus(axis) -= eps;
+      numeric.col(axis) =
+          (Distort(params, plus) - Distort(params, minus)) / (2.0 * eps);
+    }
+
+    EXPECT_LT((analytic - numeric).cwiseAbs().maxCoeff(), 1e-6)
+        << "at " << point.transpose();
+  }
+}
+
 // OpenCV is the reference for the model, so this pins the coefficient order and
 // the polynomial rather than checking the code against itself.
 TEST(Project, MatchesOpenCvProjectPoints) {
