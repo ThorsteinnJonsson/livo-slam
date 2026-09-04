@@ -91,21 +91,61 @@ Eigen::Vector2d Distort(const EquidistantParams& params,
   return {x_d, y_d};
 }
 
-Eigen::Matrix2d DistortionJacobian(const EquidistantParams& /*params*/,
-                                   const Eigen::Vector2d& /*normalized*/) {
-  // Derivative of equidistant Distort. Writing the scale as s = theta_d/r, the
-  // distorted point is s*(x, y), so the jacobian is
+Eigen::Matrix2d DistortionJacobian(const EquidistantParams& params,
+                                   const Eigen::Vector2d& normalized) {
+  // Derivative of equidistant Distort.
+  // Only the distance from center changes, so
+  // (x_d, y_d) = s · (x, y)  with s = θd / r.
+  // Here s depends on x and y through r, hence
+  // ∂s/∂x = (ds/dr)·(∂r/∂x) = (ds/dr)·(x/r)
+  // ∂s/∂y = (ds/dr)·(∂r/∂y) = (ds/dr)·(y/r)
+  // which gives
+  // ∂x_d/∂x = s + (ds/dr)·(x²/r)      ∂x_d/∂y =     (ds/dr)·(xy/r)
+  // ∂y_d/∂x =     (ds/dr)·(xy/r)      ∂y_d/∂y = s + (ds/dr)·(y²/r)
+  // which equals
   //   s*I + (ds/dr / r) * [ x²  xy ]
   //                       [ xy  y² ]
-  // with
-  //   d(theta_d)/d(theta) = 1 + 3*k1*theta² + 5*k2*theta⁴ + 7*k3*theta⁶
-  //                           + 9*k4*theta⁸
-  //   d(theta_d)/dr = d(theta_d)/d(theta) / (1 + r²)
-  //   ds/dr = (d(theta_d)/dr * r - theta_d) / r²
-  // The outer product is symmetric, as in the radtan case. On the optical axis
-  // the limit is the identity, so r below a small epsilon returns it directly.
+  // Then
+  // θd = θ(1 + k1*θ² + k2*θ⁴ + k3*θ⁶ + k4*θ⁸)   (Kannala-Brandt)
+  // dθd/dθ  = 1 + 3k1*θ² + 5k2*θ⁴ + 7k3*θ⁶ + 9k4*θ⁸
+  // dθd/dr  = (dθd/dθ) / (1 + r²)
+  // ds/dr   = ((dθd/dr)·r − θd) / r²
 
-  throw std::runtime_error("equidistant distortion is not implemented");
+  const double x = normalized.x();
+  const double y = normalized.y();
+  const double r = std::sqrt(x * x + y * y);
+  if (r < 1e-6) {
+    // Both the scale and its derivative are 0/0 here; the limit is no change.
+    return Eigen::Matrix2d::Identity();
+  }
+
+  const double theta = std::atan(r);
+  const double theta2 = theta * theta;
+  const double theta4 = theta2 * theta2;
+  const double theta6 = theta4 * theta2;
+  const double theta8 = theta4 * theta4;
+
+  const double theta_distorted =
+      theta * (1.0 + params.k1 * theta2 + params.k2 * theta4 +
+               params.k3 * theta6 + params.k4 * theta8);
+  const double d_distorted_d_theta =
+      1.0 + 3.0 * params.k1 * theta2 + 5.0 * params.k2 * theta4 +
+      7.0 * params.k3 * theta6 + 9.0 * params.k4 * theta8;
+  const double d_distorted_d_r = d_distorted_d_theta / (1.0 + r * r);
+
+  const double scale = theta_distorted / r;
+  const double d_scale_d_r = (d_distorted_d_r * r - theta_distorted) / (r * r);
+  const double outer_scale = d_scale_d_r / r;
+
+  // Symmetric, so the cross term is shared.
+  const double cross = outer_scale * x * y;
+
+  Eigen::Matrix2d jacobian;
+  jacobian(0, 0) = scale + outer_scale * x * x;
+  jacobian(0, 1) = cross;
+  jacobian(1, 0) = cross;
+  jacobian(1, 1) = scale + outer_scale * y * y;
+  return jacobian;
 }
 
 }  // namespace
