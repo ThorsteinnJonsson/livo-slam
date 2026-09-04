@@ -17,7 +17,11 @@
 - Test more datasets
   - Oxford Spires
     - (Done) Parsing the messages (Hesai points, CompressedImage)
-    - Support for fish-eye camera model
+    - (Done) Support for fish-eye camera model
+      - Change pinhole to undistort in projection (+ Jacobian changes)
+      - Implement fisheye
+      - Check results
+- Visualize visual points + camera stream
 - Validate camera update
 - Add real color to pointcloud
 - Refactoring

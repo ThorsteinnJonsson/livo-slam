@@ -50,15 +50,13 @@
     camera.cx: 712.7646767255006
     camera.cy: 560.5751284820508
 
-    # cam0 is equidistant (Kannala-Brandt), not radtan, and the undistorter
-    # only implements radtan. Left at zero until the fisheye path exists.
-    # Real coefficients k1..k4 from calibration/cam0.yaml:
-    #   -0.04114225009462773, -0.002421765984053725,
-    #    0.003400355152679783, -0.0018518822347983275
-    camera.k1: 0.0
-    camera.k2: 0.0
-    camera.p1: 0.0
-    camera.p2: 0.0
+    # cam0 is equidistant (Kannala-Brandt), coefficients from
+    # calibration/cam0.yaml in the dataset.
+    camera.distortion_model: equidistant
+    camera.equidistant.k1: -0.04114225009462773
+    camera.equidistant.k2: -0.002421765984053725
+    camera.equidistant.k3: 0.003400355152679783
+    camera.equidistant.k4: -0.0018518822347983275
 
     # Cameras and IMU are FPGA-synchronised in the Alphasense unit.
     # t_imu = t_cam + time_shift
@@ -92,7 +90,7 @@
     lidar_update.rotation_epsilon: 0.001
     lidar_update.position_epsilon: 0.001
 
-    camera_update.max_iterations: 0 # Turned off until fisheye model is implemented.
+    camera_update.max_iterations: 5
     camera_update.patch_size: 8 # Must be >= 8
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0
