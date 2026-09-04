@@ -9,7 +9,6 @@ add_library(
     lidar/downsample.cpp
     lidar/range_filter.cpp
     camera/projection.cpp
-    camera/undistort.cpp
     map/voxel_octree.cpp
     map/voxel_map.cpp
     map/camera/visual_point_selection.cpp

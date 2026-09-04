@@ -18,7 +18,6 @@ namespace livo_slam {
 LivoPipeline::LivoPipeline(PipelineConfig config)
     : config_(config),
       imu_initializer_(config_.init),
-      image_undistorter_(config_.camera),
       local_map_(config_.map) {}
 
 ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
@@ -113,16 +112,13 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       }
 
       //   Camera
-      //   Undistort image
-      const auto undistorted_image = image_undistorter_.Undistort(image);
-
       // Build image pyramid
       std::vector<cv::Mat> image_pyramid;
       static_assert(CameraUpdateParams::kPyramidLevels > 0,
                     "Pyramid level needs to be larger than zero.");
       constexpr int kMaxLevel =  // Minus one because 0-based index
           static_cast<int>(CameraUpdateParams::kPyramidLevels - 1);
-      cv::buildPyramid(undistorted_image.image, image_pyramid, kMaxLevel);
+      cv::buildPyramid(image.image, image_pyramid, kMaxLevel);
 
       // Collect candidate visual points
       std::vector<Point> points_world = downsampled.points;
