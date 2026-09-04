@@ -23,7 +23,7 @@ Eigen::Vector2d DistortRadTan(const CameraParams& params,
   const double x_d =
       x * radial + 2.0 * params.p1 * x * y + params.p2 * (r2 + 2.0 * x * x);
   const double y_d =
-      y * radial + 2.0 * params.p2 * x * y * params.p1 * (r2 + 2.0 * y * y);
+      y * radial + params.p1 * (r2 + 2.0 * y * y) + 2.0 * params.p2 * x * y;
 
   return {x_d, y_d};
 }
