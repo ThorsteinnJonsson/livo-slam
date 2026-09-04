@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <opencv2/calib3d.hpp>
 #include <vector>
 
@@ -28,6 +29,29 @@ RadTanParams MakeRadTan() {
   params.k2 = 0.074578284234601;
   params.p1 = 0.0007784489598138802;
   params.p2 = -0.0002277853975035461;
+  return params;
+}
+
+// The Oxford Spires cam0 coefficients.
+EquidistantParams MakeEquidistant() {
+  EquidistantParams params;
+  params.k1 = -0.04114225009462773;
+  params.k2 = -0.002421765984053725;
+  params.k3 = 0.003400355152679783;
+  params.k4 = -0.0018518822347983275;
+  return params;
+}
+
+// A fisheye camera with those coefficients.
+CameraParams MakeFisheyeParams() {
+  CameraParams params;
+  params.width = 1440;
+  params.height = 1080;
+  params.fx = 698.1692094914263;
+  params.fy = 698.5147584873237;
+  params.cx = 712.7646767255006;
+  params.cy = 560.5751284820508;
+  params.distortion = MakeEquidistant();
   return params;
 }
 
@@ -416,6 +440,158 @@ TEST(ProjectionJacobian, DistortionIntroducesCrossTerms) {
 
   EXPECT_NE(jacobian(0, 1), 0.0);
   EXPECT_NE(jacobian(1, 0), 0.0);
+}
+
+// --- equidistant ------------------------------------------------------------
+
+TEST(Distort, EquidistantTheOpticalAxisIsAFixedPoint) {
+  const Eigen::Vector2d distorted = Distort(MakeFisheyeParams(), {0.0, 0.0});
+
+  EXPECT_DOUBLE_EQ(distorted.x(), 0.0);
+  EXPECT_DOUBLE_EQ(distorted.y(), 0.0);
+}
+
+TEST(Distort, EquidistantKeepsTheDirection) {
+  const Eigen::Vector2d normalized(0.6, -0.4);
+
+  const Eigen::Vector2d distorted = Distort(MakeFisheyeParams(), normalized);
+
+  // Purely radial, so the cross product with the original is zero.
+  EXPECT_NEAR(normalized.x() * distorted.y() - normalized.y() * distorted.x(),
+              0.0, 1e-15);
+}
+
+// Even with no coefficients the model is not the identity: theta = atan(r)
+// compresses the periphery. This is what separates it from radtan.
+TEST(Distort, EquidistantWithZeroCoefficientsIsStillAtan) {
+  CameraParams params = MakeFisheyeParams();
+  params.distortion = EquidistantParams{};
+  const Eigen::Vector2d normalized(0.9, 0.0);
+
+  const Eigen::Vector2d distorted = Distort(params, normalized);
+
+  EXPECT_DOUBLE_EQ(distorted.x(), std::atan(0.9));
+  EXPECT_LT(distorted.norm(), normalized.norm());
+}
+
+TEST(DistortionJacobian, EquidistantIsTheIdentityOnTheOpticalAxis) {
+  const Eigen::Matrix2d jacobian =
+      DistortionJacobian(MakeFisheyeParams(), {0.0, 0.0});
+
+  EXPECT_TRUE(jacobian.isApprox(Eigen::Matrix2d::Identity()));
+}
+
+TEST(DistortionJacobian, EquidistantIsSymmetric) {
+  const Eigen::Matrix2d jacobian =
+      DistortionJacobian(MakeFisheyeParams(), {0.6, -0.4});
+
+  EXPECT_DOUBLE_EQ(jacobian(0, 1), jacobian(1, 0));
+}
+
+// Along the ray the matrix scales by d(theta_d)/dr, which checks ds/dr rather
+// than just the overall shape.
+TEST(DistortionJacobian, EquidistantRadialEigenvalueIsTheAngleDerivative) {
+  const EquidistantParams equidistant = MakeEquidistant();
+  const Eigen::Vector2d point(0.6, -0.4);
+
+  const double r = point.norm();
+  const double theta = std::atan(r);
+  const double theta2 = theta * theta;
+  const double theta4 = theta2 * theta2;
+  const double expected =
+      (1.0 + 3.0 * equidistant.k1 * theta2 + 5.0 * equidistant.k2 * theta4 +
+       7.0 * equidistant.k3 * theta4 * theta2 +
+       9.0 * equidistant.k4 * theta4 * theta4) /
+      (1.0 + r * r);
+
+  const Eigen::Vector2d scaled =
+      DistortionJacobian(MakeFisheyeParams(), point) * point;
+
+  EXPECT_NEAR(scaled.x(), expected * point.x(), 1e-12);
+  EXPECT_NEAR(scaled.y(), expected * point.y(), 1e-12);
+}
+
+TEST(DistortionJacobian, EquidistantMatchesFiniteDifferences) {
+  const CameraParams params = MakeFisheyeParams();
+  const double eps = 1e-7;
+
+  for (const Eigen::Vector2d& point :
+       {Eigen::Vector2d(0.05, 0.0), Eigen::Vector2d(0.3, -0.2),
+        Eigen::Vector2d(-0.9, 0.7), Eigen::Vector2d(1.4, 1.4)}) {
+    const Eigen::Matrix2d analytic = DistortionJacobian(params, point);
+
+    Eigen::Matrix2d numeric;
+    for (int axis = 0; axis < 2; ++axis) {
+      Eigen::Vector2d plus = point;
+      Eigen::Vector2d minus = point;
+      plus(axis) += eps;
+      minus(axis) -= eps;
+      numeric.col(axis) =
+          (Distort(params, plus) - Distort(params, minus)) / (2.0 * eps);
+    }
+
+    EXPECT_LT((analytic - numeric).cwiseAbs().maxCoeff(), 1e-6)
+        << "at " << point.transpose();
+  }
+}
+
+// OpenCV is the reference for the model, so this pins the coefficient order and
+// the polynomial rather than checking the code against itself.
+TEST(Project, EquidistantMatchesOpenCvFisheye) {
+  const CameraParams params = MakeFisheyeParams();
+  const EquidistantParams equidistant = MakeEquidistant();
+
+  std::vector<cv::Point3d> object;
+  std::vector<Eigen::Vector3d> points;
+  for (const double z : {1.5, 5.0, 15.0}) {
+    for (const double x : {-1.5, -0.3, 0.0, 0.9, 2.0}) {
+      for (const double y : {-1.0, 0.0, 1.2}) {
+        points.emplace_back(x, y, z);
+        object.emplace_back(x, y, z);
+      }
+    }
+  }
+
+  const cv::Mat camera_matrix =
+      (cv::Mat_<double>(3, 3) << params.fx, 0.0, params.cx, 0.0, params.fy,
+       params.cy, 0.0, 0.0, 1.0);
+  const cv::Mat distortion = (cv::Mat_<double>(1, 4) << equidistant.k1,
+                              equidistant.k2, equidistant.k3, equidistant.k4);
+  std::vector<cv::Point2d> expected;
+  cv::fisheye::projectPoints(object, expected, cv::Vec3d::all(0.0),
+                             cv::Vec3d::all(0.0), camera_matrix, distortion);
+
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    const auto pixel = Project(params, points[i]);
+    ASSERT_TRUE(pixel.has_value());
+    EXPECT_NEAR(pixel->x(), expected[i].x, 1e-9) << "point " << i;
+    EXPECT_NEAR(pixel->y(), expected[i].y, 1e-9) << "point " << i;
+  }
+}
+
+TEST(ProjectionJacobian, EquidistantMatchesFiniteDifferences) {
+  const CameraParams params = MakeFisheyeParams();
+  const double eps = 1e-6;
+
+  for (const Eigen::Vector3d& point :
+       {Eigen::Vector3d(0.0, 0.0, 3.0), Eigen::Vector3d(0.7, -1.3, 4.2),
+        Eigen::Vector3d(-2.0, 1.5, 2.0), Eigen::Vector3d(1.0, 1.0, 12.0)}) {
+    const Eigen::Matrix<double, 2, 3> analytic =
+        ProjectionJacobian(params, point);
+
+    Eigen::Matrix<double, 2, 3> numeric;
+    for (int axis = 0; axis < 3; ++axis) {
+      Eigen::Vector3d plus = point;
+      Eigen::Vector3d minus = point;
+      plus(axis) += eps;
+      minus(axis) -= eps;
+      numeric.col(axis) =
+          (*Project(params, plus) - *Project(params, minus)) / (2.0 * eps);
+    }
+
+    EXPECT_LT((analytic - numeric).cwiseAbs().maxCoeff(), 1e-3)
+        << "at " << point.transpose();
+  }
 }
 
 }  // namespace
