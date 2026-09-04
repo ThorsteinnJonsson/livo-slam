@@ -11,13 +11,25 @@ namespace livo_slam {
 
 namespace impl {
 // Apply the lens distortion to a normalized image point (x/z, y/z).
-Eigen::Vector2d DistortRadTan(const CameraParams& params,
-                              const Eigen::Vector2d& normalized);
+Eigen::Vector2d Distort(const RadTanParams& params,
+                        const Eigen::Vector2d& normalized);
+Eigen::Vector2d Distort(const EquidistantParams& params,
+                        const Eigen::Vector2d& normalized);
 
 // Derivative of Distort with respect to the normalized point.
-Eigen::Matrix2d RadTanDistortionJacobian(const CameraParams& params,
-                                         const Eigen::Vector2d& normalized);
+Eigen::Matrix2d DistortionJacobian(const RadTanParams& params,
+                                   const Eigen::Vector2d& normalized);
+Eigen::Matrix2d DistortionJacobian(const EquidistantParams& params,
+                                   const Eigen::Vector2d& normalized);
 }  // namespace impl
+
+// Apply the configured lens distortion to a normalized image point.
+Eigen::Vector2d Distort(const CameraParams& params,
+                        const Eigen::Vector2d& normalized);
+
+// Derivative of Distort with respect to the normalized point.
+Eigen::Matrix2d DistortionJacobian(const CameraParams& params,
+                                   const Eigen::Vector2d& normalized);
 
 // Project 3D point (in camera frame) to pixel coordinates.
 std::optional<Eigen::Vector2d> Project(const CameraParams& params,

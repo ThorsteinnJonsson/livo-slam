@@ -17,14 +17,21 @@ CameraParams MakeParams() {
   return params;
 }
 
-// The same camera with its real distortion coefficients. MakeParams leaves
-// them at zero, which is the undistorted special case.
-CameraParams MakeDistortedParams() {
-  CameraParams params = MakeParams();
+// The real NTU VIRAL distortion coefficients. MakeParams leaves them at zero,
+// which is the undistorted special case.
+RadTanParams MakeRadTan() {
+  RadTanParams params;
   params.k1 = -0.288105327549552;
   params.k2 = 0.074578284234601;
   params.p1 = 0.0007784489598138802;
   params.p2 = -0.0002277853975035461;
+  return params;
+}
+
+// The same camera with those coefficients applied.
+CameraParams MakeDistortedParams() {
+  CameraParams params = MakeParams();
+  params.distortion = MakeRadTan();
   return params;
 }
 
@@ -203,28 +210,26 @@ TEST(ProjectionJacobian, DepthColumnOpposesTheOffsetFromTheCenter) {
 TEST(DistortRadTan, ZeroCoefficientsLeaveThePointUnchanged) {
   const Eigen::Vector2d normalized(0.3, -0.2);
 
-  const Eigen::Vector2d distorted =
-      impl::DistortRadTan(MakeParams(), normalized);
+  const Eigen::Vector2d distorted = impl::Distort(RadTanParams{}, normalized);
 
   EXPECT_DOUBLE_EQ(distorted.x(), normalized.x());
   EXPECT_DOUBLE_EQ(distorted.y(), normalized.y());
 }
 
 TEST(DistortRadTan, TheOpticalAxisIsAFixedPoint) {
-  const Eigen::Vector2d distorted =
-      impl::DistortRadTan(MakeDistortedParams(), {0.0, 0.0});
+  const Eigen::Vector2d distorted = impl::Distort(MakeRadTan(), {0.0, 0.0});
 
   EXPECT_DOUBLE_EQ(distorted.x(), 0.0);
   EXPECT_DOUBLE_EQ(distorted.y(), 0.0);
 }
 
 TEST(DistortRadTan, PurelyRadialDistortionKeepsTheDirection) {
-  CameraParams params = MakeDistortedParams();
+  RadTanParams params = MakeRadTan();
   params.p1 = 0.0;
   params.p2 = 0.0;
   const Eigen::Vector2d normalized(0.3, -0.2);
 
-  const Eigen::Vector2d distorted = impl::DistortRadTan(params, normalized);
+  const Eigen::Vector2d distorted = impl::Distort(params, normalized);
 
   // Only the magnitude changes, so the cross product with the original is zero.
   EXPECT_NEAR(normalized.x() * distorted.y() - normalized.y() * distorted.x(),
@@ -232,50 +237,49 @@ TEST(DistortRadTan, PurelyRadialDistortionKeepsTheDirection) {
 }
 
 TEST(DistortRadTan, NegativeK1PullsPointsTowardTheCenter) {
-  CameraParams params = MakeParams();
+  RadTanParams params;
   params.k1 = -0.3;
   const Eigen::Vector2d normalized(0.4, 0.3);
 
-  const Eigen::Vector2d distorted = impl::DistortRadTan(params, normalized);
+  const Eigen::Vector2d distorted = impl::Distort(params, normalized);
 
   EXPECT_LT(distorted.norm(), normalized.norm());
 }
 
 TEST(DistortRadTan, GrowsWithDistanceFromTheCenter) {
-  const CameraParams params = MakeDistortedParams();
+  const RadTanParams params = MakeRadTan();
 
   const Eigen::Vector2d near(0.1, 0.0);
   const Eigen::Vector2d far(0.5, 0.0);
 
-  const double near_shift = (impl::DistortRadTan(params, near) - near).norm();
-  const double far_shift = (impl::DistortRadTan(params, far) - far).norm();
+  const double near_shift = (impl::Distort(params, near) - near).norm();
+  const double far_shift = (impl::Distort(params, far) - far).norm();
 
   EXPECT_GT(far_shift, near_shift);
 }
 
 TEST(RadTanDistortionJacobian, ZeroCoefficientsGiveTheIdentity) {
   const Eigen::Matrix2d jacobian =
-      impl::RadTanDistortionJacobian(MakeParams(), {0.3, -0.2});
+      impl::DistortionJacobian(RadTanParams{}, {0.3, -0.2});
 
   EXPECT_TRUE(jacobian.isApprox(Eigen::Matrix2d::Identity()));
 }
 
 TEST(RadTanDistortionJacobian, IsSymmetric) {
   const Eigen::Matrix2d jacobian =
-      impl::RadTanDistortionJacobian(MakeDistortedParams(), {0.3, -0.2});
+      impl::DistortionJacobian(MakeRadTan(), {0.3, -0.2});
 
   EXPECT_DOUBLE_EQ(jacobian(0, 1), jacobian(1, 0));
 }
 
 TEST(RadTanDistortionJacobian, MatchesFiniteDifferences) {
-  const CameraParams params = MakeDistortedParams();
+  const RadTanParams params = MakeRadTan();
   const double eps = 1e-7;
 
   for (const Eigen::Vector2d& point :
        {Eigen::Vector2d(0.0, 0.0), Eigen::Vector2d(0.3, -0.2),
         Eigen::Vector2d(-0.6, 0.5), Eigen::Vector2d(0.8, 0.8)}) {
-    const Eigen::Matrix2d analytic =
-        impl::RadTanDistortionJacobian(params, point);
+    const Eigen::Matrix2d analytic = impl::DistortionJacobian(params, point);
 
     Eigen::Matrix2d numeric;
     for (int axis = 0; axis < 2; ++axis) {
@@ -283,9 +287,9 @@ TEST(RadTanDistortionJacobian, MatchesFiniteDifferences) {
       Eigen::Vector2d minus = point;
       plus(axis) += eps;
       minus(axis) -= eps;
-      numeric.col(axis) = (impl::DistortRadTan(params, plus) -
-                           impl::DistortRadTan(params, minus)) /
-                          (2.0 * eps);
+      numeric.col(axis) =
+          (impl::Distort(params, plus) - impl::Distort(params, minus)) /
+          (2.0 * eps);
     }
 
     EXPECT_LT((analytic - numeric).cwiseAbs().maxCoeff(), 1e-6)
@@ -299,8 +303,8 @@ TEST(Project, AppliesDistortionBeforeTheIntrinsics) {
 
   const auto pixel = Project(params, point);
 
-  const Eigen::Vector2d distorted = impl::DistortRadTan(
-      params, {point.x() / point.z(), point.y() / point.z()});
+  const Eigen::Vector2d distorted =
+      Distort(params, {point.x() / point.z(), point.y() / point.z()});
   ASSERT_TRUE(pixel.has_value());
   EXPECT_DOUBLE_EQ(pixel->x(), params.fx * distorted.x() + params.cx);
   EXPECT_DOUBLE_EQ(pixel->y(), params.fy * distorted.y() + params.cy);

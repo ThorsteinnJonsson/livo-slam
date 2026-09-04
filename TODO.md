@@ -31,7 +31,7 @@
 - Implement slide-function in local map
 - Multi-camera, multi-lidar support
 
-Phase 1 — radtan into the projection, on NTU
+(Done) Phase 1 — radtan into the projection, on NTU
 
 1. Project: take x/z, y/z, apply the radtan polynomial (k1, k2 radial, p1, p2
    tangential), then scale by fx, fy and add cx, cy. Keep the z <= 0 rejection.

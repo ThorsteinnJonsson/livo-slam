@@ -3,13 +3,15 @@
 #include <cmath>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <variant>
 
 namespace livo_slam {
 
 namespace impl {
 
-Eigen::Vector2d DistortRadTan(const CameraParams& params,
-                              const Eigen::Vector2d& normalized) {
+Eigen::Vector2d Distort(const RadTanParams& params,
+                        const Eigen::Vector2d& normalized) {
   // Distortion model is (following OpenCV's coefficient order, r² = x² + y²):
   //   radial = 1 + k1*r² + k2*r⁴
   //   x_d = x*radial + 2*p1*x*y + p2*(r² + 2x²)
@@ -28,9 +30,14 @@ Eigen::Vector2d DistortRadTan(const CameraParams& params,
   return {x_d, y_d};
 }
 
-Eigen::Matrix2d RadTanDistortionJacobian(const CameraParams& params,
-                                         const Eigen::Vector2d& normalized) {
-  // Derivative of DistortRadTan, with a = k1 + 2*k2*r²:
+Eigen::Vector2d Distort(const EquidistantParams& /*params*/,
+                        const Eigen::Vector2d& /*normalized*/) {
+  throw std::runtime_error("equidistant distortion is not implemented");
+}
+
+Eigen::Matrix2d DistortionJacobian(const RadTanParams& params,
+                                   const Eigen::Vector2d& normalized) {
+  // Derivative of Distort, with a = k1 + 2*k2*r²:
   //   d(x_d)/dx = radial + 2x²a + 2*p1*y + 6*p2*x
   //   d(x_d)/dy = 2xy*a + 2*p1*x + 2*p2*y
   //   d(y_d)/dx = 2xy*a + 2*p1*x + 2*p2*y
@@ -56,13 +63,36 @@ Eigen::Matrix2d RadTanDistortionJacobian(const CameraParams& params,
   return jacobian;
 }
 
+Eigen::Matrix2d DistortionJacobian(const EquidistantParams& /*params*/,
+                                   const Eigen::Vector2d& /*normalized*/) {
+  throw std::runtime_error("equidistant distortion is not implemented");
+}
+
 }  // namespace impl
+
+Eigen::Vector2d Distort(const CameraParams& params,
+                        const Eigen::Vector2d& normalized) {
+  return std::visit(
+      [&normalized](const auto& distortion) {
+        return impl::Distort(distortion, normalized);
+      },
+      params.distortion);
+}
+
+Eigen::Matrix2d DistortionJacobian(const CameraParams& params,
+                                   const Eigen::Vector2d& normalized) {
+  return std::visit(
+      [&normalized](const auto& distortion) {
+        return impl::DistortionJacobian(distortion, normalized);
+      },
+      params.distortion);
+}
 
 std::optional<Eigen::Vector2d> Project(const CameraParams& params,
                                        const Eigen::Vector3d& point_cam) {
   if (point_cam.z() <= 0.0) return std::nullopt;
 
-  const Eigen::Vector2d distorted = impl::DistortRadTan(
+  const Eigen::Vector2d distorted = Distort(
       params, {point_cam.x() / point_cam.z(), point_cam.y() / point_cam.z()});
 
   return Eigen::Vector2d(params.fx * distorted.x() + params.cx,
@@ -125,8 +155,8 @@ Eigen::Matrix<double, 2, 3> ProjectionJacobian(
   // clang-format on
 
   const Eigen::Vector2d focal(params.fx, params.fy);
-  return focal.asDiagonal() *
-         impl::RadTanDistortionJacobian(params, normalized) * normalization;
+  return focal.asDiagonal() * DistortionJacobian(params, normalized) *
+         normalization;
 }
 
 }  // namespace livo_slam

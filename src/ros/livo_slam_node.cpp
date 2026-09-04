@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <format>
 #include <rclcpp/qos.hpp>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -229,10 +230,25 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.camera.cx = declare_parameter<double>("camera.cx", camera_defaults.cx);
   config.camera.cy = declare_parameter<double>("camera.cy", camera_defaults.cy);
 
-  config.camera.k1 = declare_parameter<double>("camera.k1", camera_defaults.k1);
-  config.camera.k2 = declare_parameter<double>("camera.k2", camera_defaults.k2);
-  config.camera.p1 = declare_parameter<double>("camera.p1", camera_defaults.p1);
-  config.camera.p2 = declare_parameter<double>("camera.p2", camera_defaults.p2);
+  const auto model = declare_parameter<std::string>("camera.distortion_model");
+  if (model == "radtan") {
+    RadTanParams radtan;
+    radtan.k1 = declare_parameter<double>("camera.radtan.k1");
+    radtan.k2 = declare_parameter<double>("camera.radtan.k2");
+    radtan.p1 = declare_parameter<double>("camera.radtan.p1");
+    radtan.p2 = declare_parameter<double>("camera.radtan.p2");
+    config.camera.distortion = radtan;
+  } else if (model == "equidistant") {
+    EquidistantParams equidistant;
+    equidistant.k1 = declare_parameter<double>("camera.equidistant.k1");
+    equidistant.k2 = declare_parameter<double>("camera.equidistant.k2");
+    equidistant.k3 = declare_parameter<double>("camera.equidistant.k3");
+    equidistant.k4 = declare_parameter<double>("camera.equidistant.k4");
+    config.camera.distortion = equidistant;
+  } else {
+    throw std::runtime_error("camera.distortion_model is '" + model +
+                             "', expected 'radtan' or 'equidistant'");
+  }
 
   config.camera.time_shift = declare_parameter<double>(
       "camera.time_shift", camera_defaults.time_shift);
