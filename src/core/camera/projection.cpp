@@ -32,7 +32,7 @@ Eigen::Vector2d Distort(const RadTanParams& params,
 
 Eigen::Matrix2d DistortionJacobian(const RadTanParams& params,
                                    const Eigen::Vector2d& normalized) {
-  // Derivative of Distort, with a = k1 + 2*k2*r²:
+  // Derivative of RadTan Distort, with a = k1 + 2*k2*r²:
   //   d(x_d)/dx = radial + 2x²a + 2*p1*y + 6*p2*x
   //   d(x_d)/dy = 2xy*a + 2*p1*x + 2*p2*y
   //   d(y_d)/dx = 2xy*a + 2*p1*x + 2*p2*y
@@ -58,13 +58,53 @@ Eigen::Matrix2d DistortionJacobian(const RadTanParams& params,
   return jacobian;
 }
 
-Eigen::Vector2d Distort(const EquidistantParams& /*params*/,
-                        const Eigen::Vector2d& /*normalized*/) {
-  throw std::runtime_error("equidistant distortion is not implemented");
+Eigen::Vector2d Distort(const EquidistantParams& params,
+                        const Eigen::Vector2d& normalized) {
+  // Distortion model is (Kannala-Brandt, r = sqrt(x² + y²)):
+  //   theta = atan(r)
+  //   theta_d = theta*(1 + k1*theta² + k2*theta⁴ + k3*theta⁶ + k4*theta⁸)
+  //   x_d = (theta_d/r) * x
+  //   y_d = (theta_d/r) * y
+  // The scale theta_d/r is 0/0 on the optical axis; its limit there is 1, so
+  // r below a small epsilon returns the point unchanged.
+
+  const double x = normalized.x();
+  const double y = normalized.y();
+  const double r = std::sqrt(x * x + y * y);
+  if (r < 1e-6) {
+    // Return unchanged to prevent division by zero.
+    return normalized;
+  }
+
+  const double theta = std::atan(r);
+  const double theta2 = theta * theta;
+  const double theta4 = theta2 * theta2;
+  const double theta6 = theta4 * theta2;
+  const double theta8 = theta4 * theta4;
+  const double theta_distorted =
+      theta * (1.0 + params.k1 * theta2 + params.k2 * theta4 +
+               params.k3 * theta6 + params.k4 * theta8);
+
+  const double x_d = theta_distorted / r * x;
+  const double y_d = theta_distorted / r * y;
+
+  return {x_d, y_d};
 }
 
 Eigen::Matrix2d DistortionJacobian(const EquidistantParams& /*params*/,
                                    const Eigen::Vector2d& /*normalized*/) {
+  // Derivative of equidistant Distort. Writing the scale as s = theta_d/r, the
+  // distorted point is s*(x, y), so the jacobian is
+  //   s*I + (ds/dr / r) * [ x²  xy ]
+  //                       [ xy  y² ]
+  // with
+  //   d(theta_d)/d(theta) = 1 + 3*k1*theta² + 5*k2*theta⁴ + 7*k3*theta⁶
+  //                           + 9*k4*theta⁸
+  //   d(theta_d)/dr = d(theta_d)/d(theta) / (1 + r²)
+  //   ds/dr = (d(theta_d)/dr * r - theta_d) / r²
+  // The outer product is symmetric, as in the radtan case. On the optical axis
+  // the limit is the identity, so r below a small epsilon returns it directly.
+
   throw std::runtime_error("equidistant distortion is not implemented");
 }
 
