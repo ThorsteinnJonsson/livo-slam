@@ -264,6 +264,9 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.process_noise.accel_random_walk_std =
       declare_parameter<double>("process_noise.accel_random_walk_std",
                                 noise_defaults.accel_random_walk_std);
+  config.process_noise.inv_exposure_random_walk_std =
+      declare_parameter<double>("process_noise.inv_exposure_random_walk_std",
+                                noise_defaults.inv_exposure_random_walk_std);
   return config;
 }
 
