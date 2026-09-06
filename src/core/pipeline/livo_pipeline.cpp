@@ -63,7 +63,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                      estimate_.covariance(kIdxGyroBias, kIdxGyroBias),
                      estimate_.covariance(kIdxAccelBias, kIdxAccelBias));
       }
-      return {estimate_, {}, {}};
+      return {estimate_, {}, {}, {}, {}};
     }
     case InitStatus::kInitialized: {
       std::println(
@@ -76,7 +76,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   IMU forward propagation, for state and cov to image time.
       if (imu_samples.size() < 2) {
         std::println("Too few IMU samples to propagate");
-        return {estimate_, {}, {}};
+        return {estimate_, {}, {}, {}, {}};
       }
       const auto propagation_result = Propagate(
           estimate_, imu_samples, image.timestamp, config_.process_noise);
@@ -178,7 +178,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
     }
   }
 
-  return {estimate_, {}, {}};
+  return {estimate_, {}, {}, {}, {}};
 }
 
 }  // namespace livo_slam
