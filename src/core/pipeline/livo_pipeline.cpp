@@ -162,14 +162,13 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Map sliding/culling if moved far enough
       //     TODO
 
-      // Process output for visualization
+      // Process output for visualization. The deskewed cloud is in the IMU
+      // frame, with each point already corrected to the group time.
       const Sophus::SE3d T_world_imu(estimate_.state.rotation,
                                      estimate_.state.position);
-      const Sophus::SE3d T_world_lidar =
-          T_world_imu * config_.lidar.T_imu_lidar;
-      Cloud cloud_world = cloud;
+      Cloud cloud_world = deskewed;
       for (Point& point : cloud_world.points) {
-        point.position = T_world_lidar * point.position;
+        point.position = T_world_imu * point.position;
       }
 
       return {estimate_, std::move(cloud_world), local_map_.CollectPlanes()};

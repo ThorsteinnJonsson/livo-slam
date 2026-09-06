@@ -72,7 +72,7 @@ rerun::Color HueColor(float t) {
 
 // Fixed range so the gradient does not rescale as the map grows.
 rerun::Color HeightColor(double z) {
-  constexpr double kMapColorZMin = -2.0;
+  constexpr double kMapColorZMin = -5.0;
   constexpr double kMapColorZMax = 20.0;
   return HueColor(static_cast<float>((z - kMapColorZMin) /
                                      (kMapColorZMax - kMapColorZMin)));
@@ -125,7 +125,7 @@ void Visualizer::LogCloud(const Cloud& cloud) {
   if (!impl_) {
     return;
   }
-  impl_->LogPoints("world/raw_cloud", cloud, rerun::Color(178, 150, 220));
+  impl_->LogPoints("world/cloud", cloud, rerun::Color(178, 150, 220));
 }
 
 void Visualizer::LogMap(const std::vector<Plane>& planes) {
