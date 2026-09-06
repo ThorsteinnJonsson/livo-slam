@@ -14,7 +14,7 @@ LivoSlamNode::LivoSlamNode()
     : Node("livo_slam"),
       config_(ReadConfig()),
       pipeline_(config_),
-      visualizer_(config_.viz) {
+      visualizer_(config_.viz, config_.camera) {
   const auto imu_topic =
       declare_parameter<std::string>("ros.imu_topic", "/imu/imu");
   const auto lidar_topic = declare_parameter<std::string>(
@@ -264,6 +264,9 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.process_noise.accel_random_walk_std =
       declare_parameter<double>("process_noise.accel_random_walk_std",
                                 noise_defaults.accel_random_walk_std);
+  config.process_noise.inv_exposure_random_walk_std =
+      declare_parameter<double>("process_noise.inv_exposure_random_walk_std",
+                                noise_defaults.inv_exposure_random_walk_std);
   return config;
 }
 
@@ -276,6 +279,8 @@ void LivoSlamNode::Run() {
     visualizer_.LogState(result.estimate.state);
     visualizer_.LogCloud(result.cloud_world);
     visualizer_.LogMap(result.map_planes);
+    visualizer_.LogCamera(result.image, result.visual_observations);
+    visualizer_.LogVisualPoints(result.visual_observations);
     WriteTrajectory(result.estimate);
   }
 }

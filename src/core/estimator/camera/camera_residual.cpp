@@ -72,8 +72,8 @@ PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
 std::vector<PhotometricMatch> BuildCameraMatches(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,
-    const CameraParams& camera_params,
-    const CameraUpdateParams& update_params) {
+    const CameraParams& camera_params, const CameraUpdateParams& update_params,
+    std::vector<VisualObservation>* observations) {
   const std::size_t margin = update_params.patch_size / 2 + 1;
   const double scale =
       1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
@@ -120,7 +120,11 @@ std::vector<PhotometricMatch> BuildCameraMatches(
         static_cast<double>(update_params.patch_size *
                             update_params.patch_size);
 
-    if (photometric_error < outlier_threshold) {
+    const bool matched = photometric_error < outlier_threshold;
+    if (observations) {
+      observations->push_back({visual_point->position, *projected, matched});
+    }
+    if (matched) {
       matches.push_back(std::move(match));
     }
   }

@@ -63,7 +63,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                      estimate_.covariance(kIdxGyroBias, kIdxGyroBias),
                      estimate_.covariance(kIdxAccelBias, kIdxAccelBias));
       }
-      return {estimate_, {}, {}};
+      return {estimate_, {}, {}, {}, {}};
     }
     case InitStatus::kInitialized: {
       std::println(
@@ -76,7 +76,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   IMU forward propagation, for state and cov to image time.
       if (imu_samples.size() < 2) {
         std::println("Too few IMU samples to propagate");
-        return {estimate_, {}, {}};
+        return {estimate_, {}, {}, {}, {}};
       }
       const auto propagation_result = Propagate(
           estimate_, imu_samples, image.timestamp, config_.process_noise);
@@ -134,8 +134,10 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
-      estimate_ = UpdateWithCamera(estimate_, image_pyramid, visual_points,
-                                   config_.camera, config_.camera_update);
+      auto camera_result =
+          UpdateWithCamera(estimate_, image_pyramid, visual_points,
+                           config_.camera, config_.camera_update);
+      estimate_ = camera_result.estimate;
 
       //   Map update
       //   Update map with deskewed points in world frame
@@ -162,21 +164,21 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
       //   Map sliding/culling if moved far enough
       //     TODO
 
-      // Process output for visualization
+      // Process output for visualization. The deskewed cloud is in the IMU
+      // frame, with each point already corrected to the group time.
       const Sophus::SE3d T_world_imu(estimate_.state.rotation,
                                      estimate_.state.position);
-      const Sophus::SE3d T_world_lidar =
-          T_world_imu * config_.lidar.T_imu_lidar;
-      Cloud cloud_world = cloud;
+      Cloud cloud_world = deskewed;
       for (Point& point : cloud_world.points) {
-        point.position = T_world_lidar * point.position;
+        point.position = T_world_imu * point.position;
       }
 
-      return {estimate_, std::move(cloud_world), local_map_.CollectPlanes()};
+      return {estimate_, std::move(cloud_world), local_map_.CollectPlanes(),
+              image.image, std::move(camera_result.observations)};
     }
   }
 
-  return {estimate_, {}, {}};
+  return {estimate_, {}, {}, {}, {}};
 }
 
 }  // namespace livo_slam

@@ -4,19 +4,27 @@
 #include "core/estimator/iekf.h"
 
 namespace livo_slam {
-Estimate UpdateWithCamera(const Estimate& prior,
-                          const std::vector<cv::Mat>& image_pyramid,
-                          const std::vector<const VisualPoint*>& visual_points,
-                          const CameraParams& camera_params,
-                          const CameraUpdateParams& update_params) {
-  Estimate posterior = prior;
+CameraUpdateResult UpdateWithCamera(
+    const Estimate& prior, const std::vector<cv::Mat>& image_pyramid,
+    const std::vector<const VisualPoint*>& visual_points,
+    const CameraParams& camera_params,
+    const CameraUpdateParams& update_params) {
+  CameraUpdateResult result;
+  Estimate& posterior = result.estimate;
+  posterior = prior;
 
   for (std::size_t level = CameraUpdateParams::kPyramidLevels; level-- > 0;) {
     for (std::size_t iter = 0; iter < update_params.max_iterations; ++iter) {
       const cv::Mat& image = image_pyramid[level];
-      std::vector<PhotometricMatch> matches =
-          BuildCameraMatches(image, level, posterior.state, visual_points,
-                             camera_params, update_params);
+      // Record where every visible point landed on the last pass at full
+      // resolution, for the visualization.
+      const bool record = level == 0;
+      if (record) {
+        result.observations.clear();
+      }
+      std::vector<PhotometricMatch> matches = BuildCameraMatches(
+          image, level, posterior.state, visual_points, camera_params,
+          update_params, record ? &result.observations : nullptr);
 
       if (matches.size() < CameraUpdateParams::kMinMatches) {
         break;  // Continue one level deeper, might have more matches.
@@ -37,6 +45,6 @@ Estimate UpdateWithCamera(const Estimate& prior,
       }
     }
   }
-  return posterior;
+  return result;
 }
 }  // namespace livo_slam

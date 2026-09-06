@@ -14,19 +14,16 @@
 
 ## TODO
 
-- Test more datasets
+- (Done) Test more datasets
   - Oxford Spires
     - (Done) Parsing the messages (Hesai points, CompressedImage)
     - (Done) Support for fish-eye camera model
-      - Change pinhole to undistort in projection (+ Jacobian changes)
-      - Implement fisheye
-      - Check results
+- (Done) Validate camera update
 - Visualize visual points + camera stream
-- Validate camera update
 - Add real color to pointcloud
+- Limit patches to 30 per visual point
+- Implement slide-function in local map
 - Refactoring
   - Helper for transforming points (instead of a for-loop everywhere)
   - Less verbose parameter parsing from yaml
-- Limit patches to 30 per visual point
-- Implement slide-function in local map
 - Multi-camera, multi-lidar support
