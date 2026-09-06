@@ -2,14 +2,15 @@
 
 #include <cstdint>
 #include <memory>
+#include <opencv2/core.hpp>
 #include <string>
-
-#include "core/config/viz_params.h"
 #include <vector>
 
+#include "core/config/viz_params.h"
 #include "core/types/cloud.h"
 #include "core/types/plane.h"
 #include "core/types/state.h"
+#include "core/types/visual_observation.h"
 
 namespace livo_slam {
 
@@ -31,6 +32,14 @@ class Visualizer {
   void LogState(const State& state);
   void LogCloud(const Cloud& cloud);
   void LogMap(const std::vector<Plane>& planes);
+
+  // The current image, with the visual points that project into it drawn on
+  // top and coloured by whether they passed the photometric gate.
+  void LogCamera(const cv::Mat& image,
+                 const std::vector<VisualObservation>& observations);
+
+  // The visual points in 3D.
+  void LogVisualPoints(const std::vector<VisualObservation>& observations);
 
  private:
   struct Impl;

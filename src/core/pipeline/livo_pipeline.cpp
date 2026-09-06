@@ -134,8 +134,10 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
-      estimate_ = UpdateWithCamera(estimate_, image_pyramid, visual_points,
-                                   config_.camera, config_.camera_update);
+      auto camera_result =
+          UpdateWithCamera(estimate_, image_pyramid, visual_points,
+                           config_.camera, config_.camera_update);
+      estimate_ = camera_result.estimate;
 
       //   Map update
       //   Update map with deskewed points in world frame
@@ -171,7 +173,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
         point.position = T_world_imu * point.position;
       }
 
-      return {estimate_, std::move(cloud_world), local_map_.CollectPlanes()};
+      return {estimate_, std::move(cloud_world), local_map_.CollectPlanes(),
+              image.image, std::move(camera_result.observations)};
     }
   }
 

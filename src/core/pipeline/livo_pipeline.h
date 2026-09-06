@@ -5,6 +5,7 @@
 #include "core/map/voxel_map.h"
 #include "core/types/estimate.h"
 #include "core/types/measure_group.h"
+#include "core/types/visual_observation.h"
 
 namespace livo_slam {
 
@@ -12,6 +13,8 @@ struct ProcessResult {
   Estimate estimate;
   Cloud cloud_world;
   std::vector<Plane> map_planes;
+  cv::Mat image;
+  std::vector<VisualObservation> visual_observations;
 };
 
 class LivoPipeline {

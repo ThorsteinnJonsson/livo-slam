@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <print>
 #include <rerun.hpp>
 #include <string_view>
@@ -128,6 +129,63 @@ void Visualizer::LogCloud(const Cloud& cloud) {
   impl_->LogPoints("world/cloud", cloud, rerun::Color(178, 150, 220));
 }
 
+namespace {
+rerun::Color MatchColor(bool matched) {
+  return matched ? rerun::Color(80, 220, 100) : rerun::Color(220, 70, 70);
+}
+}  // namespace
+
+void Visualizer::LogCamera(const cv::Mat& image,
+                           const std::vector<VisualObservation>& observations) {
+  if (!impl_ || image.empty()) {
+    return;
+  }
+
+  impl_->rec.log_static(
+      "camera/image",
+      rerun::Image(rerun::Collection<std::uint8_t>::borrow(
+                       image.data, image.total() * image.elemSize()),
+                   rerun::WidthHeight(static_cast<std::uint32_t>(image.cols),
+                                      static_cast<std::uint32_t>(image.rows)),
+                   rerun::datatypes::ColorModel::L));
+
+  std::vector<rerun::Position2D> pixels;
+  std::vector<rerun::Color> colors;
+  pixels.reserve(observations.size());
+  colors.reserve(observations.size());
+  for (const VisualObservation& observation : observations) {
+    pixels.emplace_back(static_cast<float>(observation.pixel.x()),
+                        static_cast<float>(observation.pixel.y()));
+    colors.push_back(MatchColor(observation.matched));
+  }
+
+  impl_->rec.log_static(
+      "camera/image/projections",
+      rerun::Points2D(pixels).with_colors(colors).with_radii(2.0F));
+}
+
+void Visualizer::LogVisualPoints(
+    const std::vector<VisualObservation>& observations) {
+  if (!impl_) {
+    return;
+  }
+
+  std::vector<rerun::Position3D> positions;
+  std::vector<rerun::Color> colors;
+  positions.reserve(observations.size());
+  colors.reserve(observations.size());
+  for (const VisualObservation& observation : observations) {
+    positions.emplace_back(static_cast<float>(observation.position.x()),
+                           static_cast<float>(observation.position.y()),
+                           static_cast<float>(observation.position.z()));
+    colors.push_back(MatchColor(observation.matched));
+  }
+
+  impl_->rec.log_static(
+      "world/visual_points",
+      rerun::Points3D(positions).with_colors(colors).with_radii(0.15F));
+}
+
 void Visualizer::LogMap(const std::vector<Plane>& planes) {
   if (!impl_) {
     return;
@@ -164,6 +222,9 @@ void Visualizer::SetTime(std::int64_t, double) {}
 void Visualizer::LogState(const State&) {}
 void Visualizer::LogCloud(const Cloud&) {}
 void Visualizer::LogMap(const std::vector<Plane>&) {}
+void Visualizer::LogCamera(const cv::Mat&,
+                           const std::vector<VisualObservation>&) {}
+void Visualizer::LogVisualPoints(const std::vector<VisualObservation>&) {}
 
 }  // namespace livo_slam
 

@@ -276,6 +276,8 @@ void LivoSlamNode::Run() {
     visualizer_.LogState(result.estimate.state);
     visualizer_.LogCloud(result.cloud_world);
     visualizer_.LogMap(result.map_planes);
+    visualizer_.LogCamera(result.image, result.visual_observations);
+    visualizer_.LogVisualPoints(result.visual_observations);
     WriteTrajectory(result.estimate);
   }
 }
