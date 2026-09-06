@@ -14,15 +14,12 @@
 
 ## TODO
 
-- Test more datasets
+- (Done) Test more datasets
   - Oxford Spires
     - (Done) Parsing the messages (Hesai points, CompressedImage)
     - (Done) Support for fish-eye camera model
-      - Change pinhole to undistort in projection (+ Jacobian changes)
-      - Implement fisheye
-      - Check results
-- Visualize visual points + camera stream
 - Validate camera update
+- Visualize visual points + camera stream
 - Add real color to pointcloud
 - Refactoring
   - Helper for transforming points (instead of a for-loop everywhere)
