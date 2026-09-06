@@ -15,9 +15,11 @@ namespace livo_slam {
 struct Visualizer::Impl {
   rerun::RecordingStream rec;
   std::vector<rerun::Position3D> trajectory;
+  Sophus::SE3d T_imu_cam;
 
-  explicit Impl(const VizParams& params, const std::string& app_id)
-      : rec(app_id) {
+  Impl(const VizParams& params, const CameraParams& camera_params,
+       const std::string& app_id)
+      : rec(app_id), T_imu_cam(camera_params.T_imu_cam) {
     if (const rerun::Error err = rec.connect_grpc(params.grpc_url);
         err.is_err()) {
       std::println("rerun: connect to {} failed ({})", params.grpc_url,
@@ -25,7 +27,20 @@ struct Visualizer::Impl {
       return;
     }
     rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
+    LogPinhole(camera_params);
     std::println("rerun: streaming to {}", params.grpc_url);
+  }
+
+  void LogPinhole(const CameraParams& camera_params) {
+    const auto f = [](double v) { return static_cast<float>(v); };
+    rec.log_static(
+        "world/camera",
+        rerun::Pinhole(
+            rerun::components::PinholeProjection(rerun::Mat3x3{
+                {f(camera_params.fx), 0.0F, 0.0F, 0.0F, f(camera_params.fy),
+                 0.0F, f(camera_params.cx), f(camera_params.cy), 1.0F}}))
+            .with_resolution(static_cast<int>(camera_params.width),
+                             static_cast<int>(camera_params.height)));
   }
 
   void LogPoints(std::string_view entity, const Cloud& cloud,
@@ -79,9 +94,11 @@ rerun::Color HeightColor(double z) {
                                      (kMapColorZMax - kMapColorZMin)));
 }
 
-Visualizer::Visualizer(const VizParams& params, std::string app_id)
-    : impl_(params.enabled ? std::make_unique<Impl>(params, app_id) : nullptr) {
-}
+Visualizer::Visualizer(const VizParams& params,
+                       const CameraParams& camera_params, std::string app_id)
+    : impl_(params.enabled
+                ? std::make_unique<Impl>(params, camera_params, app_id)
+                : nullptr) {}
 
 Visualizer::~Visualizer() = default;
 
@@ -98,22 +115,25 @@ void Visualizer::LogState(const State& state) {
     return;
   }
 
+  const auto to_transform = [](const Sophus::SE3d& pose) {
+    const Eigen::Vector3d& t = pose.translation();
+    const Eigen::Matrix3d m = pose.rotationMatrix();
+    return rerun::Transform3D::from_translation_mat3x3(
+        rerun::Vec3D{static_cast<float>(t.x()), static_cast<float>(t.y()),
+                     static_cast<float>(t.z())},
+        rerun::Mat3x3{{static_cast<float>(m(0, 0)), static_cast<float>(m(1, 0)),
+                       static_cast<float>(m(2, 0)), static_cast<float>(m(0, 1)),
+                       static_cast<float>(m(1, 1)), static_cast<float>(m(2, 1)),
+                       static_cast<float>(m(0, 2)), static_cast<float>(m(1, 2)),
+                       static_cast<float>(m(2, 2))}});
+  };
+
+  const Sophus::SE3d T_world_imu(state.rotation, state.position);
+  impl_->rec.log("world/imu", to_transform(T_world_imu),
+                 rerun::TransformAxes3D(0.5F));
+  impl_->rec.log("world/camera", to_transform(T_world_imu * impl_->T_imu_cam));
+
   const Eigen::Vector3d& p = state.position;
-  const Eigen::Matrix3d r = state.rotation.matrix();
-
-  impl_->rec.log(
-      "world/imu",
-      rerun::Transform3D::from_translation_mat3x3(
-          rerun::Vec3D{static_cast<float>(p.x()), static_cast<float>(p.y()),
-                       static_cast<float>(p.z())},
-          rerun::Mat3x3{
-              {static_cast<float>(r(0, 0)), static_cast<float>(r(1, 0)),
-               static_cast<float>(r(2, 0)), static_cast<float>(r(0, 1)),
-               static_cast<float>(r(1, 1)), static_cast<float>(r(2, 1)),
-               static_cast<float>(r(0, 2)), static_cast<float>(r(1, 2)),
-               static_cast<float>(r(2, 2))}}),
-      rerun::TransformAxes3D(0.5F));
-
   impl_->trajectory.emplace_back(static_cast<float>(p.x()),
                                  static_cast<float>(p.y()),
                                  static_cast<float>(p.z()));
@@ -142,7 +162,7 @@ void Visualizer::LogCamera(const cv::Mat& image,
   }
 
   impl_->rec.log_static(
-      "camera/image",
+      "world/camera/image",
       rerun::Image(rerun::Collection<std::uint8_t>::borrow(
                        image.data, image.total() * image.elemSize()),
                    rerun::WidthHeight(static_cast<std::uint32_t>(image.cols),
@@ -160,7 +180,7 @@ void Visualizer::LogCamera(const cv::Mat& image,
   }
 
   impl_->rec.log_static(
-      "camera/image/projections",
+      "world/camera/image/projections",
       rerun::Points2D(pixels).with_colors(colors).with_radii(2.0F));
 }
 
@@ -215,7 +235,8 @@ namespace livo_slam {
 
 struct Visualizer::Impl {};
 
-Visualizer::Visualizer(const VizParams&, std::string) : impl_(nullptr) {}
+Visualizer::Visualizer(const VizParams&, const CameraParams&, std::string)
+    : impl_(nullptr) {}
 Visualizer::~Visualizer() = default;
 
 void Visualizer::SetTime(std::int64_t, double) {}

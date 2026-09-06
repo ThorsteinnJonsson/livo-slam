@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "core/config/camera_params.h"
 #include "core/config/viz_params.h"
 #include "core/types/cloud.h"
 #include "core/types/plane.h"
@@ -18,8 +19,8 @@ namespace livo_slam {
 // not linked, so callers need no #ifdefs.
 class Visualizer {
  public:
-  explicit Visualizer(const VizParams& params,
-                      std::string app_id = "livo_slam");
+  Visualizer(const VizParams& params, const CameraParams& camera_params,
+             std::string app_id = "livo_slam");
   ~Visualizer();
 
   Visualizer(const Visualizer&) = delete;
