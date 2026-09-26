@@ -14,7 +14,9 @@ namespace livo_slam {
 
 struct PhotometricMatch {
   Eigen::Vector3d point_imu = Eigen::Vector3d::Zero();
-  const Eigen::VectorXf* reference_patch = nullptr;
+  // Both patches are divided by their own mean intensity, which removes the
+  // brightness scale the exposure state used to absorb.
+  Eigen::VectorXf reference_patch;
   Eigen::VectorXf current_patch;
   Eigen::Matrix<double, Eigen::Dynamic, 2> gradients;  // dI/du per patch pixel
   double reference_inv_exposure = 1.0;

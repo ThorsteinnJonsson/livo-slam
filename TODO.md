@@ -18,8 +18,8 @@
   - Oxford Spires
     - (Done) Parsing the messages (Hesai points, CompressedImage)
     - (Done) Support for fish-eye camera model
-- (Done) Validate camera update
-- Visualize visual points + camera stream
+- (Done) Visualize visual points + camera stream
+- Validate camera update
 - Add real color to pointcloud
 - Limit patches to 30 per visual point
 - Implement slide-function in local map

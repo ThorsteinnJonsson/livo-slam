@@ -44,7 +44,6 @@ PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
 
   PhotometricMatch match;
   match.point_imu = point_imu;
-  match.reference_patch = &reference_patch.intensities[pyramid_level];
   match.reference_inv_exposure = reference_patch.inv_exposure;
   match.current_patch.resize(total_patch_size);
   match.gradients.resize(total_patch_size, 2);
@@ -66,6 +65,24 @@ PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
       ++index;
     }
   }
+
+  // Divide each patch by its own mean, so a global brightness change cancels.
+  const Eigen::VectorXf& reference = reference_patch.intensities[pyramid_level];
+  const float reference_mean = reference.mean();
+  const float current_mean = match.current_patch.mean();
+  if (reference_mean <= 0.0F || current_mean <= 0.0F) {
+    return match;  // Black patch, leaves the residual at zero.
+  }
+  match.reference_patch = reference / reference_mean;
+  match.current_patch /= current_mean;
+
+  // The mean is itself a function of the pose, so d(I_i/m)/dx is
+  // (1/m)*(dI_i/dx - (I_i/m)*dm/dx), where dm/dx is the mean gradient row.
+  const Eigen::RowVector2d mean_gradient = match.gradients.colwise().mean();
+  match.gradients =
+      (match.gradients - match.current_patch.cast<double>() * mean_gradient) /
+      static_cast<double>(current_mean);
+
   return match;
 }
 
@@ -105,14 +122,25 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 
     if (!reference_patch) continue;  // Never observed
 
+    // TEMPORARY: the reference patch is not affine warped, so it is only valid
+    // from close to the viewpoint it was taken from.
+    {
+      const Eigen::Vector3d view_dir =
+          (cam_position - visual_point->position).normalized();
+      const Eigen::Vector3d patch_dir =
+          (reference_patch->T_world_camera.translation() -
+           visual_point->position)
+              .normalized();
+      constexpr double kMaxViewAngleCos = 0.9659;  // 15 degrees
+      if (view_dir.dot(patch_dir) < kMaxViewAngleCos) continue;
+    }
+
     PhotometricMatch match =
         CreatePhotometricMatch(image, pixel, p_imu, *reference_patch,
                                pyramid_level, update_params.patch_size);
 
     const double photometric_error =
-        (match.reference_inv_exposure * (*match.reference_patch) -
-         state.inv_exposure * match.current_patch)
-            .squaredNorm();
+        (match.reference_patch - match.current_patch).squaredNorm();
 
     // The threshold is per pixel, the error is summed over the patch.
     const double outlier_threshold =
@@ -160,17 +188,14 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
         -R_cam_imu * state.rotation.matrix().transpose();
 
     for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {
-      const auto residual =
-          match.reference_inv_exposure * (*match.reference_patch)[i] -
-          state.inv_exposure * match.current_patch[i];
+      const auto residual = match.reference_patch[i] - match.current_patch[i];
       const Eigen::RowVector3d row = match.gradients.row(i) * dU_dp;
 
+      // Normalized patches carry no brightness scale, so inverse exposure no
+      // longer appears in the residual and is unobservable here.
       ErrorState jacobian = ErrorState::Zero();
-      jacobian.segment<3>(kIdxRotation) =
-          -state.inv_exposure * (row * dP_dtheta).transpose();
-      jacobian.segment<3>(kIdxPosition) =
-          -state.inv_exposure * (row * dP_dp).transpose();
-      jacobian(kIdxInvExposure) = -match.current_patch[i];
+      jacobian.segment<3>(kIdxRotation) = -(row * dP_dtheta).transpose();
+      jacobian.segment<3>(kIdxPosition) = -(row * dP_dp).transpose();
 
       system.hth += weight * jacobian * jacobian.transpose();
       system.htz += weight * jacobian * -residual;
