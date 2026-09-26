@@ -86,5 +86,6 @@
     camera_update.patch_size: 8 # Must be >= 8
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0
+    camera_update.max_view_angle_deg: 15.0
     camera_update.rotation_epsilon: 0.001
     camera_update.position_epsilon: 0.001

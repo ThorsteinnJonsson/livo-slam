@@ -23,6 +23,7 @@ struct CameraUpdateParams {
   std::size_t patch_size = 8;
   double intensity_noise_std = 10.0;
   double outlier_threshold = 1000.0;
+  double max_view_angle_deg = 15.0;
   double rotation_epsilon = 0.001;
   double position_epsilon = 0.001;
 };

@@ -202,6 +202,9 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.camera_update.outlier_threshold =
       declare_parameter<double>("camera_update.outlier_threshold",
                                 camera_update_defaults.outlier_threshold);
+  config.camera_update.max_view_angle_deg =
+      declare_parameter<double>("camera_update.max_view_angle_deg",
+                                camera_update_defaults.max_view_angle_deg);
   config.camera_update.rotation_epsilon =
       declare_parameter<double>("camera_update.rotation_epsilon",
                                 camera_update_defaults.rotation_epsilon);

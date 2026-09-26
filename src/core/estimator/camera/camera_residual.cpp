@@ -2,7 +2,9 @@
 
 #include <Eigen/src/Core/Matrix.h>
 
+#include <cmath>
 #include <limits>
+#include <numbers>
 #include <optional>
 
 #include "core/camera/projection.h"
@@ -92,6 +94,8 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     const CameraParams& camera_params, const CameraUpdateParams& update_params,
     std::vector<VisualObservation>* observations) {
   const std::size_t margin = update_params.patch_size / 2 + 1;
+  const double min_view_angle_cos =
+      std::cos(update_params.max_view_angle_deg * std::numbers::pi / 180.0);
   const double scale =
       1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
 
@@ -122,8 +126,6 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 
     if (!reference_patch) continue;  // Never observed
 
-    // TEMPORARY: the reference patch is not affine warped, so it is only valid
-    // from close to the viewpoint it was taken from.
     {
       const Eigen::Vector3d view_dir =
           (cam_position - visual_point->position).normalized();
@@ -131,8 +133,7 @@ std::vector<PhotometricMatch> BuildCameraMatches(
           (reference_patch->T_world_camera.translation() -
            visual_point->position)
               .normalized();
-      constexpr double kMaxViewAngleCos = 0.9659;  // 15 degrees
-      if (view_dir.dot(patch_dir) < kMaxViewAngleCos) continue;
+      if (view_dir.dot(patch_dir) < min_view_angle_cos) continue;
     }
 
     PhotometricMatch match =
