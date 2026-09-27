@@ -3,6 +3,9 @@
 #include <cstdint>
 #include <format>
 #include <rclcpp/qos.hpp>
+#include <rclcpp/serialization.hpp>
+#include <rclcpp/serialized_message.hpp>
+#include <rosbag2_cpp/reader.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -15,40 +18,47 @@ LivoSlamNode::LivoSlamNode()
       config_(ReadConfig()),
       pipeline_(config_),
       visualizer_(config_.viz, config_.camera) {
-  const auto imu_topic =
-      declare_parameter<std::string>("ros.imu_topic", "/imu/imu");
-  const auto lidar_topic = declare_parameter<std::string>(
-      "ros.lidar_topic", "/os1_cloud_node1/points");
-  const auto camera_topic =
+  imu_topic_ = declare_parameter<std::string>("ros.imu_topic", "/imu/imu");
+  lidar_topic_ = declare_parameter<std::string>("ros.lidar_topic",
+                                                "/os1_cloud_node1/points");
+  camera_topic_ =
       declare_parameter<std::string>("ros.camera_topic", "/left/image_raw");
+  camera_compressed_ = declare_parameter<bool>("ros.camera_compressed", false);
+  bag_path_ = declare_parameter<std::string>("ros.bag_path", "");
 
-  imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
-      imu_topic, rclcpp::QoS(rclcpp::KeepLast(2000)).reliable(),
-      [this](const sensor_msgs::msg::Imu::ConstSharedPtr& msg) {
-        ImuCallback(msg);
-      });
+  const auto& imu_topic = imu_topic_;
+  const auto& lidar_topic = lidar_topic_;
+  const auto& camera_topic = camera_topic_;
 
-  lidar_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
-      lidar_topic, rclcpp::QoS(rclcpp::KeepLast(50)).reliable(),
-      [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg) {
-        LidarCallback(msg);
-      });
+  const bool live = bag_path_.empty();
 
-  const auto camera_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
-  if (declare_parameter<bool>("ros.camera_compressed", false)) {
-    compressed_camera_sub_ =
-        create_subscription<sensor_msgs::msg::CompressedImage>(
-            camera_topic, camera_qos,
-            [this](
-                const sensor_msgs::msg::CompressedImage::ConstSharedPtr& msg) {
-              CompressedCameraCallback(msg);
-            });
-  } else {
-    camera_sub_ = create_subscription<sensor_msgs::msg::Image>(
-        camera_topic, camera_qos,
-        [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-          CameraCallback(msg);
+  if (live) {
+    imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+        imu_topic, rclcpp::QoS(rclcpp::KeepLast(2000)).reliable(),
+        [this](const sensor_msgs::msg::Imu::ConstSharedPtr& msg) {
+          ImuCallback(msg);
         });
+
+    lidar_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
+        lidar_topic, rclcpp::QoS(rclcpp::KeepLast(50)).reliable(),
+        [this](const sensor_msgs::msg::PointCloud2::ConstSharedPtr& msg) {
+          LidarCallback(msg);
+        });
+
+    const auto camera_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
+    if (camera_compressed_) {
+      compressed_camera_sub_ =
+          create_subscription<sensor_msgs::msg::CompressedImage>(
+              camera_topic, camera_qos,
+              [this](const sensor_msgs::msg::CompressedImage::ConstSharedPtr&
+                         msg) { CompressedCameraCallback(msg); });
+    } else {
+      camera_sub_ = create_subscription<sensor_msgs::msg::Image>(
+          camera_topic, camera_qos,
+          [this](const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
+            CameraCallback(msg);
+          });
+    }
   }
 
   if (declare_parameter<bool>("ros.output_trajectory", false)) {
@@ -62,10 +72,17 @@ LivoSlamNode::LivoSlamNode()
     }
   }
 
-  worker_ = std::jthread([this] { Run(); });
-
-  RCLCPP_INFO(get_logger(), "subscribed to %s, %s, %s", imu_topic.c_str(),
-              lidar_topic.c_str(), camera_topic.c_str());
+  if (live) {
+    worker_ = std::jthread([this] { Run(); });
+    RCLCPP_INFO(get_logger(), "subscribed to %s, %s, %s", imu_topic.c_str(),
+                lidar_topic.c_str(), camera_topic.c_str());
+  } else {
+    worker_ = std::jthread([this] {
+      ReplayBag();
+      rclcpp::shutdown();
+    });
+    RCLCPP_INFO(get_logger(), "replaying bag %s", bag_path_.c_str());
+  }
 }
 
 PipelineConfig LivoSlamNode::ReadConfig() {
@@ -205,6 +222,26 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.camera_update.max_view_angle_deg =
       declare_parameter<double>("camera_update.max_view_angle_deg",
                                 camera_update_defaults.max_view_angle_deg);
+  config.camera_update.max_depth_discontinuity =
+      declare_parameter<double>("camera_update.max_depth_discontinuity",
+                                camera_update_defaults.max_depth_discontinuity);
+  config.camera_update.selection_grid_size =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "camera_update.selection_grid_size",
+          static_cast<int64_t>(camera_update_defaults.selection_grid_size)));
+  config.camera_update.reference_patch_medoid =
+      declare_parameter<bool>("camera_update.reference_patch_medoid",
+                              camera_update_defaults.reference_patch_medoid);
+  config.camera_update.reference_patch_scored =
+      declare_parameter<bool>("camera_update.reference_patch_scored",
+                              camera_update_defaults.reference_patch_scored);
+  config.camera_update.require_normal = declare_parameter<bool>(
+      "camera_update.require_normal", camera_update_defaults.require_normal);
+  config.camera_update.decimate_before_gates =
+      declare_parameter<bool>("camera_update.decimate_before_gates",
+                              camera_update_defaults.decimate_before_gates);
+  config.camera_update.open_loop = declare_parameter<bool>(
+      "camera_update.open_loop", camera_update_defaults.open_loop);
   config.camera_update.rotation_epsilon =
       declare_parameter<double>("camera_update.rotation_epsilon",
                                 camera_update_defaults.rotation_epsilon);
@@ -275,16 +312,75 @@ PipelineConfig LivoSlamNode::ReadConfig() {
 
 LivoSlamNode::~LivoSlamNode() { buffer_.Shutdown(); }
 
+void LivoSlamNode::ProcessGroup(const MeasureGroup& group) {
+  const ProcessResult result = pipeline_.Process(group);
+  visualizer_.SetTime(group_index_++, group.image.timestamp);
+  visualizer_.LogState(result.estimate.state);
+  visualizer_.LogCloud(result.cloud_world);
+  visualizer_.LogMap(result.map_planes);
+  visualizer_.LogCamera(result.image, result.visual_observations);
+  visualizer_.LogVisualPoints(result.visual_observations);
+  WriteTrajectory(result.estimate);
+}
+
 void LivoSlamNode::Run() {
   while (const auto group = buffer_.PopMeasureGroup()) {
-    const ProcessResult result = pipeline_.Process(*group);
-    visualizer_.SetTime(group_index_++, group->image.timestamp);
-    visualizer_.LogState(result.estimate.state);
-    visualizer_.LogCloud(result.cloud_world);
-    visualizer_.LogMap(result.map_planes);
-    visualizer_.LogCamera(result.image, result.visual_observations);
-    visualizer_.LogVisualPoints(result.visual_observations);
-    WriteTrajectory(result.estimate);
+    ProcessGroup(*group);
+  }
+}
+
+// Reads the bag on this thread and processes every group it can form before
+// reading on, so nothing is ever dropped for being behind.
+void LivoSlamNode::ReplayBag() {
+  rosbag2_cpp::Reader reader;
+  try {
+    reader.open(bag_path_);
+  } catch (const std::exception& error) {
+    RCLCPP_ERROR(get_logger(), "could not open bag %s: %s", bag_path_.c_str(),
+                 error.what());
+    return;
+  }
+
+  const rclcpp::Serialization<sensor_msgs::msg::Imu> imu_serialization;
+  const rclcpp::Serialization<sensor_msgs::msg::PointCloud2>
+      lidar_serialization;
+  const rclcpp::Serialization<sensor_msgs::msg::Image> image_serialization;
+  const rclcpp::Serialization<sensor_msgs::msg::CompressedImage>
+      compressed_serialization;
+
+  while (reader.has_next() && rclcpp::ok()) {
+    const auto bag_message = reader.read_next();
+    const rclcpp::SerializedMessage serialized(*bag_message->serialized_data);
+
+    if (bag_message->topic_name == imu_topic_) {
+      sensor_msgs::msg::Imu message;
+      imu_serialization.deserialize_message(&serialized, &message);
+      buffer_.PushImu(ToImuSample(message));
+    } else if (bag_message->topic_name == lidar_topic_) {
+      sensor_msgs::msg::PointCloud2 message;
+      lidar_serialization.deserialize_message(&serialized, &message);
+      buffer_.PushPoints(ToPoints(message, config_.lidar.time_shift));
+    } else if (bag_message->topic_name == camera_topic_) {
+      if (camera_compressed_) {
+        sensor_msgs::msg::CompressedImage message;
+        compressed_serialization.deserialize_message(&serialized, &message);
+        buffer_.PushImage(ToImageFrame(message, config_.camera.time_shift));
+      } else {
+        sensor_msgs::msg::Image message;
+        image_serialization.deserialize_message(&serialized, &message);
+        buffer_.PushImage(ToImageFrame(message, config_.camera.time_shift));
+      }
+    } else {
+      continue;
+    }
+
+    while (const auto group = buffer_.TryPopMeasureGroup()) {
+      ProcessGroup(*group);
+    }
+  }
+
+  while (const auto group = buffer_.TryPopMeasureGroup()) {
+    ProcessGroup(*group);
   }
 }
 

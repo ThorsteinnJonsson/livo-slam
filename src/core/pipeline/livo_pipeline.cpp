@@ -134,10 +134,52 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
-      auto camera_result =
-          UpdateWithCamera(estimate_, image_pyramid, visual_points,
-                           config_.camera, config_.camera_update);
+      const Estimate before_camera = estimate_;
+      auto camera_result = UpdateWithCamera(
+          estimate_, image_pyramid, visual_points, downsampled.points,
+          config_.camera, config_.camera_update);
       estimate_ = camera_result.estimate;
+
+      // TEMP DEBUG: measure the proposed correction, then discard it so the
+      // camera never feeds back into the pose or the map.
+      if (config_.camera_update.open_loop) {
+        const ErrorState delta =
+            BoxMinus(camera_result.estimate.state, before_camera.state);
+        const Eigen::Vector3d dp = delta.segment<3>(kIdxPosition);
+        const Eigen::Vector3d dtheta = delta.segment<3>(kIdxRotation);
+        const Eigen::Vector3d dp_body =
+            before_camera.state.rotation.inverse() * dp;
+        const double first_cost =
+            camera_result.iterations.empty()
+                ? 0.0
+                : camera_result.iterations.front().mean_cost;
+        const double last_cost =
+            camera_result.iterations.empty()
+                ? 0.0
+                : camera_result.iterations.back().mean_cost;
+        const std::size_t last_matches =
+            camera_result.iterations.empty()
+                ? 0
+                : camera_result.iterations.back().matches;
+        std::println("CAMSTEPS,{:.6f},{},{}", before_camera.timestamp,
+                     camera_result.applied_steps, camera_result.rejected_steps);
+        std::println(
+            "CAMDIAG,{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},"
+            "{:.6f},{:.6f},{:.6f},{:.6f},{},{:.6f},{:.6f}",
+            before_camera.timestamp, before_camera.state.position.x(),
+            before_camera.state.position.y(), before_camera.state.position.z(),
+            camera_result.estimate.state.position.x(),
+            camera_result.estimate.state.position.y(),
+            camera_result.estimate.state.position.z(), dp.norm(),
+            dtheta.norm() * 180.0 / M_PI, dp_body.x(), dp_body.y(), dp_body.z(),
+            last_matches, first_cost, last_cost);
+        for (const auto& record : camera_result.iterations) {
+          std::println("CAMITER,{:.6f},{},{},{},{:.6f}",
+                       before_camera.timestamp, record.level, record.iteration,
+                       record.matches, record.mean_cost);
+        }
+        estimate_ = before_camera;
+      }
 
       //   Map update
       //   Update map with deskewed points in world frame
@@ -155,10 +197,16 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Add new visual points in map and update existing ones with new
       //   patches
-      const auto& [new_visual_points, new_visual_patches] = SelectVisualPoints(
+      auto [new_visual_points, new_visual_patches] = SelectVisualPoints(
           points_deskewed_world, image_pyramid, image.timestamp,
           estimate_.state, config_.camera, config_.camera_update,
           config_.visual_map, visual_points);
+      for (VisualPoint& new_point : new_visual_points) {
+        if (const auto plane = local_map_.FindPlane(new_point.position)) {
+          new_point.normal = plane->normal;
+        }
+      }
+
       local_map_.InsertVisualPoints(new_visual_points, new_visual_patches);
 
       //   Map sliding/culling if moved far enough

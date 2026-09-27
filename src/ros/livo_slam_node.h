@@ -8,6 +8,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <string>
 #include <thread>
 
 #include "core/config/pipeline_config.h"
@@ -35,6 +36,8 @@ class LivoSlamNode : public rclcpp::Node {
       const sensor_msgs::msg::CompressedImage::ConstSharedPtr& msg);
 
   void Run();
+  void ReplayBag();
+  void ProcessGroup(const MeasureGroup& group);
   void WriteTrajectory(const Estimate& estimate);
 
   PipelineConfig ReadConfig();
@@ -51,6 +54,12 @@ class LivoSlamNode : public rclcpp::Node {
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr camera_sub_;
   rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr
       compressed_camera_sub_;
+
+  std::string imu_topic_;
+  std::string lidar_topic_;
+  std::string camera_topic_;
+  std::string bag_path_;
+  bool camera_compressed_ = false;
 
   std::ofstream trajectory_file_;
 

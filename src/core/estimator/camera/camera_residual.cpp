@@ -2,10 +2,12 @@
 
 #include <Eigen/src/Core/Matrix.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <numbers>
 #include <optional>
+#include <print>
 
 #include "core/camera/projection.h"
 #include "core/math/skew.h"
@@ -34,12 +36,84 @@ const VisualPatch* SelectReferencePatch(
   return best_match;
 }
 
+const VisualPatch* SelectReferencePatchMedoid(const VisualPoint& visual_point) {
+  if (visual_point.patches.empty()) return nullptr;
+  if (visual_point.patches.size() == 1) return &visual_point.patches.front();
+
+  // The patch that disagrees least with all the others is the one least likely
+  // to be blurred, occluded or oddly exposed.
+  const VisualPatch* best_match = nullptr;
+  double lowest_error = std::numeric_limits<double>::max();
+  for (const VisualPatch& candidate : visual_point.patches) {
+    double error = 0.0;
+    std::size_t count = 0;
+    for (const VisualPatch& other : visual_point.patches) {
+      if (&other == &candidate) continue;
+      error += (candidate.intensities[0] - other.intensities[0]).squaredNorm();
+      ++count;
+    }
+    error /= static_cast<double>(count);
+    if (error < lowest_error) {
+      lowest_error = error;
+      best_match = &candidate;
+    }
+  }
+  return best_match;
+}
+
+const VisualPatch* SelectReferencePatchScored(const VisualPoint& visual_point) {
+  if (visual_point.patches.empty()) return nullptr;
+  if (visual_point.patches.size() == 1) return &visual_point.patches.front();
+
+  // Correlation against the point's other patches, plus how square-on the
+  // patch was taken. Neither term depends on where the camera is now, so the
+  // score ranks patch quality rather than agreement with this frame.
+  const VisualPatch* best_match = nullptr;
+  double highest_score = std::numeric_limits<double>::lowest();
+  for (const VisualPatch& candidate : visual_point.patches) {
+    const Eigen::VectorXf centered =
+        candidate.intensities[0].array() - candidate.intensities[0].mean();
+    const double candidate_norm = centered.norm();
+
+    double correlation = 0.0;
+    std::size_t count = 0;
+    for (const VisualPatch& other : visual_point.patches) {
+      if (&other == &candidate) continue;
+      const Eigen::VectorXf other_centered =
+          other.intensities[0].array() - other.intensities[0].mean();
+      const double denominator = candidate_norm * other_centered.norm();
+      if (denominator > 0.0) {
+        correlation += std::abs(centered.dot(other_centered) / denominator);
+      }
+      ++count;
+    }
+    correlation /= static_cast<double>(count);
+
+    double face_on = 0.0;
+    if (!visual_point.normal.isZero()) {
+      const Sophus::SE3d T_ref_world = candidate.T_world_camera.inverse();
+      const Eigen::Vector3d point_ref = T_ref_world * visual_point.position;
+      const Eigen::Vector3d normal_ref =
+          T_ref_world.so3() * visual_point.normal;
+      face_on = point_ref.normalized().dot(normal_ref);
+    }
+
+    const double score = correlation + face_on;
+    if (score > highest_score) {
+      highest_score = score;
+      best_match = &candidate;
+    }
+  }
+  return best_match;
+}
+
 PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
                                         const Eigen::Vector2d& pixel,
                                         const Eigen::Vector3d& point_imu,
                                         const VisualPatch& reference_patch,
                                         std::size_t pyramid_level,
-                                        std::size_t patch_size) {
+                                        std::size_t patch_size,
+                                        const Eigen::Matrix2d& warp) {
   const int half_patch = static_cast<int>(patch_size) / 2;
   const Eigen::Index total_patch_size =
       static_cast<Eigen::Index>(patch_size * patch_size);
@@ -53,7 +127,8 @@ PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
   Eigen::Index index = 0;
   for (int dv = -half_patch; dv < half_patch; ++dv) {
     for (int du = -half_patch; du < half_patch; ++du) {
-      const Eigen::Vector2d sample_pixel = pixel + Eigen::Vector2d(du, dv);
+      const Eigen::Vector2d sample_pixel =
+          pixel + warp * Eigen::Vector2d(du, dv);
       match.current_patch(index) =
           static_cast<float>(SampleBilinear(image, sample_pixel));
       match.gradients(index, 0) =
@@ -88,12 +163,211 @@ PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
   return match;
 }
 
-std::vector<PhotometricMatch> BuildCameraMatches(
+cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
+                        const CameraParams& camera_params) {
+  cv::Mat depth_image = cv::Mat::zeros(size, CV_32F);
+  const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
+
+  for (const Point& point : points_imu) {
+    const Eigen::Vector3d point_cam = T_cam_imu * point.position;
+    if (point_cam.z() <= 0.0) continue;
+
+    const std::optional<Eigen::Vector2d> projected =
+        Project(camera_params, point_cam);
+    if (!projected) continue;
+
+    const int column = static_cast<int>(projected->x());
+    const int row = static_cast<int>(projected->y());
+    if (column < 0 || row < 0 || column >= size.width || row >= size.height) {
+      continue;
+    }
+
+    // Keep the nearest, which is the surface the camera actually sees.
+    float& stored = depth_image.at<float>(row, column);
+    const auto depth = static_cast<float>(point_cam.z());
+    if (stored == 0.0F || depth < stored) {
+      stored = depth;
+    }
+  }
+  return depth_image;
+}
+
+namespace {
+
+// The nearest visible point in each grid cell, chosen before any gate runs.
+std::vector<const VisualPoint*> NearestPerGrid(
+    const std::vector<const VisualPoint*>& visual_points, const cv::Mat& image,
+    const State& state, const CameraParams& camera_params,
+    const CameraUpdateParams& update_params, double scale) {
+  const std::size_t grid_size = update_params.selection_grid_size;
+  if (grid_size == 0) return visual_points;
+
+  const std::size_t columns =
+      (static_cast<std::size_t>(image.cols) + grid_size - 1) / grid_size;
+  const std::size_t rows =
+      (static_cast<std::size_t>(image.rows) + grid_size - 1) / grid_size;
+
+  const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
+  const Sophus::SO3d R_inv = state.rotation.inverse();
+
+  std::vector<const VisualPoint*> best(rows * columns, nullptr);
+  std::vector<double> best_distance(rows * columns,
+                                    std::numeric_limits<double>::max());
+
+  for (const VisualPoint* visual_point : visual_points) {
+    const Eigen::Vector3d p_cam =
+        T_cam_imu * (R_inv * (visual_point->position - state.position));
+    const std::optional<Eigen::Vector2d> projected =
+        Project(camera_params, p_cam);
+    if (!projected) continue;
+
+    const Eigen::Vector2d pixel = (*projected) * scale;
+    if (pixel.x() < 0.0 || pixel.y() < 0.0) continue;
+    const auto column = static_cast<std::size_t>(pixel.x()) / grid_size;
+    const auto row = static_cast<std::size_t>(pixel.y()) / grid_size;
+    if (column >= columns || row >= rows) continue;
+
+    const std::size_t index = row * columns + column;
+    const double distance = p_cam.norm();
+    if (distance < best_distance[index]) {
+      best_distance[index] = distance;
+      best[index] = visual_point;
+    }
+  }
+
+  std::vector<const VisualPoint*> nearest;
+  nearest.reserve(best.size());
+  for (const VisualPoint* point : best) {
+    if (point != nullptr) nearest.push_back(point);
+  }
+  return nearest;
+}
+
+// Keeps the nearest point in each grid cell, so the constraints are spread over
+// the image instead of piling onto whatever happens to be textured.
+std::vector<SelectedPoint> DecimateByGrid(
+    const std::vector<SelectedPoint>& selection, const cv::Mat& image,
+    const CameraUpdateParams& update_params, double scale) {
+  const std::size_t grid_size = update_params.selection_grid_size;
+  if (grid_size == 0) return selection;
+
+  const std::size_t columns =
+      (static_cast<std::size_t>(image.cols) + grid_size - 1) / grid_size;
+  const std::size_t rows =
+      (static_cast<std::size_t>(image.rows) + grid_size - 1) / grid_size;
+
+  std::vector<int> best(rows * columns, -1);
+  for (std::size_t i = 0; i < selection.size(); ++i) {
+    const Eigen::Vector2d pixel = selection[i].pixel * scale;
+    if (pixel.x() < 0.0 || pixel.y() < 0.0) continue;
+    const auto column = static_cast<std::size_t>(pixel.x()) / grid_size;
+    const auto row = static_cast<std::size_t>(pixel.y()) / grid_size;
+    if (column >= columns || row >= rows) continue;
+
+    int& winner = best[row * columns + column];
+    if (winner < 0 ||
+        selection[i].distance <
+            selection[static_cast<std::size_t>(winner)].distance) {
+      winner = static_cast<int>(i);
+    }
+  }
+
+  std::vector<SelectedPoint> decimated;
+  decimated.reserve(best.size());
+  for (const int index : best) {
+    if (index >= 0)
+      decimated.push_back(selection[static_cast<std::size_t>(index)]);
+  }
+  return decimated;
+}
+
+// Samples reach warp * (half_patch, half_patch) from the center, and the
+// gradient needs one pixel beyond that.
+std::size_t WarpedMargin(const Eigen::Matrix2d& warp, double half_patch) {
+  return static_cast<std::size_t>(
+      warp.cwiseAbs().rowwise().sum().maxCoeff() * half_patch + 2.0);
+}
+
+// True when the current scan sees a surface inside the patch that is much
+// nearer or further than the point itself, so the patch spans an edge.
+bool OnDepthEdge(const cv::Mat& depth_image, const Eigen::Vector2d& pixel,
+                 double depth, int half_patch, double max_discontinuity) {
+  const int center_column = static_cast<int>(pixel.x());
+  const int center_row = static_cast<int>(pixel.y());
+
+  for (int dv = -half_patch; dv <= half_patch; ++dv) {
+    const int row = center_row + dv;
+    if (row < 0 || row >= depth_image.rows) continue;
+    for (int du = -half_patch; du <= half_patch; ++du) {
+      const int column = center_column + du;
+      if (column < 0 || column >= depth_image.cols) continue;
+
+      const float measured = depth_image.at<float>(row, column);
+      if (measured == 0.0F) continue;  // Nothing hit this pixel.
+      if (std::abs(depth - static_cast<double>(measured)) > max_discontinuity) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// A patch only stays usable while the warp keeps it close to its original
+// scale; beyond this it is either aliased or blown up out of nothing.
+constexpr double kMinWarpDeterminant = 1.0 / 16.0;
+constexpr double kMaxWarpDeterminant = 16.0;
+
+// Maps a pixel offset in the reference patch to the matching pixel offset in
+// the current image. The offset is traced onto the surface plane through the
+// point, so a slanted surface warps as a homography rather than as if it faced
+// the reference camera. Both sides use the same pyramid level, so the matrix is
+// the same at every level.
+Eigen::Matrix2d AffineWarp(const CameraParams& camera_params,
+                           const VisualPatch& reference_patch,
+                           const Eigen::Vector3d& point_world,
+                           const Eigen::Vector3d& normal_world,
+                           const Eigen::Vector3d& point_cam,
+                           const Sophus::SE3d& T_cam_world) {
+  const Sophus::SE3d T_ref_world = reference_patch.T_world_camera.inverse();
+  const Eigen::Vector3d point_ref = T_ref_world * point_world;
+  if (point_ref.z() <= 0.0) {
+    return Eigen::Matrix2d::Constant(std::numeric_limits<double>::quiet_NaN());
+  }
+
+  // Without a plane, hold the depth constant, which is the old behaviour.
+  const Eigen::Vector3d normal_ref =
+      normal_world.isZero() ? Eigen::Vector3d::UnitZ()
+                            : (T_ref_world.so3() * normal_world).normalized();
+
+  // A pixel offset fixes the two projection rows; staying on the plane fixes
+  // the third. Solving all three turns the offset into a 3D offset along the
+  // surface.
+  Eigen::Matrix3d reference_map;
+  reference_map.topRows<2>() = ProjectionJacobian(camera_params, point_ref);
+  reference_map.row(2) = normal_ref.transpose();
+  if (std::abs(reference_map.determinant()) <
+      std::numeric_limits<double>::epsilon()) {
+    return Eigen::Matrix2d::Constant(std::numeric_limits<double>::quiet_NaN());
+  }
+
+  const Eigen::Matrix3d R_cam_ref =
+      (T_cam_world * reference_patch.T_world_camera).rotationMatrix();
+
+  return ProjectionJacobian(camera_params, point_cam) * R_cam_ref *
+         reference_map.inverse().leftCols<2>();
+}
+
+}  // namespace
+
+std::size_t g_no_normal = 0;   // TEMP DEBUG
+std::vector<double> g_errors;  // TEMP DEBUG
+std::size_t g_considered = 0;  // TEMP DEBUG
+
+std::vector<SelectedPoint> SelectCameraPoints(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,
     const CameraParams& camera_params, const CameraUpdateParams& update_params,
-    std::vector<VisualObservation>* observations) {
-  const std::size_t margin = update_params.patch_size / 2 + 1;
+    std::vector<VisualObservation>* observations, const cv::Mat& depth_image) {
   const double min_view_angle_cos =
       std::cos(update_params.max_view_angle_deg * std::numbers::pi / 180.0);
   const double scale =
@@ -102,12 +376,25 @@ std::vector<PhotometricMatch> BuildCameraMatches(
   const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
   const Sophus::SO3d R_inv = state.rotation.inverse();
   const Sophus::SE3d T_world_imu(state.rotation, state.position);
-  const Eigen::Vector3d cam_position =
-      (T_world_imu * camera_params.T_imu_cam).translation();
+  const Sophus::SE3d T_world_cam = T_world_imu * camera_params.T_imu_cam;
+  const Sophus::SE3d T_cam_world = T_world_cam.inverse();
+  const Eigen::Vector3d cam_position = T_world_cam.translation();
+  const double half_patch = static_cast<double>(update_params.patch_size) / 2.0;
 
-  std::vector<PhotometricMatch> matches;
-  matches.reserve(visual_points.size());
-  for (const VisualPoint* visual_point : visual_points) {
+  // FAST-LIVO2 thins by grid first and only then applies the gates, so a cell
+  // whose nearest point is rejected yields nothing at all.
+  std::vector<const VisualPoint*> candidates;
+  if (update_params.decimate_before_gates) {
+    candidates = NearestPerGrid(visual_points, image, state, camera_params,
+                                update_params, scale);
+  }
+  const std::vector<const VisualPoint*>& considered =
+      update_params.decimate_before_gates ? candidates : visual_points;
+
+  std::vector<SelectedPoint> selection;
+  selection.reserve(considered.size());
+  for (const VisualPoint* visual_point : considered) {
+    ++g_considered;  // TEMP DEBUG
     const Eigen::Vector3d p_imu =
         R_inv * (visual_point->position - state.position);
     const Eigen::Vector3d p_cam = T_cam_imu * p_imu;
@@ -119,10 +406,17 @@ std::vector<PhotometricMatch> BuildCameraMatches(
     // Scale the pixel to this pyramid level
     const Eigen::Vector2d pixel = (*projected) * scale;
 
-    if (!InFrame(image, pixel, margin)) continue;
+    if (visual_point->normal.isZero()) {
+      ++g_no_normal;  // TEMP DEBUG
+      if (update_params.require_normal) continue;
+    }
 
     const VisualPatch* reference_patch =
-        SelectReferencePatch(*visual_point, cam_position);
+        update_params.reference_patch_medoid
+            ? SelectReferencePatchMedoid(*visual_point)
+            : (update_params.reference_patch_scored
+                   ? SelectReferencePatchScored(*visual_point)
+                   : SelectReferencePatch(*visual_point, cam_position));
 
     if (!reference_patch) continue;  // Never observed
 
@@ -136,9 +430,33 @@ std::vector<PhotometricMatch> BuildCameraMatches(
       if (view_dir.dot(patch_dir) < min_view_angle_cos) continue;
     }
 
+    if (!depth_image.empty() &&
+        OnDepthEdge(depth_image, *projected, p_cam.z(),
+                    static_cast<int>(update_params.patch_size) / 2,
+                    update_params.max_depth_discontinuity)) {
+      continue;
+    }
+
+    // The patch was taken from a different viewpoint, so the surface it sits
+    // on projects into this frame stretched and rotated. Warping the sample
+    // pattern by that map compares the same surface points instead of the same
+    // pixel offsets.
+    const Eigen::Matrix2d warp =
+        AffineWarp(camera_params, *reference_patch, visual_point->position,
+                   visual_point->normal, p_cam, T_cam_world);
+    if (!warp.allFinite()) continue;
+
+    const double determinant = warp.determinant();
+    if (!(determinant > kMinWarpDeterminant &&
+          determinant < kMaxWarpDeterminant)) {
+      continue;  // Too stretched to carry usable detail.
+    }
+
+    if (!InFrame(image, pixel, WarpedMargin(warp, half_patch))) continue;
+
     PhotometricMatch match =
         CreatePhotometricMatch(image, pixel, p_imu, *reference_patch,
-                               pyramid_level, update_params.patch_size);
+                               pyramid_level, update_params.patch_size, warp);
 
     const double photometric_error =
         (match.reference_patch - match.current_patch).squaredNorm();
@@ -149,17 +467,92 @@ std::vector<PhotometricMatch> BuildCameraMatches(
         static_cast<double>(update_params.patch_size *
                             update_params.patch_size);
 
+    {  // TEMP DEBUG: distribution of the per-pixel error over candidates.
+      g_errors.push_back(photometric_error /
+                         static_cast<double>(update_params.patch_size *
+                                             update_params.patch_size));
+    }
+
     const bool matched = photometric_error < outlier_threshold;
     if (observations) {
       observations->push_back({visual_point->position, *projected, matched});
     }
     if (matched) {
-      matches.push_back(std::move(match));
+      selection.push_back(
+          {visual_point, reference_patch, warp, *projected, p_cam.norm()});
     }
+  }
+
+  {  // TEMP DEBUG
+    std::println("CAMNORM,{},{}", g_considered, g_no_normal);
+    if (g_errors.size() > 200000) {
+      std::vector<double> sorted = g_errors;
+      std::sort(sorted.begin(), sorted.end());
+      const auto at = [&sorted](double q) {
+        return sorted[static_cast<std::size_t>(
+            q * static_cast<double>(sorted.size() - 1))];
+      };
+      std::println(
+          "CAMERRDIST,{},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f}",
+          sorted.size(), at(0.05), at(0.25), at(0.5), at(0.75), at(0.9),
+          at(0.99), sorted.back());
+      g_errors.clear();
+    }
+  }
+
+  if (!update_params.decimate_before_gates) {
+    selection = DecimateByGrid(selection, image, update_params, scale);
+  }
+  selection.shrink_to_fit();
+  return selection;
+}
+
+std::vector<PhotometricMatch> BuildMatchesFromSelection(
+    const cv::Mat& image, std::size_t pyramid_level, const State& state,
+    const std::vector<SelectedPoint>& selection,
+    const CameraParams& camera_params,
+    const CameraUpdateParams& update_params) {
+  const double scale =
+      1.0 / static_cast<double>(std::size_t{1} << pyramid_level);
+  const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
+  const Sophus::SO3d R_inv = state.rotation.inverse();
+  const double half_patch = static_cast<double>(update_params.patch_size) / 2.0;
+
+  std::vector<PhotometricMatch> matches;
+  matches.reserve(selection.size());
+  for (const SelectedPoint& selected : selection) {
+    const Eigen::Vector3d p_imu =
+        R_inv * (selected.point->position - state.position);
+    const Eigen::Vector3d p_cam = T_cam_imu * p_imu;
+
+    const std::optional<Eigen::Vector2d> projected =
+        Project(camera_params, p_cam);
+    if (!projected) continue;
+
+    const Eigen::Vector2d pixel = (*projected) * scale;
+    if (!InFrame(image, pixel, WarpedMargin(selected.warp, half_patch))) {
+      continue;
+    }
+
+    matches.push_back(CreatePhotometricMatch(
+        image, pixel, p_imu, *selected.reference_patch, pyramid_level,
+        update_params.patch_size, selected.warp));
   }
 
   matches.shrink_to_fit();
   return matches;
+}
+
+std::vector<PhotometricMatch> BuildCameraMatches(
+    const cv::Mat& image, std::size_t pyramid_level, const State& state,
+    const std::vector<const VisualPoint*>& visual_points,
+    const CameraParams& camera_params, const CameraUpdateParams& update_params,
+    std::vector<VisualObservation>* observations, const cv::Mat& depth_image) {
+  const std::vector<SelectedPoint> selection = SelectCameraPoints(
+      image, pyramid_level, state, visual_points, camera_params, update_params,
+      observations, depth_image);
+  return BuildMatchesFromSelection(image, pyramid_level, state, selection,
+                                   camera_params, update_params);
 }
 
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,

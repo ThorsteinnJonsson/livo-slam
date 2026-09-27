@@ -21,6 +21,10 @@ struct VisualPatch {
 
 struct VisualPoint {
   Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  // Surface normal in world frame, from the lidar plane the point landed on.
+  // Zero when the voxel had no plane, which falls back to a fronto-parallel
+  // warp.
+  Eigen::Vector3d normal = Eigen::Vector3d::Zero();
   std::vector<VisualPatch> patches;
 };
 

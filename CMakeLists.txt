@@ -20,6 +20,7 @@ find_package(OpenCV REQUIRED COMPONENTS core imgproc calib3d)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
 
 add_subdirectory(src)
 

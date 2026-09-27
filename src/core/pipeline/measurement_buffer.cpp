@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <iterator>
+#include <print>  // TEMP DEBUG
 #include <utility>
 #include <vector>
 
@@ -12,6 +13,14 @@ namespace {
 constexpr std::size_t kMaxImu = 4000;
 constexpr std::size_t kMaxPoints = 1000000;
 constexpr std::size_t kMaxImages = 50;
+
+// TEMP DEBUG
+std::size_t g_images_pushed = 0;
+std::size_t g_points_pushed = 0;
+std::size_t g_stale_dropped = 0;
+std::size_t g_cap_dropped_images = 0;
+std::size_t g_cap_dropped_points = 0;
+std::size_t g_groups = 0;
 
 const auto by_time = [](const Point& lhs, const Point& rhs) {
   return lhs.timestamp < rhs.timestamp;
@@ -34,6 +43,7 @@ void MeasurementBuffer::PushPoints(std::vector<Point> points) {
   if (points.empty()) {
     return;
   }
+  ++g_points_pushed;  // TEMP DEBUG
 
   {
     const MutexLock lock(mutex_);
@@ -66,6 +76,7 @@ void MeasurementBuffer::PushPoints(std::vector<Point> points) {
 
     while (points_.size() > kMaxPoints) {
       points_.pop_front();
+      ++g_cap_dropped_points;
     }
   }
   cv_.notify_one();
@@ -75,8 +86,10 @@ void MeasurementBuffer::PushImage(ImageFrame image) {
   {
     const MutexLock lock(mutex_);
     images_.push_back(std::move(image));
+    ++g_images_pushed;
     while (images_.size() > kMaxImages) {
       images_.pop_front();
+      ++g_cap_dropped_images;
     }
   }
   cv_.notify_one();
@@ -95,6 +108,15 @@ std::optional<MeasureGroup> MeasurementBuffer::PopMeasureGroup() {
   return FormGroup();
 }
 
+std::optional<MeasureGroup> MeasurementBuffer::TryPopMeasureGroup() {
+  MutexLock lock(mutex_);
+  DropStaleImages();
+  if (!CanFormGroup()) {
+    return std::nullopt;
+  }
+  return FormGroup();
+}
+
 void MeasurementBuffer::Shutdown() {
   {
     const MutexLock lock(mutex_);
@@ -106,6 +128,14 @@ void MeasurementBuffer::Shutdown() {
 void MeasurementBuffer::DropStaleImages() {
   while (!images_.empty() && !points_.empty() &&
          images_.front().timestamp < points_.front().timestamp) {
+    // TEMP DEBUG
+    std::println(
+        "STALE_DROP image_t={:.4f} points_front={:.4f} behind={:.4f} "
+        "images={} points={}",
+        images_.front().timestamp, points_.front().timestamp,
+        points_.front().timestamp - images_.front().timestamp, images_.size(),
+        points_.size());
+    ++g_stale_dropped;
     images_.pop_front();
   }
 }
@@ -140,6 +170,14 @@ MeasureGroup MeasurementBuffer::FormGroup() {
   }
 
   last_cut_time_ = image_time;
+  // TEMP DEBUG
+  if (++g_groups % 500 == 0) {
+    std::println(
+        "BUFSTATS groups={} images_pushed={} scans_pushed={} stale_dropped={} "
+        "cap_dropped_images={} cap_dropped_points={}",
+        g_groups, g_images_pushed, g_points_pushed, g_stale_dropped,
+        g_cap_dropped_images, g_cap_dropped_points);
+  }
   return group;
 }
 
