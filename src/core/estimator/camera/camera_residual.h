@@ -80,6 +80,7 @@ cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
                              const State& state,
                              const CameraParams& camera_params,
-                             double intensity_noise_std, bool normalize = true);
+                             double intensity_noise_std, bool normalize = true,
+                             bool estimate_exposure = true);
 
 }  // namespace livo_slam

@@ -46,6 +46,10 @@ struct CameraUpdateParams {
   // Divide each patch by its own mean, which makes the residual blind to
   // brightness. Off puts exposure back in the residual and in the state.
   bool normalize_patches = true;
+  // Let the filter estimate inverse exposure. Off holds it at its initial
+  // value, which isolates the residual change from the weight change the
+  // drifting estimate causes.
+  bool estimate_exposure = true;
   bool open_loop = false;  // TEMP DEBUG: compute the update but discard it.
 };
 

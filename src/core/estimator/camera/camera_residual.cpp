@@ -568,7 +568,8 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
                              const State& state,
                              const CameraParams& camera_params,
-                             double intensity_noise_std, bool normalize) {
+                             double intensity_noise_std, bool normalize,
+                             bool estimate_exposure) {
   IekfSystem system;
 
   const double weight = 1.0 / (intensity_noise_std * intensity_noise_std);
@@ -606,7 +607,7 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
       ErrorState jacobian = ErrorState::Zero();
       jacobian.segment<3>(kIdxRotation) = -(row * dP_dtheta).transpose();
       jacobian.segment<3>(kIdxPosition) = -(row * dP_dp).transpose();
-      if (!normalize) {
+      if (!normalize && estimate_exposure) {
         jacobian(kIdxInvExposure) = -match.current_patch[i];
       }
 

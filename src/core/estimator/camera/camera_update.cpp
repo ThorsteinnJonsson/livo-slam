@@ -79,7 +79,8 @@ CameraUpdateResult UpdateWithCamera(
 
       IekfSystem system = BuildCameraSystem(
           matches, posterior.state, camera_params,
-          update_params.intensity_noise_std, update_params.normalize_patches);
+          update_params.intensity_noise_std, update_params.normalize_patches,
+          update_params.estimate_exposure);
 
       auto iekf_result = SolveIekfStep(prior, posterior.state, system);
 
