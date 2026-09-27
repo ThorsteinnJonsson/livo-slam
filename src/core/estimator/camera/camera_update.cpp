@@ -58,7 +58,12 @@ CameraUpdateResult UpdateWithCamera(
 
       double cost = 0.0;
       for (const auto& match : matches) {
-        cost += (match.reference_patch - match.current_patch).squaredNorm();
+        cost +=
+            update_params.normalize_patches
+                ? (match.reference_patch - match.current_patch).squaredNorm()
+                : (match.reference_inv_exposure * match.reference_patch -
+                   posterior.state.inv_exposure * match.current_patch)
+                      .squaredNorm();
       }
       cost /= static_cast<double>(matches.size());
 
@@ -72,9 +77,9 @@ CameraUpdateResult UpdateWithCamera(
       best_cost = cost;
       accepted = posterior;
 
-      IekfSystem system =
-          BuildCameraSystem(matches, posterior.state, camera_params,
-                            update_params.intensity_noise_std);
+      IekfSystem system = BuildCameraSystem(
+          matches, posterior.state, camera_params,
+          update_params.intensity_noise_std, update_params.normalize_patches);
 
       auto iekf_result = SolveIekfStep(prior, posterior.state, system);
 

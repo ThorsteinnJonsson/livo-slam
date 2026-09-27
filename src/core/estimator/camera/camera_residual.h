@@ -48,7 +48,8 @@ PhotometricMatch CreatePhotometricMatch(
     const cv::Mat& image, const Eigen::Vector2d& pixel,
     const Eigen::Vector3d& point_imu, const VisualPatch& reference_patch,
     std::size_t pyramid_level, std::size_t patch_size,
-    const Eigen::Matrix2d& warp = Eigen::Matrix2d::Identity());
+    const Eigen::Matrix2d& warp = Eigen::Matrix2d::Identity(),
+    bool normalize = true);
 
 std::vector<PhotometricMatch> BuildCameraMatches(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
@@ -79,6 +80,6 @@ cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
                              const State& state,
                              const CameraParams& camera_params,
-                             double intensity_noise_std);
+                             double intensity_noise_std, bool normalize = true);
 
 }  // namespace livo_slam

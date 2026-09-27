@@ -107,13 +107,11 @@ const VisualPatch* SelectReferencePatchScored(const VisualPoint& visual_point) {
   return best_match;
 }
 
-PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
-                                        const Eigen::Vector2d& pixel,
-                                        const Eigen::Vector3d& point_imu,
-                                        const VisualPatch& reference_patch,
-                                        std::size_t pyramid_level,
-                                        std::size_t patch_size,
-                                        const Eigen::Matrix2d& warp) {
+PhotometricMatch CreatePhotometricMatch(
+    const cv::Mat& image, const Eigen::Vector2d& pixel,
+    const Eigen::Vector3d& point_imu, const VisualPatch& reference_patch,
+    std::size_t pyramid_level, std::size_t patch_size,
+    const Eigen::Matrix2d& warp, bool normalize) {
   const int half_patch = static_cast<int>(patch_size) / 2;
   const Eigen::Index total_patch_size =
       static_cast<Eigen::Index>(patch_size * patch_size);
@@ -143,8 +141,15 @@ PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
     }
   }
 
-  // Divide each patch by its own mean, so a global brightness change cancels.
   const Eigen::VectorXf& reference = reference_patch.intensities[pyramid_level];
+
+  if (!normalize) {
+    // Raw intensities, with exposure carried in the residual instead.
+    match.reference_patch = reference;
+    return match;
+  }
+
+  // Divide each patch by its own mean, so a global brightness change cancels.
   const float reference_mean = reference.mean();
   const float current_mean = match.current_patch.mean();
   if (reference_mean <= 0.0F || current_mean <= 0.0F) {
@@ -454,12 +459,16 @@ std::vector<SelectedPoint> SelectCameraPoints(
 
     if (!InFrame(image, pixel, WarpedMargin(warp, half_patch))) continue;
 
-    PhotometricMatch match =
-        CreatePhotometricMatch(image, pixel, p_imu, *reference_patch,
-                               pyramid_level, update_params.patch_size, warp);
+    PhotometricMatch match = CreatePhotometricMatch(
+        image, pixel, p_imu, *reference_patch, pyramid_level,
+        update_params.patch_size, warp, update_params.normalize_patches);
 
     const double photometric_error =
-        (match.reference_patch - match.current_patch).squaredNorm();
+        update_params.normalize_patches
+            ? (match.reference_patch - match.current_patch).squaredNorm()
+            : (match.reference_inv_exposure * match.reference_patch -
+               state.inv_exposure * match.current_patch)
+                  .squaredNorm();
 
     // The threshold is per pixel, the error is summed over the patch.
     const double outlier_threshold =
@@ -534,9 +543,10 @@ std::vector<PhotometricMatch> BuildMatchesFromSelection(
       continue;
     }
 
-    matches.push_back(CreatePhotometricMatch(
-        image, pixel, p_imu, *selected.reference_patch, pyramid_level,
-        update_params.patch_size, selected.warp));
+    matches.push_back(
+        CreatePhotometricMatch(image, pixel, p_imu, *selected.reference_patch,
+                               pyramid_level, update_params.patch_size,
+                               selected.warp, update_params.normalize_patches));
   }
 
   matches.shrink_to_fit();
@@ -558,7 +568,7 @@ std::vector<PhotometricMatch> BuildCameraMatches(
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
                              const State& state,
                              const CameraParams& camera_params,
-                             double intensity_noise_std) {
+                             double intensity_noise_std, bool normalize) {
   IekfSystem system;
 
   const double weight = 1.0 / (intensity_noise_std * intensity_noise_std);
@@ -581,15 +591,24 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
     const Eigen::Matrix3d dP_dp =
         -R_cam_imu * state.rotation.matrix().transpose();
 
-    for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {
-      const auto residual = match.reference_patch[i] - match.current_patch[i];
-      const Eigen::RowVector3d row = match.gradients.row(i) * dU_dp;
+    // Raw patches keep their brightness scale, so exposure is observable and
+    // scales the image gradient as well.
+    const double gradient_scale = normalize ? 1.0 : state.inv_exposure;
 
-      // Normalized patches carry no brightness scale, so inverse exposure no
-      // longer appears in the residual and is unobservable here.
+    for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {
+      const double residual =
+          normalize ? match.reference_patch[i] - match.current_patch[i]
+                    : match.reference_inv_exposure * match.reference_patch[i] -
+                          state.inv_exposure * match.current_patch[i];
+      const Eigen::RowVector3d row =
+          gradient_scale * (match.gradients.row(i) * dU_dp);
+
       ErrorState jacobian = ErrorState::Zero();
       jacobian.segment<3>(kIdxRotation) = -(row * dP_dtheta).transpose();
       jacobian.segment<3>(kIdxPosition) = -(row * dP_dp).transpose();
+      if (!normalize) {
+        jacobian(kIdxInvExposure) = -match.current_patch[i];
+      }
 
       system.hth += weight * jacobian * jacobian.transpose();
       system.htz += weight * jacobian * -residual;

@@ -181,6 +181,9 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
         estimate_ = before_camera;
       }
 
+      std::println("EXPO,{:.6f},{:.6f}", estimate_.timestamp,
+                   estimate_.state.inv_exposure);  // TEMP DEBUG
+
       //   Map update
       //   Update map with deskewed points in world frame
 

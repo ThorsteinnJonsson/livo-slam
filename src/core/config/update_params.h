@@ -43,6 +43,9 @@ struct CameraUpdateParams {
   // Pick the nearest point per grid cell before the gates run, so a cell whose
   // nearest point fails contributes nothing. This is FAST-LIVO2's order.
   bool decimate_before_gates = false;
+  // Divide each patch by its own mean, which makes the residual blind to
+  // brightness. Off puts exposure back in the residual and in the state.
+  bool normalize_patches = true;
   bool open_loop = false;  // TEMP DEBUG: compute the update but discard it.
 };
 
