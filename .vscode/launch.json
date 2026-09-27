@@ -9,7 +9,9 @@
       "args": [
         "--ros-args",
         "--params-file",
-        "${workspaceFolder}/config/active.yaml"
+        "${workspaceFolder}/config/active.yaml",
+        "-p",
+        "ros.bag_path:=${workspaceFolder}/datasets/active"
       ],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "build and select dataset"
@@ -22,14 +24,16 @@
       "args": [
         "--ros-args",
         "--params-file",
-        "${workspaceFolder}/config/active.yaml"
+        "${workspaceFolder}/config/active.yaml",
+        "-p",
+        "ros.bag_path:=${workspaceFolder}/datasets/active"
       ],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "build and start rerun",
       "postDebugTask": "stop rerun"
     },
     {
-      "name": "livo_slam + rerun + bag",
+      "name": "livo_slam + rerun + live playback",
       "type": "lldb",
       "request": "launch",
       "program": "${command:cmake.launchTargetPath}",
