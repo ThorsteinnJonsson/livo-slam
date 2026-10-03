@@ -247,12 +247,17 @@ std::vector<Point> ToPointsFromLivox(
   return points;
 }
 
-ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift) {
+ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift,
+                        bool want_color) {
   ImageFrame frame;
   frame.timestamp = ToSeconds(msg.header.stamp) + time_shift;
   try {
     frame.image =
         cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8)->image;
+    if (want_color) {
+      frame.color =
+          cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8)->image;
+    }
   } catch (const cv_bridge::Exception& error) {
     std::println("cannot convert {} to mono8: {}", msg.encoding, error.what());
   }
@@ -260,12 +265,16 @@ ImageFrame ToImageFrame(const sensor_msgs::msg::Image& msg, double time_shift) {
 }
 
 ImageFrame ToImageFrame(const sensor_msgs::msg::CompressedImage& msg,
-                        double time_shift) {
+                        double time_shift, bool want_color) {
   ImageFrame frame;
   frame.timestamp = ToSeconds(msg.header.stamp) + time_shift;
   try {
     frame.image =
         cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8)->image;
+    if (want_color) {
+      frame.color =
+          cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8)->image;
+    }
   } catch (const cv_bridge::Exception& error) {
     std::println("cannot decode {} to mono8: {}", msg.format, error.what());
   }

@@ -15,6 +15,8 @@ struct ProcessResult {
   std::vector<Plane> map_planes;
   cv::Mat image;
   std::vector<VisualObservation> visual_observations;
+  Cloud cloud_imu;
+  cv::Mat color_image;
 };
 
 class LivoPipeline {

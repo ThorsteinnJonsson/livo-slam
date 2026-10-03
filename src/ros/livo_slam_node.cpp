@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <format>
+#include <print>
 #include <rclcpp/qos.hpp>
 #include <rclcpp/serialization.hpp>
 #include <rclcpp/serialized_message.hpp>
@@ -73,6 +74,10 @@ LivoSlamNode::LivoSlamNode()
     }
   }
 
+  if (config_.viz.enabled && config_.viz.color_cloud) {
+    color_cloud_.emplace(config_.viz.color_cloud_voxel_size);
+  }
+
   if (live) {
     worker_ = std::jthread([this] { Run(); });
     RCLCPP_INFO(get_logger(), "subscribed to %s, %s, %s", imu_topic.c_str(),
@@ -118,6 +123,10 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   const VizParams viz_defaults;
   config.viz.enabled =
       declare_parameter<bool>("viz.enabled", viz_defaults.enabled);
+  config.viz.color_cloud =
+      declare_parameter<bool>("viz.color_cloud", viz_defaults.color_cloud);
+  config.viz.color_cloud_voxel_size = declare_parameter<double>(
+      "viz.color_cloud_voxel_size", viz_defaults.color_cloud_voxel_size);
   config.viz.grpc_url =
       declare_parameter<std::string>("viz.grpc_url", viz_defaults.grpc_url);
 
@@ -310,6 +319,17 @@ void LivoSlamNode::ProcessGroup(const MeasureGroup& group) {
   visualizer_.LogMap(result.map_planes);
   visualizer_.LogCamera(result.image, result.visual_observations);
   visualizer_.LogVisualPoints(result.visual_observations);
+
+  if (color_cloud_) {
+    const Sophus::SE3d T_world_imu(result.estimate.state.rotation,
+                                   result.estimate.state.position);
+    color_cloud_->Add(result.cloud_imu.points, T_world_imu, config_.camera,
+                      result.color_image);
+    if (group_index_ % 10 == 0) {
+      visualizer_.LogColorCloud(group_index_, color_cloud_->TakeNew());
+    }
+  }
+
   WriteTrajectory(result.estimate);
 }
 
@@ -369,11 +389,13 @@ void LivoSlamNode::ReplayBag() {
       if (camera_compressed_) {
         sensor_msgs::msg::CompressedImage message;
         compressed_serialization.deserialize_message(&serialized, &message);
-        buffer_.PushImage(ToImageFrame(message, config_.camera.time_shift));
+        buffer_.PushImage(ToImageFrame(message, config_.camera.time_shift,
+                                       color_cloud_.has_value()));
       } else {
         sensor_msgs::msg::Image message;
         image_serialization.deserialize_message(&serialized, &message);
-        buffer_.PushImage(ToImageFrame(message, config_.camera.time_shift));
+        buffer_.PushImage(ToImageFrame(message, config_.camera.time_shift,
+                                       color_cloud_.has_value()));
       }
     } else {
       continue;
@@ -417,12 +439,14 @@ void LivoSlamNode::LidarCallback(
 
 void LivoSlamNode::CameraCallback(
     const sensor_msgs::msg::Image::ConstSharedPtr& msg) {
-  buffer_.PushImage(ToImageFrame(*msg, config_.camera.time_shift));
+  buffer_.PushImage(
+      ToImageFrame(*msg, config_.camera.time_shift, color_cloud_.has_value()));
 }
 
 void LivoSlamNode::CompressedCameraCallback(
     const sensor_msgs::msg::CompressedImage::ConstSharedPtr& msg) {
-  buffer_.PushImage(ToImageFrame(*msg, config_.camera.time_shift));
+  buffer_.PushImage(
+      ToImageFrame(*msg, config_.camera.time_shift, color_cloud_.has_value()));
 }
 
 }  // namespace livo_slam

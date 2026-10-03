@@ -9,6 +9,7 @@
 #include "core/config/camera_params.h"
 #include "core/config/viz_params.h"
 #include "core/types/cloud.h"
+#include "core/types/color_point.h"
 #include "core/types/plane.h"
 #include "core/types/state.h"
 #include "core/types/visual_observation.h"
@@ -41,6 +42,9 @@ class Visualizer {
 
   // The visual points in 3D.
   void LogVisualPoints(const std::vector<VisualObservation>& observations);
+
+  // Each batch goes to its own entity so Rerun keeps the earlier ones.
+  void LogColorCloud(std::int64_t batch, const std::vector<ColorPoint>& points);
 
  private:
   struct Impl;

@@ -57,6 +57,8 @@
     camera.time_shift: -0.0199575325817
 
     viz.enabled: true
+    viz.color_cloud: true
+    viz.color_cloud_voxel_size: 0.05
     viz.grpc_url: rerun+http://127.0.0.1:9877/proxy
 
     lidar.min_range: 1.0
