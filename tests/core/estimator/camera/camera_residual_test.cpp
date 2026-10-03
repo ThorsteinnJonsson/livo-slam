@@ -292,6 +292,7 @@ VisualPoint MakeVisualPoint(double depth, float intensity,
                             std::size_t patch_size) {
   VisualPoint point;
   point.position = Eigen::Vector3d(0.0, 0.0, depth);
+  point.normal = Eigen::Vector3d(0.0, 0.0, -1.0);  // Faces the camera.
 
   VisualPatch patch;
   patch.T_world_camera = Sophus::SE3d{};

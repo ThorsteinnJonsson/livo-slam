@@ -90,7 +90,6 @@
     # Normalising cancels brightness, which makes outlier_threshold inert.
     camera_update.normalize_patches: false
     camera_update.estimate_exposure: true
-    camera_update.require_normal: true
     camera_update.max_view_angle_deg: 15.0
     camera_update.max_depth_discontinuity: 0.5
     camera_update.selection_grid_size: 30

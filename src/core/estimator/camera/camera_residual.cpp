@@ -36,77 +36,6 @@ const VisualPatch* SelectReferencePatch(
   return best_match;
 }
 
-const VisualPatch* SelectReferencePatchMedoid(const VisualPoint& visual_point) {
-  if (visual_point.patches.empty()) return nullptr;
-  if (visual_point.patches.size() == 1) return &visual_point.patches.front();
-
-  // The patch that disagrees least with all the others is the one least likely
-  // to be blurred, occluded or oddly exposed.
-  const VisualPatch* best_match = nullptr;
-  double lowest_error = std::numeric_limits<double>::max();
-  for (const VisualPatch& candidate : visual_point.patches) {
-    double error = 0.0;
-    std::size_t count = 0;
-    for (const VisualPatch& other : visual_point.patches) {
-      if (&other == &candidate) continue;
-      error += (candidate.intensities[0] - other.intensities[0]).squaredNorm();
-      ++count;
-    }
-    error /= static_cast<double>(count);
-    if (error < lowest_error) {
-      lowest_error = error;
-      best_match = &candidate;
-    }
-  }
-  return best_match;
-}
-
-const VisualPatch* SelectReferencePatchScored(const VisualPoint& visual_point) {
-  if (visual_point.patches.empty()) return nullptr;
-  if (visual_point.patches.size() == 1) return &visual_point.patches.front();
-
-  // Correlation against the point's other patches, plus how square-on the
-  // patch was taken. Neither term depends on where the camera is now, so the
-  // score ranks patch quality rather than agreement with this frame.
-  const VisualPatch* best_match = nullptr;
-  double highest_score = std::numeric_limits<double>::lowest();
-  for (const VisualPatch& candidate : visual_point.patches) {
-    const Eigen::VectorXf centered =
-        candidate.intensities[0].array() - candidate.intensities[0].mean();
-    const double candidate_norm = centered.norm();
-
-    double correlation = 0.0;
-    std::size_t count = 0;
-    for (const VisualPatch& other : visual_point.patches) {
-      if (&other == &candidate) continue;
-      const Eigen::VectorXf other_centered =
-          other.intensities[0].array() - other.intensities[0].mean();
-      const double denominator = candidate_norm * other_centered.norm();
-      if (denominator > 0.0) {
-        correlation += std::abs(centered.dot(other_centered) / denominator);
-      }
-      ++count;
-    }
-    correlation /= static_cast<double>(count);
-
-    double face_on = 0.0;
-    if (!visual_point.normal.isZero()) {
-      const Sophus::SE3d T_ref_world = candidate.T_world_camera.inverse();
-      const Eigen::Vector3d point_ref = T_ref_world * visual_point.position;
-      const Eigen::Vector3d normal_ref =
-          T_ref_world.so3() * visual_point.normal;
-      face_on = point_ref.normalized().dot(normal_ref);
-    }
-
-    const double score = correlation + face_on;
-    if (score > highest_score) {
-      highest_score = score;
-      best_match = &candidate;
-    }
-  }
-  return best_match;
-}
-
 PhotometricMatch CreatePhotometricMatch(
     const cv::Mat& image, const Eigen::Vector2d& pixel,
     const Eigen::Vector3d& point_imu, const VisualPatch& reference_patch,
@@ -200,54 +129,6 @@ cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
 namespace {
 
 // The nearest visible point in each grid cell, chosen before any gate runs.
-std::vector<const VisualPoint*> NearestPerGrid(
-    const std::vector<const VisualPoint*>& visual_points, const cv::Mat& image,
-    const State& state, const CameraParams& camera_params,
-    const CameraUpdateParams& update_params, double scale) {
-  const std::size_t grid_size = update_params.selection_grid_size;
-  if (grid_size == 0) return visual_points;
-
-  const std::size_t columns =
-      (static_cast<std::size_t>(image.cols) + grid_size - 1) / grid_size;
-  const std::size_t rows =
-      (static_cast<std::size_t>(image.rows) + grid_size - 1) / grid_size;
-
-  const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
-  const Sophus::SO3d R_inv = state.rotation.inverse();
-
-  std::vector<const VisualPoint*> best(rows * columns, nullptr);
-  std::vector<double> best_distance(rows * columns,
-                                    std::numeric_limits<double>::max());
-
-  for (const VisualPoint* visual_point : visual_points) {
-    const Eigen::Vector3d p_cam =
-        T_cam_imu * (R_inv * (visual_point->position - state.position));
-    const std::optional<Eigen::Vector2d> projected =
-        Project(camera_params, p_cam);
-    if (!projected) continue;
-
-    const Eigen::Vector2d pixel = (*projected) * scale;
-    if (pixel.x() < 0.0 || pixel.y() < 0.0) continue;
-    const auto column = static_cast<std::size_t>(pixel.x()) / grid_size;
-    const auto row = static_cast<std::size_t>(pixel.y()) / grid_size;
-    if (column >= columns || row >= rows) continue;
-
-    const std::size_t index = row * columns + column;
-    const double distance = p_cam.norm();
-    if (distance < best_distance[index]) {
-      best_distance[index] = distance;
-      best[index] = visual_point;
-    }
-  }
-
-  std::vector<const VisualPoint*> nearest;
-  nearest.reserve(best.size());
-  for (const VisualPoint* point : best) {
-    if (point != nullptr) nearest.push_back(point);
-  }
-  return nearest;
-}
-
 // Keeps the nearest point in each grid cell, so the constraints are spread over
 // the image instead of piling onto whatever happens to be textured.
 std::vector<SelectedPoint> DecimateByGrid(
@@ -339,10 +220,8 @@ Eigen::Matrix2d AffineWarp(const CameraParams& camera_params,
     return Eigen::Matrix2d::Constant(std::numeric_limits<double>::quiet_NaN());
   }
 
-  // Without a plane, hold the depth constant, which is the old behaviour.
   const Eigen::Vector3d normal_ref =
-      normal_world.isZero() ? Eigen::Vector3d::UnitZ()
-                            : (T_ref_world.so3() * normal_world).normalized();
+      (T_ref_world.so3() * normal_world).normalized();
 
   // A pixel offset fixes the two projection rows; staying on the plane fixes
   // the third. Solving all three turns the offset into a 3D offset along the
@@ -386,19 +265,9 @@ std::vector<SelectedPoint> SelectCameraPoints(
   const Eigen::Vector3d cam_position = T_world_cam.translation();
   const double half_patch = static_cast<double>(update_params.patch_size) / 2.0;
 
-  // FAST-LIVO2 thins by grid first and only then applies the gates, so a cell
-  // whose nearest point is rejected yields nothing at all.
-  std::vector<const VisualPoint*> candidates;
-  if (update_params.decimate_before_gates) {
-    candidates = NearestPerGrid(visual_points, image, state, camera_params,
-                                update_params, scale);
-  }
-  const std::vector<const VisualPoint*>& considered =
-      update_params.decimate_before_gates ? candidates : visual_points;
-
   std::vector<SelectedPoint> selection;
-  selection.reserve(considered.size());
-  for (const VisualPoint* visual_point : considered) {
+  selection.reserve(visual_points.size());
+  for (const VisualPoint* visual_point : visual_points) {
     ++g_considered;  // TEMP DEBUG
     const Eigen::Vector3d p_imu =
         R_inv * (visual_point->position - state.position);
@@ -411,17 +280,14 @@ std::vector<SelectedPoint> SelectCameraPoints(
     // Scale the pixel to this pyramid level
     const Eigen::Vector2d pixel = (*projected) * scale;
 
+    // Without a plane the warp has no surface to trace the patch onto.
     if (visual_point->normal.isZero()) {
       ++g_no_normal;  // TEMP DEBUG
-      if (update_params.require_normal) continue;
+      continue;
     }
 
     const VisualPatch* reference_patch =
-        update_params.reference_patch_medoid
-            ? SelectReferencePatchMedoid(*visual_point)
-            : (update_params.reference_patch_scored
-                   ? SelectReferencePatchScored(*visual_point)
-                   : SelectReferencePatch(*visual_point, cam_position));
+        SelectReferencePatch(*visual_point, cam_position);
 
     if (!reference_patch) continue;  // Never observed
 
@@ -509,9 +375,7 @@ std::vector<SelectedPoint> SelectCameraPoints(
     }
   }
 
-  if (!update_params.decimate_before_gates) {
-    selection = DecimateByGrid(selection, image, update_params, scale);
-  }
+  selection = DecimateByGrid(selection, image, update_params, scale);
   selection.shrink_to_fit();
   return selection;
 }

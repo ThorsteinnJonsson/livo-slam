@@ -229,17 +229,6 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       static_cast<std::size_t>(declare_parameter<int64_t>(
           "camera_update.selection_grid_size",
           static_cast<int64_t>(camera_update_defaults.selection_grid_size)));
-  config.camera_update.reference_patch_medoid =
-      declare_parameter<bool>("camera_update.reference_patch_medoid",
-                              camera_update_defaults.reference_patch_medoid);
-  config.camera_update.reference_patch_scored =
-      declare_parameter<bool>("camera_update.reference_patch_scored",
-                              camera_update_defaults.reference_patch_scored);
-  config.camera_update.require_normal = declare_parameter<bool>(
-      "camera_update.require_normal", camera_update_defaults.require_normal);
-  config.camera_update.decimate_before_gates =
-      declare_parameter<bool>("camera_update.decimate_before_gates",
-                              camera_update_defaults.decimate_before_gates);
   config.camera_update.normalize_patches =
       declare_parameter<bool>("camera_update.normalize_patches",
                               camera_update_defaults.normalize_patches);

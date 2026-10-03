@@ -36,13 +36,7 @@ struct SelectedPoint {
 const VisualPatch* SelectReferencePatch(const VisualPoint& visual_point,
                                         const Eigen::Vector3d& camera_position);
 
-// Picks the patch with the lowest mean squared difference against the point's
-// other patches.
-const VisualPatch* SelectReferencePatchMedoid(const VisualPoint& visual_point);
 
-// Picks the patch scoring highest on correlation with the point's other patches
-// plus how square-on it was taken.
-const VisualPatch* SelectReferencePatchScored(const VisualPoint& visual_point);
 
 PhotometricMatch CreatePhotometricMatch(
     const cv::Mat& image, const Eigen::Vector2d& pixel,
