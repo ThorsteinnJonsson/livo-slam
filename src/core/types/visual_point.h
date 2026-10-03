@@ -21,6 +21,9 @@ struct VisualPatch {
 
 struct VisualPoint {
   Eigen::Vector3d position = Eigen::Vector3d::Zero();
+  // Surface normal in world frame, from the lidar plane under the point. Zero
+  // means no plane was found and the point is skipped.
+  Eigen::Vector3d normal = Eigen::Vector3d::Zero();
   std::vector<VisualPatch> patches;
 };
 

@@ -39,7 +39,7 @@ const Eigen::VectorXf& SingleReference() {
 PhotometricMatch MakeMatch() {
   PhotometricMatch match;
   match.point_imu = Eigen::Vector3d(0.7, 1.3, 4.0);
-  match.reference_patch = &SingleReference();
+  match.reference_patch = SingleReference();
   match.current_patch = Eigen::VectorXf::Constant(1, 130.0F);
   match.gradients = Eigen::Matrix<double, Eigen::Dynamic, 2>(1, 2);
   match.gradients.row(0) = Eigen::RowVector2d(3.5, -2.1);
@@ -49,7 +49,7 @@ PhotometricMatch MakeMatch() {
 
 double Residual(const PhotometricMatch& match, const State& state) {
   return match.reference_inv_exposure *
-             static_cast<double>((*match.reference_patch)[0]) -
+             static_cast<double>(match.reference_patch[0]) -
          state.inv_exposure * static_cast<double>(match.current_patch[0]);
 }
 
@@ -78,24 +78,13 @@ TEST(BuildCameraSystem, TouchesOnlyThePoseAndExposureEntries) {
 
   EXPECT_FALSE(jacobian.segment<3>(kIdxRotation).isZero());
   EXPECT_FALSE(jacobian.segment<3>(kIdxPosition).isZero());
-  EXPECT_NE(jacobian(kIdxInvExposure), 0.0);
 
+  // The residual carries brightness, so exposure is observable.
+  EXPECT_NE(jacobian(kIdxInvExposure), 0.0);
   EXPECT_TRUE(jacobian.segment<3>(kIdxVelocity).isZero());
   EXPECT_TRUE(jacobian.segment<3>(kIdxGyroBias).isZero());
   EXPECT_TRUE(jacobian.segment<3>(kIdxAccelBias).isZero());
   EXPECT_TRUE(jacobian.segment<3>(kIdxGravity).isZero());
-}
-
-TEST(BuildCameraSystem, ExposureEntryIsTheNegatedCurrentIntensity) {
-  const PhotometricMatch match = MakeMatch();
-  const State state = MakeState();
-
-  const IekfSystem system =
-      BuildCameraSystem({match}, state, MakeCamera(), 10.0);
-  const ErrorState jacobian = RecoverJacobian(system, match, state, 10.0);
-
-  EXPECT_NEAR(jacobian(kIdxInvExposure),
-              -static_cast<double>(match.current_patch[0]), 1e-9);
 }
 
 TEST(BuildCameraSystem, JacobianMatchesFiniteDifferences) {
@@ -125,7 +114,7 @@ TEST(BuildCameraSystem, JacobianMatchesFiniteDifferences) {
     const double intensity = static_cast<double>(match.current_patch[0]) +
                              gradient.dot(pixel - base_pixel);
     return match.reference_inv_exposure *
-               static_cast<double>((*match.reference_patch)[0]) -
+               static_cast<double>(match.reference_patch[0]) -
            perturbed.inv_exposure * intensity;
   };
 
@@ -172,7 +161,7 @@ TEST(BuildCameraSystem, AccumulatesOverPatchPixels) {
   static const Eigen::VectorXf wide_reference =
       Eigen::VectorXf::Constant(4, 120.0F);
   PhotometricMatch wide = MakeMatch();
-  wide.reference_patch = &wide_reference;
+  wide.reference_patch = wide_reference;
   wide.current_patch = Eigen::VectorXf::Constant(4, 130.0F);
   wide.gradients = Eigen::Matrix<double, Eigen::Dynamic, 2>(4, 2);
   for (Eigen::Index i = 0; i < 4; ++i) {
@@ -186,14 +175,14 @@ TEST(BuildCameraSystem, AccumulatesOverPatchPixels) {
   EXPECT_TRUE(four.htz.isApprox(4.0 * one.htz));
 }
 
-TEST(BuildCameraSystem, ZeroGradientContributesNothing) {
+TEST(BuildCameraSystem, ZeroGradientLeavesOnlyExposure) {
   PhotometricMatch match = MakeMatch();
   match.gradients.setZero();
 
   const IekfSystem system =
       BuildCameraSystem({match}, MakeState(), MakeCamera(), 10.0);
 
-  // A textureless patch says nothing about the pose, but still constrains
+  // No texture means no pose information, but brightness still constrains
   // exposure.
   const ErrorState jacobian = RecoverJacobian(system, match, MakeState(), 10.0);
   EXPECT_TRUE(jacobian.segment<3>(kIdxRotation).isZero());
@@ -207,11 +196,10 @@ TEST(BuildCameraSystem, ResidualOpposesTheIntensityDifference) {
 
   PhotometricMatch brighter = MakeMatch();
   PhotometricMatch darker = MakeMatch();
-  // Mirror the residual about zero: it vanishes when
-  // state.inv_exposure * current == reference_inv_exposure * reference.
-  const float balanced =
-      static_cast<float>(brighter.reference_inv_exposure / state.inv_exposure) *
-      (*brighter.reference_patch)[0];
+  // The current intensity that leaves no residual, given both exposures.
+  const auto balanced = static_cast<float>(
+      brighter.reference_inv_exposure *
+      static_cast<double>(brighter.reference_patch[0]) / state.inv_exposure);
   brighter.current_patch = Eigen::VectorXf::Constant(1, balanced + 10.0F);
   darker.current_patch = Eigen::VectorXf::Constant(1, balanced - 10.0F);
 
@@ -311,6 +299,7 @@ VisualPoint MakeVisualPoint(double depth, float intensity,
                             std::size_t patch_size) {
   VisualPoint point;
   point.position = Eigen::Vector3d(0.0, 0.0, depth);
+  point.normal = Eigen::Vector3d(0.0, 0.0, -1.0);  // Faces the camera.
 
   VisualPatch patch;
   patch.T_world_camera = Sophus::SE3d{};
@@ -326,9 +315,20 @@ cv::Mat MakeUniformImage(std::uint8_t value) {
   return cv::Mat(480, 640, CV_8UC1, cv::Scalar(value));
 }
 
+// Selection and sampling in one call, which is what the update does per frame.
+std::vector<PhotometricMatch> BuildMatches(
+    const cv::Mat& image, std::size_t level, const State& state,
+    const std::vector<const VisualPoint*>& points, const CameraParams& camera,
+    const CameraUpdateParams& params) {
+  return BuildMatchesFromSelection(
+      image, level, state,
+      SelectCameraPoints(image, level, state, points, camera, params), camera,
+      params);
+}
+
 TEST(BuildCameraMatches, NoVisualPointsGivesNoMatches) {
-  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {},
-                                 MakeSimpleCamera(), MakeUpdateParams())
+  EXPECT_TRUE(BuildMatches(MakeUniformImage(100), 0, State{}, {},
+                           MakeSimpleCamera(), MakeUpdateParams())
                   .empty());
 }
 
@@ -339,8 +339,8 @@ TEST(BuildCameraMatches, MatchesAPointInFrontOfTheCamera) {
   State state;
   state.inv_exposure = 1.0;
 
-  const auto matches = BuildCameraMatches(MakeUniformImage(100), 0, state,
-                                          {&point}, MakeSimpleCamera(), params);
+  const auto matches = BuildMatches(MakeUniformImage(100), 0, state, {&point},
+                                    MakeSimpleCamera(), params);
 
   ASSERT_EQ(matches.size(), 1U);
   EXPECT_EQ(matches[0].point_imu, point.position);
@@ -353,8 +353,8 @@ TEST(BuildCameraMatches, SkipsPointsBehindTheCamera) {
   const CameraUpdateParams params = MakeUpdateParams();
   const VisualPoint point = MakeVisualPoint(-5.0, 100.0F, params.patch_size);
 
-  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {&point},
-                                 MakeSimpleCamera(), params)
+  EXPECT_TRUE(BuildMatches(MakeUniformImage(100), 0, State{}, {&point},
+                           MakeSimpleCamera(), params)
                   .empty());
 }
 
@@ -364,8 +364,8 @@ TEST(BuildCameraMatches, SkipsPointsProjectingOutsideTheImage) {
   // Far off to the side: 400 * (20 / 5) + 320 is well past 640.
   point.position = Eigen::Vector3d(20.0, 0.0, 5.0);
 
-  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {&point},
-                                 MakeSimpleCamera(), params)
+  EXPECT_TRUE(BuildMatches(MakeUniformImage(100), 0, State{}, {&point},
+                           MakeSimpleCamera(), params)
                   .empty());
 }
 
@@ -373,8 +373,8 @@ TEST(BuildCameraMatches, SkipsPointsWithNoObservations) {
   VisualPoint point;
   point.position = Eigen::Vector3d(0.0, 0.0, 5.0);
 
-  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(100), 0, State{}, {&point},
-                                 MakeSimpleCamera(), MakeUpdateParams())
+  EXPECT_TRUE(BuildMatches(MakeUniformImage(100), 0, State{}, {&point},
+                           MakeSimpleCamera(), MakeUpdateParams())
                   .empty());
 }
 
@@ -385,8 +385,8 @@ TEST(BuildCameraMatches, SamplesTheImageIntensity) {
   State state;
   state.inv_exposure = 1.0;
 
-  const auto matches = BuildCameraMatches(MakeUniformImage(140), 0, state,
-                                          {&point}, MakeSimpleCamera(), params);
+  const auto matches = BuildMatches(MakeUniformImage(140), 0, state, {&point},
+                                    MakeSimpleCamera(), params);
 
   ASSERT_EQ(matches.size(), 1U);
   for (Eigen::Index i = 0; i < matches[0].current_patch.size(); ++i) {
@@ -401,8 +401,8 @@ TEST(BuildCameraMatches, GradientsAreZeroOnAUniformImage) {
   State state;
   state.inv_exposure = 1.0;
 
-  const auto matches = BuildCameraMatches(MakeUniformImage(100), 0, state,
-                                          {&point}, MakeSimpleCamera(), params);
+  const auto matches = BuildMatches(MakeUniformImage(100), 0, state, {&point},
+                                    MakeSimpleCamera(), params);
 
   ASSERT_EQ(matches.size(), 1U);
   EXPECT_TRUE(matches[0].gradients.isZero());
@@ -425,7 +425,7 @@ TEST(BuildCameraMatches, GradientsFollowAHorizontalRamp) {
   state.inv_exposure = 1.0;
 
   const auto matches =
-      BuildCameraMatches(ramp, 0, state, {&point}, MakeSimpleCamera(), params);
+      BuildMatches(ramp, 0, state, {&point}, MakeSimpleCamera(), params);
 
   ASSERT_EQ(matches.size(), 1U);
   for (Eigen::Index i = 0; i < matches[0].gradients.rows(); ++i) {
@@ -436,18 +436,18 @@ TEST(BuildCameraMatches, GradientsFollowAHorizontalRamp) {
 
 TEST(BuildCameraMatches, RejectsPatchesBeyondTheOutlierThreshold) {
   CameraUpdateParams params = MakeUpdateParams();
-  // Reference is 100, image is 200, so the error is 16 * 100^2 = 160000.
   params.outlier_threshold = 1000.0;
   const VisualPoint point = MakeVisualPoint(5.0, 100.0F, params.patch_size);
 
   State state;
   state.inv_exposure = 1.0;
 
-  EXPECT_TRUE(BuildCameraMatches(MakeUniformImage(200), 0, state, {&point},
-                                 MakeSimpleCamera(), params)
+  // 100 counts off the stored patch is 10000 per pixel, past the threshold.
+  EXPECT_TRUE(BuildMatches(MakeUniformImage(200), 0, state, {&point},
+                           MakeSimpleCamera(), params)
                   .empty());
-  EXPECT_EQ(BuildCameraMatches(MakeUniformImage(100), 0, state, {&point},
-                               MakeSimpleCamera(), params)
+  EXPECT_EQ(BuildMatches(MakeUniformImage(100), 0, state, {&point},
+                         MakeSimpleCamera(), params)
                 .size(),
             1U);
 }
@@ -464,10 +464,10 @@ TEST(BuildCameraMatches, UsesTheReferencePatchForTheRequestedLevel) {
   // Level 1 is half resolution, so the image must be too.
   const cv::Mat level(240, 320, CV_8UC1, cv::Scalar(100));
   const auto matches =
-      BuildCameraMatches(level, 1, state, {&point}, MakeSimpleCamera(), params);
+      BuildMatches(level, 1, state, {&point}, MakeSimpleCamera(), params);
 
   ASSERT_EQ(matches.size(), 1U);
-  EXPECT_FLOAT_EQ((*matches[0].reference_patch)(0), 55.0F);
+  EXPECT_FLOAT_EQ(matches[0].reference_patch(0), 55.0F);
 }
 
 // A reference observation whose stored patch is `intensity` at every level.
@@ -503,7 +503,7 @@ TEST(CreatePhotometricMatch, CarriesThePointAndReferenceThrough) {
                              {0.7, 1.3, 4.0}, reference, 0, patch_size);
 
   EXPECT_EQ(match.point_imu, Eigen::Vector3d(0.7, 1.3, 4.0));
-  EXPECT_EQ(match.reference_patch, &reference.intensities[0]);
+  EXPECT_EQ(match.reference_patch.size(), reference.intensities[0].size());
   EXPECT_DOUBLE_EQ(match.reference_inv_exposure, reference.inv_exposure);
 }
 
@@ -516,8 +516,8 @@ TEST(CreatePhotometricMatch, PointsAtTheRequestedLevel) {
       CreatePhotometricMatch(MakeUniformImage(120), {320.0, 240.0},
                              {0.0, 0.0, 5.0}, reference, 2, patch_size);
 
-  EXPECT_EQ(match.reference_patch, &reference.intensities[2]);
-  EXPECT_FLOAT_EQ((*match.reference_patch)(0), 55.0F);
+  EXPECT_EQ(match.reference_patch.size(), 16);
+  EXPECT_FLOAT_EQ(match.reference_patch(0), 55.0F);
 }
 
 TEST(CreatePhotometricMatch, SamplesAUniformImage) {
@@ -571,8 +571,8 @@ TEST(CreatePhotometricMatch, SamplesInRowMajorOrderAroundThePixel) {
   for (Eigen::Index row = 0; row < 4; ++row) {
     for (Eigen::Index col = 0; col < 4; ++col) {
       const int column = 320 - 2 + static_cast<int>(col);
-      const double expected = 2.0 * (column % 128);
-      EXPECT_NEAR(match.current_patch(row * 4 + col), expected, 1e-6)
+      EXPECT_NEAR(match.current_patch(row * 4 + col), 2.0 * (column % 128),
+                  1e-6)
           << "row " << row << " col " << col;
     }
   }
@@ -588,8 +588,12 @@ TEST(CreatePhotometricMatch, SamplesAreCenteredOnThePixel) {
   const PhotometricMatch right = CreatePhotometricMatch(
       ramp, {330.0, 240.0}, {0.0, 0.0, 5.0}, reference, 0, patch_size);
 
-  // Ten columns further right on a ramp of 2 per column.
-  EXPECT_NEAR(right.current_patch(0) - left.current_patch(0), 20.0, 1e-6);
+  // Ten columns right on a ramp of 2 per column is 20 counts brighter, with
+  // the same shape across the patch.
+  for (Eigen::Index i = 0; i < left.current_patch.size(); ++i) {
+    EXPECT_NEAR(right.current_patch(i), left.current_patch(i) + 20.0, 1e-6)
+        << "index " << i;
+  }
 }
 
 }  // namespace

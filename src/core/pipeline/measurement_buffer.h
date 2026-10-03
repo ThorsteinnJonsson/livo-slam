@@ -28,6 +28,10 @@ class MeasurementBuffer {
 
   std::optional<MeasureGroup> PopMeasureGroup();
 
+  // Returns a group if one is ready, otherwise nothing. Used when reading a
+  // bag, where waiting would deadlock.
+  std::optional<MeasureGroup> TryPopMeasureGroup();
+
   void Shutdown();
 
  private:

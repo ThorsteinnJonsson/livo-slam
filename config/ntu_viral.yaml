@@ -86,5 +86,11 @@
     camera_update.patch_size: 8 # Must be >= 8
     camera_update.intensity_noise_std: 10.0
     camera_update.outlier_threshold: 1000.0
+    # Raw patch intensities with exposure in the state, not mean-normalised.
+    # Normalising cancels brightness, which makes outlier_threshold inert.
+    camera_update.estimate_exposure: true
+    camera_update.max_view_angle_deg: 15.0
+    camera_update.max_depth_discontinuity: 0.5
+    camera_update.selection_grid_size: 30
     camera_update.rotation_epsilon: 0.001
     camera_update.position_epsilon: 0.001

@@ -95,6 +95,15 @@ std::optional<MeasureGroup> MeasurementBuffer::PopMeasureGroup() {
   return FormGroup();
 }
 
+std::optional<MeasureGroup> MeasurementBuffer::TryPopMeasureGroup() {
+  MutexLock lock(mutex_);
+  DropStaleImages();
+  if (!CanFormGroup()) {
+    return std::nullopt;
+  }
+  return FormGroup();
+}
+
 void MeasurementBuffer::Shutdown() {
   {
     const MutexLock lock(mutex_);

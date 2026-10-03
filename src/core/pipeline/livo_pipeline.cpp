@@ -134,9 +134,9 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Visual update (Sparse direct photometric update against visual
       //   points in map)
-      auto camera_result =
-          UpdateWithCamera(estimate_, image_pyramid, visual_points,
-                           config_.camera, config_.camera_update);
+      auto camera_result = UpdateWithCamera(
+          estimate_, image_pyramid, visual_points, downsampled.points,
+          config_.camera, config_.camera_update);
       estimate_ = camera_result.estimate;
 
       //   Map update
@@ -155,10 +155,16 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
 
       //   Add new visual points in map and update existing ones with new
       //   patches
-      const auto& [new_visual_points, new_visual_patches] = SelectVisualPoints(
+      auto [new_visual_points, new_visual_patches] = SelectVisualPoints(
           points_deskewed_world, image_pyramid, image.timestamp,
           estimate_.state, config_.camera, config_.camera_update,
           config_.visual_map, visual_points);
+      for (VisualPoint& new_point : new_visual_points) {
+        if (const auto plane = local_map_.FindPlane(new_point.position)) {
+          new_point.normal = plane->normal;
+        }
+      }
+
       local_map_.InsertVisualPoints(new_visual_points, new_visual_patches);
 
       //   Map sliding/culling if moved far enough
