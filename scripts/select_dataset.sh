@@ -7,15 +7,24 @@ SELECTION="${1:?usage: select_dataset.sh <dataset>/<sequence>}"
 WORKSPACE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 DATASET="${SELECTION%%/*}"
-CONFIG="${WORKSPACE}/config/${DATASET}.yaml"
+SEQUENCE="${SELECTION#*/}"
 BAG="${WORKSPACE}/datasets/${SELECTION}"
+
+# A sequence can have its own config when it differs from its siblings, for
+# instance in which camera topic it carries.
+CONFIG="${WORKSPACE}/config/${DATASET}_${SEQUENCE}.yaml"
+CONFIG_NAME="${DATASET}_${SEQUENCE}.yaml"
+if [[ ! -f "${CONFIG}" ]]; then
+  CONFIG="${WORKSPACE}/config/${DATASET}.yaml"
+  CONFIG_NAME="${DATASET}.yaml"
+fi
 
 if [[ "${SELECTION}" != */* ]]; then
   echo "expected <dataset>/<sequence>, got '${SELECTION}'" >&2
   exit 1
 fi
 if [[ ! -f "${CONFIG}" ]]; then
-  echo "no config for dataset '${DATASET}' at ${CONFIG}" >&2
+  echo "no config for '${SELECTION}' at ${CONFIG}" >&2
   exit 1
 fi
 if [[ ! -d "${BAG}" ]]; then
@@ -25,7 +34,7 @@ if [[ ! -d "${BAG}" ]]; then
   exit 1
 fi
 
-ln -sfn "${DATASET}.yaml" "${WORKSPACE}/config/active.yaml"
+ln -sfn "${CONFIG_NAME}" "${WORKSPACE}/config/active.yaml"
 ln -sfn "${SELECTION}" "${WORKSPACE}/datasets/active"
 
-echo "config ${DATASET}.yaml, bag datasets/${SELECTION}"
+echo "config ${CONFIG_NAME}, bag datasets/${SELECTION}"
