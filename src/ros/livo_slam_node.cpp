@@ -229,9 +229,6 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       static_cast<std::size_t>(declare_parameter<int64_t>(
           "camera_update.selection_grid_size",
           static_cast<int64_t>(camera_update_defaults.selection_grid_size)));
-  config.camera_update.normalize_patches =
-      declare_parameter<bool>("camera_update.normalize_patches",
-                              camera_update_defaults.normalize_patches);
   config.camera_update.estimate_exposure =
       declare_parameter<bool>("camera_update.estimate_exposure",
                               camera_update_defaults.estimate_exposure);

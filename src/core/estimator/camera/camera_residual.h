@@ -36,21 +36,11 @@ struct SelectedPoint {
 const VisualPatch* SelectReferencePatch(const VisualPoint& visual_point,
                                         const Eigen::Vector3d& camera_position);
 
-
-
 PhotometricMatch CreatePhotometricMatch(
     const cv::Mat& image, const Eigen::Vector2d& pixel,
     const Eigen::Vector3d& point_imu, const VisualPatch& reference_patch,
     std::size_t pyramid_level, std::size_t patch_size,
-    const Eigen::Matrix2d& warp = Eigen::Matrix2d::Identity(),
-    bool normalize = true);
-
-std::vector<PhotometricMatch> BuildCameraMatches(
-    const cv::Mat& image, std::size_t pyramid_level, const State& state,
-    const std::vector<const VisualPoint*>& visual_points,
-    const CameraParams& camera_params, const CameraUpdateParams& update_params,
-    std::vector<VisualObservation>* observations = nullptr,
-    const cv::Mat& depth_image = cv::Mat());
+    const Eigen::Matrix2d& warp = Eigen::Matrix2d::Identity());
 
 // Runs every gate once and fixes the reference patch and warp per point.
 std::vector<SelectedPoint> SelectCameraPoints(
@@ -74,7 +64,7 @@ cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
                              const State& state,
                              const CameraParams& camera_params,
-                             double intensity_noise_std, bool normalize = true,
+                             double intensity_noise_std,
                              bool estimate_exposure = true);
 
 }  // namespace livo_slam

@@ -88,7 +88,6 @@
     camera_update.outlier_threshold: 1000.0
     # Raw patch intensities with exposure in the state, not mean-normalised.
     # Normalising cancels brightness, which makes outlier_threshold inert.
-    camera_update.normalize_patches: false
     camera_update.estimate_exposure: true
     camera_update.max_view_angle_deg: 15.0
     camera_update.max_depth_discontinuity: 0.5

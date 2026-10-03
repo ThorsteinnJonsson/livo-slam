@@ -35,11 +35,13 @@ const VisualPatch* SelectReferencePatch(
   return best_match;
 }
 
-PhotometricMatch CreatePhotometricMatch(
-    const cv::Mat& image, const Eigen::Vector2d& pixel,
-    const Eigen::Vector3d& point_imu, const VisualPatch& reference_patch,
-    std::size_t pyramid_level, std::size_t patch_size,
-    const Eigen::Matrix2d& warp, bool normalize) {
+PhotometricMatch CreatePhotometricMatch(const cv::Mat& image,
+                                        const Eigen::Vector2d& pixel,
+                                        const Eigen::Vector3d& point_imu,
+                                        const VisualPatch& reference_patch,
+                                        std::size_t pyramid_level,
+                                        std::size_t patch_size,
+                                        const Eigen::Matrix2d& warp) {
   const int half_patch = static_cast<int>(patch_size) / 2;
   const Eigen::Index total_patch_size =
       static_cast<Eigen::Index>(patch_size * patch_size);
@@ -69,29 +71,7 @@ PhotometricMatch CreatePhotometricMatch(
     }
   }
 
-  const Eigen::VectorXf& reference = reference_patch.intensities[pyramid_level];
-
-  if (!normalize) {
-    // Raw intensities, with exposure carried in the residual instead.
-    match.reference_patch = reference;
-    return match;
-  }
-
-  // Divide each patch by its own mean, so a global brightness change cancels.
-  const float reference_mean = reference.mean();
-  const float current_mean = match.current_patch.mean();
-  if (reference_mean <= 0.0F || current_mean <= 0.0F) {
-    return match;  // Black patch, leaves the residual at zero.
-  }
-  match.reference_patch = reference / reference_mean;
-  match.current_patch /= current_mean;
-
-  // The mean is itself a function of the pose, so d(I_i/m)/dx is
-  // (1/m)*(dI_i/dx - (I_i/m)*dm/dx), where dm/dx is the mean gradient row.
-  const Eigen::RowVector2d mean_gradient = match.gradients.colwise().mean();
-  match.gradients =
-      (match.gradients - match.current_patch.cast<double>() * mean_gradient) /
-      static_cast<double>(current_mean);
+  match.reference_patch = reference_patch.intensities[pyramid_level];
 
   return match;
 }
@@ -318,16 +298,14 @@ std::vector<SelectedPoint> SelectCameraPoints(
 
     if (!InFrame(image, pixel, WarpedMargin(warp, half_patch))) continue;
 
-    PhotometricMatch match = CreatePhotometricMatch(
-        image, pixel, p_imu, *reference_patch, pyramid_level,
-        update_params.patch_size, warp, update_params.normalize_patches);
+    PhotometricMatch match =
+        CreatePhotometricMatch(image, pixel, p_imu, *reference_patch,
+                               pyramid_level, update_params.patch_size, warp);
 
     const double photometric_error =
-        update_params.normalize_patches
-            ? (match.reference_patch - match.current_patch).squaredNorm()
-            : (match.reference_inv_exposure * match.reference_patch -
-               state.inv_exposure * match.current_patch)
-                  .squaredNorm();
+        (match.reference_inv_exposure * match.reference_patch -
+         state.inv_exposure * match.current_patch)
+            .squaredNorm();
 
     // The threshold is per pixel, the error is summed over the patch.
     const double outlier_threshold =
@@ -377,32 +355,19 @@ std::vector<PhotometricMatch> BuildMatchesFromSelection(
       continue;
     }
 
-    matches.push_back(
-        CreatePhotometricMatch(image, pixel, p_imu, *selected.reference_patch,
-                               pyramid_level, update_params.patch_size,
-                               selected.warp, update_params.normalize_patches));
+    matches.push_back(CreatePhotometricMatch(
+        image, pixel, p_imu, *selected.reference_patch, pyramid_level,
+        update_params.patch_size, selected.warp));
   }
 
   matches.shrink_to_fit();
   return matches;
 }
 
-std::vector<PhotometricMatch> BuildCameraMatches(
-    const cv::Mat& image, std::size_t pyramid_level, const State& state,
-    const std::vector<const VisualPoint*>& visual_points,
-    const CameraParams& camera_params, const CameraUpdateParams& update_params,
-    std::vector<VisualObservation>* observations, const cv::Mat& depth_image) {
-  const std::vector<SelectedPoint> selection = SelectCameraPoints(
-      image, pyramid_level, state, visual_points, camera_params, update_params,
-      observations, depth_image);
-  return BuildMatchesFromSelection(image, pyramid_level, state, selection,
-                                   camera_params, update_params);
-}
-
 IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
                              const State& state,
                              const CameraParams& camera_params,
-                             double intensity_noise_std, bool normalize,
+                             double intensity_noise_std,
                              bool estimate_exposure) {
   IekfSystem system;
 
@@ -426,22 +391,21 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
     const Eigen::Matrix3d dP_dp =
         -R_cam_imu * state.rotation.matrix().transpose();
 
-    // Raw patches keep their brightness scale, so exposure is observable and
-    // scales the image gradient as well.
-    const double gradient_scale = normalize ? 1.0 : state.inv_exposure;
+    // Patches keep their brightness scale, so exposure is observable and
+    // scales the image gradient too.
+    const double gradient_scale = state.inv_exposure;
 
     for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {
       const double residual =
-          normalize ? match.reference_patch[i] - match.current_patch[i]
-                    : match.reference_inv_exposure * match.reference_patch[i] -
-                          state.inv_exposure * match.current_patch[i];
+          match.reference_inv_exposure * match.reference_patch[i] -
+          state.inv_exposure * match.current_patch[i];
       const Eigen::RowVector3d row =
           gradient_scale * (match.gradients.row(i) * dU_dp);
 
       ErrorState jacobian = ErrorState::Zero();
       jacobian.segment<3>(kIdxRotation) = -(row * dP_dtheta).transpose();
       jacobian.segment<3>(kIdxPosition) = -(row * dP_dp).transpose();
-      if (!normalize && estimate_exposure) {
+      if (estimate_exposure) {
         jacobian(kIdxInvExposure) = -match.current_patch[i];
       }
 

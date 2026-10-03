@@ -32,9 +32,6 @@ struct CameraUpdateParams {
   // Only the nearest point in each cell of this many pixels is used, so the
   // constraints spread over the image. Zero keeps every point.
   std::size_t selection_grid_size = 30;
-  // Off compares raw intensities and estimates exposure. On divides each patch
-  // by its own mean, which also blinds the outlier threshold to brightness.
-  bool normalize_patches = true;
   // Off holds inverse exposure at its initial value.
   bool estimate_exposure = true;
 };
