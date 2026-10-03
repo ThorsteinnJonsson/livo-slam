@@ -16,3 +16,4 @@ config/active.yaml
 datasets/active
 
 experiments/**
+evaluation/**

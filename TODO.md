@@ -20,7 +20,7 @@
     - (Done) Support for fish-eye camera model
 - (Done) Visualize visual points + camera stream
 - (Done) Validate camera update
-- Test more datasets
+- (Done) Test more datasets
 - Add real color to pointcloud
 - Limit patches to 30 per visual point
 - Implement slide-function in local map

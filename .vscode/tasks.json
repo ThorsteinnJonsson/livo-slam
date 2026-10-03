@@ -107,7 +107,9 @@
       "description": "Dataset / sequence",
       "options": [
         "ntu_viral/eee_03_mcap",
-        "oxford_spires/2024-05-20-bodleian-library-02"
+        "oxford_spires/2024-05-20-bodleian-library-02",
+        "FAST-LIVO2/hku1",
+        "FAST-LIVO2/LiDAR_Degenerate"
       ],
       "default": "ntu_viral/eee_03_mcap"
     }

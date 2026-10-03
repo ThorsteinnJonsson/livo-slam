@@ -76,12 +76,13 @@ Sophus::SE3d ToSe3(const std::vector<double>& row_major) {
                       translation);
 }
 
-ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg) {
+ImuSample ToImuSample(const sensor_msgs::msg::Imu& msg, double accel_scale) {
   ImuSample sample;
   sample.timestamp = ToSeconds(msg.header.stamp);
   sample.linear_acceleration =
-      Eigen::Vector3d(msg.linear_acceleration.x, msg.linear_acceleration.y,
-                      msg.linear_acceleration.z);
+      accel_scale * Eigen::Vector3d(msg.linear_acceleration.x,
+                                    msg.linear_acceleration.y,
+                                    msg.linear_acceleration.z);
   sample.angular_velocity = Eigen::Vector3d(
       msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
   return sample;
@@ -138,6 +139,110 @@ std::vector<Point> ToPoints(const sensor_msgs::msg::PointCloud2& msg,
                       : ReadAt<double>(raw, *absolute_time) + time_shift;
       points.push_back(point);
     }
+  }
+  return points;
+}
+
+namespace {
+
+// Reads little-endian CDR. Offsets are relative to the payload, which starts
+// after the four byte encapsulation header, and every field sits on a multiple
+// of its own size.
+class CdrReader {
+ public:
+  CdrReader(const std::uint8_t* data, std::size_t size)
+      : data_(data), size_(size) {}
+
+  template <typename T>
+  T Read() {
+    Align(sizeof(T));
+    Require(sizeof(T));
+    T value{};
+    std::memcpy(&value, data_ + offset_, sizeof(T));
+    offset_ += sizeof(T);
+    return value;
+  }
+
+  void Skip(std::size_t bytes) {
+    Require(bytes);
+    offset_ += bytes;
+  }
+
+  void SkipString() { Skip(Read<std::uint32_t>()); }
+
+ private:
+  void Align(std::size_t boundary) {
+    const std::size_t past = offset_ % boundary;
+    if (past != 0) {
+      offset_ += boundary - past;
+    }
+  }
+
+  void Require(std::size_t bytes) const {
+    if (offset_ + bytes > size_) {
+      throw std::runtime_error("livox message is shorter than its layout");
+    }
+  }
+
+  const std::uint8_t* data_;
+  std::size_t size_;
+  std::size_t offset_ = 0;
+};
+
+}  // namespace
+
+std::vector<Point> ToPointsFromLivox(
+    const rclcpp::SerializedMessage& serialized, double time_shift) {
+  const rcl_serialized_message_t& raw = serialized.get_rcl_serialized_message();
+  constexpr std::size_t kEncapsulationSize = 4;
+  if (raw.buffer_length <= kEncapsulationSize) {
+    throw std::runtime_error("livox message has no payload");
+  }
+
+  CdrReader reader(raw.buffer + kEncapsulationSize,
+                   raw.buffer_length - kEncapsulationSize);
+
+  // header
+  const auto seconds = reader.Read<std::int32_t>();
+  const auto nanoseconds = reader.Read<std::uint32_t>();
+  reader.SkipString();  // frame_id
+
+  reader.Read<std::uint64_t>();  // timebase, the header stamp is our reference
+  const auto point_num = reader.Read<std::uint32_t>();
+  reader.Skip(1);  // lidar_id
+  reader.Skip(3);  // rsvd
+  const auto count = reader.Read<std::uint32_t>();
+
+  if (count != point_num) {
+    throw std::runtime_error("livox point count disagrees with point_num");
+  }
+
+  const double base_time = static_cast<double>(seconds) +
+                           1e-9 * static_cast<double>(nanoseconds) + time_shift;
+
+  std::vector<Point> points;
+  points.reserve(count);
+  for (std::uint32_t i = 0; i < count; ++i) {
+    const auto offset_time = reader.Read<std::uint32_t>();
+    const float x = reader.Read<float>();
+    const float y = reader.Read<float>();
+    const float z = reader.Read<float>();
+    const auto reflectivity = reader.Read<std::uint8_t>();
+    reader.Read<std::uint8_t>();  // tag
+    reader.Read<std::uint8_t>();  // line
+
+    if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z)) {
+      continue;
+    }
+    if (x == 0.0F && y == 0.0F && z == 0.0F) {
+      continue;
+    }
+
+    Point point;
+    point.position = Eigen::Vector3d(x, y, z);
+    point.intensity = static_cast<float>(reflectivity);
+    point.timestamp = base_time + static_cast<double>(offset_time) * 1e-9;
+    points.push_back(point);
   }
   return points;
 }

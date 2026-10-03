@@ -60,6 +60,7 @@ class LivoSlamNode : public rclcpp::Node {
   std::string camera_topic_;
   std::string bag_path_;
   bool camera_compressed_ = false;
+  double imu_accel_scale_ = 1.0;
 
   std::ofstream trajectory_file_;
 

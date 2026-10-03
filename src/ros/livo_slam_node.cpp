@@ -25,6 +25,7 @@ LivoSlamNode::LivoSlamNode()
       declare_parameter<std::string>("ros.camera_topic", "/left/image_raw");
   camera_compressed_ = declare_parameter<bool>("ros.camera_compressed", false);
   bag_path_ = declare_parameter<std::string>("ros.bag_path", "");
+  imu_accel_scale_ = declare_parameter<double>("imu.accel_scale", 1.0);
 
   const auto& imu_topic = imu_topic_;
   const auto& lidar_topic = lidar_topic_;
@@ -330,6 +331,16 @@ void LivoSlamNode::ReplayBag() {
     return;
   }
 
+  // Livox bags carry CustomMsg, which we decode ourselves.
+  bool livox_lidar = false;
+  for (const auto& topic : reader.get_all_topics_and_types()) {
+    if (topic.name == lidar_topic_) {
+      livox_lidar = topic.type.find("CustomMsg") != std::string::npos;
+      RCLCPP_INFO(get_logger(), "lidar topic %s is %s", topic.name.c_str(),
+                  topic.type.c_str());
+    }
+  }
+
   const rclcpp::Serialization<sensor_msgs::msg::Imu> imu_serialization;
   const rclcpp::Serialization<sensor_msgs::msg::PointCloud2>
       lidar_serialization;
@@ -344,11 +355,16 @@ void LivoSlamNode::ReplayBag() {
     if (bag_message->topic_name == imu_topic_) {
       sensor_msgs::msg::Imu message;
       imu_serialization.deserialize_message(&serialized, &message);
-      buffer_.PushImu(ToImuSample(message));
+      buffer_.PushImu(ToImuSample(message, imu_accel_scale_));
     } else if (bag_message->topic_name == lidar_topic_) {
-      sensor_msgs::msg::PointCloud2 message;
-      lidar_serialization.deserialize_message(&serialized, &message);
-      buffer_.PushPoints(ToPoints(message, config_.lidar.time_shift));
+      if (livox_lidar) {
+        buffer_.PushPoints(
+            ToPointsFromLivox(serialized, config_.lidar.time_shift));
+      } else {
+        sensor_msgs::msg::PointCloud2 message;
+        lidar_serialization.deserialize_message(&serialized, &message);
+        buffer_.PushPoints(ToPoints(message, config_.lidar.time_shift));
+      }
     } else if (bag_message->topic_name == camera_topic_) {
       if (camera_compressed_) {
         sensor_msgs::msg::CompressedImage message;
@@ -391,7 +407,7 @@ void LivoSlamNode::WriteTrajectory(const Estimate& estimate) {
 
 void LivoSlamNode::ImuCallback(
     const sensor_msgs::msg::Imu::ConstSharedPtr& msg) {
-  buffer_.PushImu(ToImuSample(*msg));
+  buffer_.PushImu(ToImuSample(*msg, imu_accel_scale_));
 }
 
 void LivoSlamNode::LidarCallback(
