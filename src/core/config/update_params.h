@@ -37,7 +37,6 @@ struct CameraUpdateParams {
   bool normalize_patches = true;
   // Off holds inverse exposure at its initial value.
   bool estimate_exposure = true;
-  bool open_loop = false;  // TEMP DEBUG: compute the update but discard it.
 };
 
 }  // namespace livo_slam

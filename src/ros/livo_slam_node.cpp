@@ -235,11 +235,8 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.camera_update.estimate_exposure =
       declare_parameter<bool>("camera_update.estimate_exposure",
                               camera_update_defaults.estimate_exposure);
-  config.camera_update.open_loop = declare_parameter<bool>(
-      "camera_update.open_loop", camera_update_defaults.open_loop);
-  config.camera_update.rotation_epsilon =
-      declare_parameter<double>("camera_update.rotation_epsilon",
-                                camera_update_defaults.rotation_epsilon);
+  declare_parameter<double>("camera_update.rotation_epsilon",
+                            camera_update_defaults.rotation_epsilon);
   config.camera_update.position_epsilon =
       declare_parameter<double>("camera_update.position_epsilon",
                                 camera_update_defaults.position_epsilon);

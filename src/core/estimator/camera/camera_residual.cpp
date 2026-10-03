@@ -7,7 +7,6 @@
 #include <limits>
 #include <numbers>
 #include <optional>
-#include <print>
 
 #include "core/camera/projection.h"
 #include "core/math/skew.h"
@@ -243,10 +242,6 @@ Eigen::Matrix2d AffineWarp(const CameraParams& camera_params,
 
 }  // namespace
 
-std::size_t g_no_normal = 0;   // TEMP DEBUG
-std::vector<double> g_errors;  // TEMP DEBUG
-std::size_t g_considered = 0;  // TEMP DEBUG
-
 std::vector<SelectedPoint> SelectCameraPoints(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,
@@ -268,7 +263,6 @@ std::vector<SelectedPoint> SelectCameraPoints(
   std::vector<SelectedPoint> selection;
   selection.reserve(visual_points.size());
   for (const VisualPoint* visual_point : visual_points) {
-    ++g_considered;  // TEMP DEBUG
     const Eigen::Vector3d p_imu =
         R_inv * (visual_point->position - state.position);
     const Eigen::Vector3d p_cam = T_cam_imu * p_imu;
@@ -282,7 +276,6 @@ std::vector<SelectedPoint> SelectCameraPoints(
 
     // Without a plane the warp has no surface to trace the patch onto.
     if (visual_point->normal.isZero()) {
-      ++g_no_normal;  // TEMP DEBUG
       continue;
     }
 
@@ -342,12 +335,6 @@ std::vector<SelectedPoint> SelectCameraPoints(
         static_cast<double>(update_params.patch_size *
                             update_params.patch_size);
 
-    {  // TEMP DEBUG: distribution of the per-pixel error over candidates.
-      g_errors.push_back(photometric_error /
-                         static_cast<double>(update_params.patch_size *
-                                             update_params.patch_size));
-    }
-
     const bool matched = photometric_error < outlier_threshold;
     if (observations) {
       observations->push_back({visual_point->position, *projected, matched});
@@ -355,23 +342,6 @@ std::vector<SelectedPoint> SelectCameraPoints(
     if (matched) {
       selection.push_back(
           {visual_point, reference_patch, warp, *projected, p_cam.norm()});
-    }
-  }
-
-  {  // TEMP DEBUG
-    std::println("CAMNORM,{},{}", g_considered, g_no_normal);
-    if (g_errors.size() > 200000) {
-      std::vector<double> sorted = g_errors;
-      std::sort(sorted.begin(), sorted.end());
-      const auto at = [&sorted](double q) {
-        return sorted[static_cast<std::size_t>(
-            q * static_cast<double>(sorted.size() - 1))];
-      };
-      std::println(
-          "CAMERRDIST,{},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f},{:.6f}",
-          sorted.size(), at(0.05), at(0.25), at(0.5), at(0.75), at(0.9),
-          at(0.99), sorted.back());
-      g_errors.clear();
     }
   }
 

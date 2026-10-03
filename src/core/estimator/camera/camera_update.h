@@ -11,20 +11,9 @@
 
 namespace livo_slam {
 
-// TEMP DEBUG
-struct CameraIterationLog {
-  std::size_t level = 0;
-  std::size_t iteration = 0;
-  std::size_t matches = 0;
-  double mean_cost = 0.0;
-};
-
 struct CameraUpdateResult {
   Estimate estimate;
   std::vector<VisualObservation> observations;
-  std::vector<CameraIterationLog> iterations;  // TEMP DEBUG
-  std::size_t applied_steps = 0;               // TEMP DEBUG
-  std::size_t rejected_steps = 0;              // TEMP DEBUG
 };
 
 CameraUpdateResult UpdateWithCamera(

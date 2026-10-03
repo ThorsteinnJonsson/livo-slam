@@ -20,10 +20,11 @@
     - (Done) Support for fish-eye camera model
 - (Done) Visualize visual points + camera stream
 - (Done) Validate camera update
+- Test more datasets
 - Add real color to pointcloud
 - Limit patches to 30 per visual point
 - Implement slide-function in local map
+- Update README and make public
 - Refactoring
   - Helper for transforming points (instead of a for-loop everywhere)
   - Less verbose parameter parsing from yaml
-- Multi-camera, multi-lidar support

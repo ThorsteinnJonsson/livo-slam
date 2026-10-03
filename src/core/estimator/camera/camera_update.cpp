@@ -1,7 +1,6 @@
 #include "camera_update.h"
 
 #include <limits>
-#include <print>
 
 #include "core/estimator/camera/camera_residual.h"
 #include "core/estimator/iekf.h"
@@ -21,25 +20,11 @@ CameraUpdateResult UpdateWithCamera(
       BuildDepthImage(image_pyramid[0].size(), scan_imu, camera_params);
 
   // Selected once per frame at the predicted pose, exactly as FAST-LIVO2 builds
-  // its visual submap before iterating. The iteration then minimises a fixed
+  // its visual submap before iterating. The iteration then minimizes a fixed
   // objective instead of one that changes as gates admit and drop points.
   const std::vector<SelectedPoint> selection = SelectCameraPoints(
       image_pyramid[0], 0, prior.state, visual_points, camera_params,
       update_params, &result.observations, depth_image);
-
-  {  // TEMP DEBUG: how many stored patches the selected points actually have.
-    std::size_t total_patches = 0;
-    std::size_t single = 0;
-    std::size_t over_five = 0;
-    for (const SelectedPoint& selected : selection) {
-      const std::size_t count = selected.point->patches.size();
-      total_patches += count;
-      if (count == 1) ++single;
-      if (count > 5) ++over_five;
-    }
-    std::println("CAMSEL,{},{},{},{}", selection.size(), total_patches, single,
-                 over_five);
-  }
 
   for (std::size_t level = CameraUpdateParams::kPyramidLevels; level-- > 0;) {
     // A step is kept only while it lowers the photometric cost. The state
@@ -67,11 +52,8 @@ CameraUpdateResult UpdateWithCamera(
       }
       cost /= static_cast<double>(matches.size());
 
-      result.iterations.push_back({level, iter, matches.size(), cost});
-
       if (cost > best_cost) {
         posterior = accepted;  // The last step made the image fit worse.
-        ++result.rejected_steps;
         break;
       }
       best_cost = cost;
@@ -86,7 +68,6 @@ CameraUpdateResult UpdateWithCamera(
 
       posterior.state = BoxPlus(posterior.state, iekf_result.increment);
       posterior.covariance = iekf_result.covariance;
-      ++result.applied_steps;
 
       if (IekfConverged(iekf_result.increment, update_params.rotation_epsilon,
                         update_params.position_epsilon)) {
