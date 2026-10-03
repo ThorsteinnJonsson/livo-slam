@@ -28,8 +28,8 @@ class MeasurementBuffer {
 
   std::optional<MeasureGroup> PopMeasureGroup();
 
-  // Returns a group only if one can be formed right now, without waiting for
-  // more measurements. Used when a bag drives the pipeline directly.
+  // Returns a group if one is ready, otherwise nothing. Used when reading a
+  // bag, where waiting would deadlock.
   std::optional<MeasureGroup> TryPopMeasureGroup();
 
   void Shutdown();

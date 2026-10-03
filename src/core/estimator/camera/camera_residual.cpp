@@ -95,7 +95,7 @@ cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
       continue;
     }
 
-    // Keep the nearest, which is the surface the camera actually sees.
+    // Keep the nearest, which is what the camera actually sees.
     float& stored = depth_image.at<float>(row, column);
     const auto depth = static_cast<float>(point_cam.z());
     if (stored == 0.0F || depth < stored) {
@@ -108,8 +108,8 @@ cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
 namespace {
 
 // The nearest visible point in each grid cell, chosen before any gate runs.
-// Keeps the nearest point in each grid cell, so the constraints are spread over
-// the image instead of piling onto whatever happens to be textured.
+// Thins to the nearest point per cell, so the points spread over the image
+// instead of piling onto whatever happens to be textured.
 std::vector<SelectedPoint> DecimateByGrid(
     const std::vector<SelectedPoint>& selection, const cv::Mat& image,
     const CameraUpdateParams& update_params, double scale) {
@@ -146,15 +146,15 @@ std::vector<SelectedPoint> DecimateByGrid(
   return decimated;
 }
 
-// Samples reach warp * (half_patch, half_patch) from the center, and the
-// gradient needs one pixel beyond that.
+// How far from the center a warped patch reaches, plus a pixel for the
+// gradient.
 std::size_t WarpedMargin(const Eigen::Matrix2d& warp, double half_patch) {
   return static_cast<std::size_t>(
       warp.cwiseAbs().rowwise().sum().maxCoeff() * half_patch + 2.0);
 }
 
-// True when the current scan sees a surface inside the patch that is much
-// nearer or further than the point itself, so the patch spans an edge.
+// True when the scan sees something much nearer or further inside the patch,
+// meaning the patch spans an edge rather than one surface.
 bool OnDepthEdge(const cv::Mat& depth_image, const Eigen::Vector2d& pixel,
                  double depth, int half_patch, double max_discontinuity) {
   const int center_column = static_cast<int>(pixel.x());
@@ -177,16 +177,14 @@ bool OnDepthEdge(const cv::Mat& depth_image, const Eigen::Vector2d& pixel,
   return false;
 }
 
-// A patch only stays usable while the warp keeps it close to its original
-// scale; beyond this it is either aliased or blown up out of nothing.
+// Past this much stretch the patch is either aliased or blown up out of
+// nothing, so it says nothing useful.
 constexpr double kMinWarpDeterminant = 1.0 / 16.0;
 constexpr double kMaxWarpDeterminant = 16.0;
 
-// Maps a pixel offset in the reference patch to the matching pixel offset in
-// the current image. The offset is traced onto the surface plane through the
-// point, so a slanted surface warps as a homography rather than as if it faced
-// the reference camera. Both sides use the same pyramid level, so the matrix is
-// the same at every level.
+// Where a pixel of the reference patch lands in the current image. The offset
+// is traced along the surface plane, so a slanted wall warps correctly instead
+// of being treated as facing the old view. Same at every pyramid level.
 Eigen::Matrix2d AffineWarp(const CameraParams& camera_params,
                            const VisualPatch& reference_patch,
                            const Eigen::Vector3d& point_world,
@@ -202,9 +200,8 @@ Eigen::Matrix2d AffineWarp(const CameraParams& camera_params,
   const Eigen::Vector3d normal_ref =
       (T_ref_world.so3() * normal_world).normalized();
 
-  // A pixel offset fixes the two projection rows; staying on the plane fixes
-  // the third. Solving all three turns the offset into a 3D offset along the
-  // surface.
+  // Two rows come from the projection, the third from staying on the plane.
+  // Solving all three turns a pixel offset into a 3D step along the surface.
   Eigen::Matrix3d reference_map;
   reference_map.topRows<2>() = ProjectionJacobian(camera_params, point_ref);
   reference_map.row(2) = normal_ref.transpose();
@@ -254,7 +251,7 @@ std::vector<SelectedPoint> SelectCameraPoints(
     // Scale the pixel to this pyramid level
     const Eigen::Vector2d pixel = (*projected) * scale;
 
-    // Without a plane the warp has no surface to trace the patch onto.
+    // No plane means nothing to trace the patch along.
     if (visual_point->normal.isZero()) {
       continue;
     }
@@ -281,10 +278,8 @@ std::vector<SelectedPoint> SelectCameraPoints(
       continue;
     }
 
-    // The patch was taken from a different viewpoint, so the surface it sits
-    // on projects into this frame stretched and rotated. Warping the sample
-    // pattern by that map compares the same surface points instead of the same
-    // pixel offsets.
+    // The patch came from a different viewpoint, so it arrives stretched and
+    // rotated. Warping where we sample compares the same surface points.
     const Eigen::Matrix2d warp =
         AffineWarp(camera_params, *reference_patch, visual_point->position,
                    visual_point->normal, p_cam, T_cam_world);
@@ -391,8 +386,7 @@ IekfSystem BuildCameraSystem(const std::vector<PhotometricMatch>& matches,
     const Eigen::Matrix3d dP_dp =
         -R_cam_imu * state.rotation.matrix().transpose();
 
-    // Patches keep their brightness scale, so exposure is observable and
-    // scales the image gradient too.
+    // Brightness is in the residual, so exposure scales the gradient too.
     const double gradient_scale = state.inv_exposure;
 
     for (Eigen::Index i = 0; i < match.current_patch.size(); ++i) {

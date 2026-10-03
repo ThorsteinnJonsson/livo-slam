@@ -19,16 +19,15 @@ CameraUpdateResult UpdateWithCamera(
   const cv::Mat depth_image =
       BuildDepthImage(image_pyramid[0].size(), scan_imu, camera_params);
 
-  // Selected once per frame at the predicted pose, exactly as FAST-LIVO2 builds
-  // its visual submap before iterating. The iteration then minimizes a fixed
-  // objective instead of one that changes as gates admit and drop points.
+  // Picked once, before any iteration. Re-picking each time would move the
+  // target the iteration is trying to reach.
   const std::vector<SelectedPoint> selection = SelectCameraPoints(
       image_pyramid[0], 0, prior.state, visual_points, camera_params,
       update_params, &result.observations, depth_image);
 
   for (std::size_t level = CameraUpdateParams::kPyramidLevels; level-- > 0;) {
-    // A step is kept only while it lowers the photometric cost. The state
-    // behind the best cost so far is held so a bad step can be undone.
+    // Keep a step only while it improves the fit, holding on to the best
+    // state so a bad step can be undone.
     double best_cost = std::numeric_limits<double>::max();
     Estimate accepted = posterior;
 

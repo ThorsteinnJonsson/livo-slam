@@ -24,7 +24,7 @@
 - Add real color to pointcloud
 - Limit patches to 30 per visual point
 - Implement slide-function in local map
-- Update README and make public
 - Refactoring
   - Helper for transforming points (instead of a for-loop everywhere)
   - Less verbose parameter parsing from yaml
+- Update README and make public

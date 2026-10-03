@@ -15,16 +15,15 @@ namespace livo_slam {
 
 struct PhotometricMatch {
   Eigen::Vector3d point_imu = Eigen::Vector3d::Zero();
-  // Both patches are divided by their own mean intensity, which removes the
-  // brightness scale the exposure state used to absorb.
+  // Raw intensities. Exposure scales them in the residual.
   Eigen::VectorXf reference_patch;
   Eigen::VectorXf current_patch;
   Eigen::Matrix<double, Eigen::Dynamic, 2> gradients;  // dI/du per patch pixel
   double reference_inv_exposure = 1.0;
 };
 
-// A point admitted for this frame, with the reference patch and warp chosen
-// once so the iteration optimises a fixed set.
+// A point this frame will use, with its reference patch and warp fixed so the
+// iteration always sees the same set.
 struct SelectedPoint {
   const VisualPoint* point = nullptr;
   const VisualPatch* reference_patch = nullptr;
@@ -42,7 +41,7 @@ PhotometricMatch CreatePhotometricMatch(
     std::size_t pyramid_level, std::size_t patch_size,
     const Eigen::Matrix2d& warp = Eigen::Matrix2d::Identity());
 
-// Runs every gate once and fixes the reference patch and warp per point.
+// Picks the points to use this frame, running every gate once.
 std::vector<SelectedPoint> SelectCameraPoints(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<const VisualPoint*>& visual_points,
@@ -50,14 +49,14 @@ std::vector<SelectedPoint> SelectCameraPoints(
     std::vector<VisualObservation>* observations = nullptr,
     const cv::Mat& depth_image = cv::Mat());
 
-// Resamples the current image for an already selected set.
+// Samples the current image for points already picked.
 std::vector<PhotometricMatch> BuildMatchesFromSelection(
     const cv::Mat& image, std::size_t pyramid_level, const State& state,
     const std::vector<SelectedPoint>& selection,
     const CameraParams& camera_params, const CameraUpdateParams& update_params);
 
-// Depth of the current scan at each pixel, zero where nothing was measured.
-// Used to reject patches that straddle a depth edge.
+// What the current scan saw at each pixel, zero where it saw nothing. Lets us
+// drop patches that straddle a depth jump.
 cv::Mat BuildDepthImage(cv::Size size, const std::vector<Point>& points_imu,
                         const CameraParams& camera_params);
 

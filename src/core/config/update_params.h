@@ -24,15 +24,14 @@ struct CameraUpdateParams {
   double intensity_noise_std = 10.0;
   double outlier_threshold = 1000.0;
   double max_view_angle_deg = 15.0;
-  // How far the scan may differ in depth inside a patch before the point counts
-  // as sitting on an edge.
+  // A depth jump this big inside a patch means the point sits on an edge.
   double max_depth_discontinuity = 0.5;
   double rotation_epsilon = 0.001;
   double position_epsilon = 0.001;
-  // Only the nearest point in each cell of this many pixels is used, so the
-  // constraints spread over the image. Zero keeps every point.
+  // Keep only the nearest point per cell of this many pixels, so the points
+  // spread over the image. Zero keeps all of them.
   std::size_t selection_grid_size = 30;
-  // Off holds inverse exposure at its initial value.
+  // Off leaves inverse exposure where it started.
   bool estimate_exposure = true;
 };
 
