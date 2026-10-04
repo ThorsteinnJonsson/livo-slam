@@ -206,8 +206,7 @@ void Visualizer::LogVisualPoints(
       rerun::Points3D(positions).with_colors(colors).with_radii(0.15F));
 }
 
-void Visualizer::LogColorCloud(std::int64_t batch,
-                               const std::vector<ColorPoint>& points) {
+void Visualizer::LogColorCloud(const std::vector<ColorPoint>& points) {
   if (!impl_ || points.empty()) {
     return;
   }
@@ -223,8 +222,8 @@ void Visualizer::LogColorCloud(std::int64_t batch,
     colors.emplace_back(point.r, point.g, point.b);
   }
 
-  impl_->rec.log_static(
-      "world/color_cloud/" + std::to_string(batch),
+  impl_->rec.log(
+      "world/color_cloud",
       rerun::Points3D(positions).with_colors(colors).with_radii(0.075F));
 }
 
@@ -268,7 +267,7 @@ void Visualizer::LogMap(const std::vector<Plane>&) {}
 void Visualizer::LogCamera(const cv::Mat&,
                            const std::vector<VisualObservation>&) {}
 void Visualizer::LogVisualPoints(const std::vector<VisualObservation>&) {}
-void Visualizer::LogColorCloud(std::int64_t, const std::vector<ColorPoint>&) {}
+void Visualizer::LogColorCloud(const std::vector<ColorPoint>&) {}
 
 }  // namespace livo_slam
 

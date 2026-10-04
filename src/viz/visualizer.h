@@ -43,8 +43,9 @@ class Visualizer {
   // The visual points in 3D.
   void LogVisualPoints(const std::vector<VisualObservation>& observations);
 
-  // Each batch goes to its own entity so Rerun keeps the earlier ones.
-  void LogColorCloud(std::int64_t batch, const std::vector<ColorPoint>& points);
+  // Logged on the timeline, not static, so each call adds to the same entity.
+  // Set the view's visible time range to infinite to see the whole map.
+  void LogColorCloud(const std::vector<ColorPoint>& points);
 
  private:
   struct Impl;

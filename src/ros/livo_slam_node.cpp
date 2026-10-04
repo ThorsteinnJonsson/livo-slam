@@ -326,7 +326,7 @@ void LivoSlamNode::ProcessGroup(const MeasureGroup& group) {
     color_cloud_->Add(result.cloud_imu.points, T_world_imu, config_.camera,
                       result.color_image);
     if (group_index_ % 10 == 0) {
-      visualizer_.LogColorCloud(group_index_, color_cloud_->TakeNew());
+      visualizer_.LogColorCloud(color_cloud_->TakeNew());
     }
   }
 
