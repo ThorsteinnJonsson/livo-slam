@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <utility>
 
 #include "core/camera/projection.h"
 
@@ -43,9 +44,9 @@ void ColorCloud::Add(const std::vector<Point>& points_imu,
                      const cv::Mat& color_image) {
   if (color_image.empty()) return;
 
-  ++frame_;
   const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
 
+  std::vector<std::pair<Eigen::Vector3d, cv::Vec3b>> sampled;
   for (const Point& point : points_imu) {
     const Eigen::Vector3d point_cam = T_cam_imu * point.position;
     if (point_cam.z() <= 0.0) continue;
@@ -63,57 +64,31 @@ void ColorCloud::Add(const std::vector<Point>& points_imu,
         static_cast<std::int64_t>(std::floor(position.x() / voxel_size_)),
         static_cast<std::int64_t>(std::floor(position.y() / voxel_size_)),
         static_cast<std::int64_t>(std::floor(position.z() / voxel_size_))};
-    if (done_.contains(index)) continue;
+    if (!occupied_.insert(index).second) continue;
 
-    const cv::Vec3b bgr = color_image.at<cv::Vec3b>(
-        static_cast<int>(pixel->y()), static_cast<int>(pixel->x()));
-
-    Pending& pending = pending_[index];
-    pending.last_seen = frame_;
-    if (pending.count == 0) pending.position = position;
-    if (pending.count < kMaxSamples) {
-      pending.samples[pending.count++] = bgr;
-      channel_sum_ += Eigen::Vector3d(bgr[0], bgr[1], bgr[2]);
-      ++sample_count_;
-    }
+    sampled.emplace_back(
+        position, color_image.at<cv::Vec3b>(static_cast<int>(pixel->y()),
+                                            static_cast<int>(pixel->x())));
   }
-}
 
-std::vector<ColorPoint> ColorCloud::TakeNew(bool flush_all) {
+  for (const auto& [position, bgr] : sampled) {
+    channel_sum_ += Eigen::Vector3d(bgr[0], bgr[1], bgr[2]);
+  }
+  sample_count_ += static_cast<std::int64_t>(sampled.size());
   const Eigen::Vector3d gains = WhiteBalanceGains();
-  std::vector<ColorPoint> ready;
-
-  for (auto it = pending_.begin(); it != pending_.end();) {
-    const bool settled = it->second.count >= kMaxSamples ||
-                         frame_ - it->second.last_seen >= kFlushAge;
-    if (flush_all || settled) {
-      ready.push_back(Resolve(it->second, gains));
-      done_.insert(it->first);
-      it = pending_.erase(it);
-    } else {
-      ++it;
-    }
-  }
-  return ready;
-}
-
-ColorPoint ColorCloud::Resolve(const Pending& pending,
-                               const Eigen::Vector3d& gains) const {
-  // The middle sample by brightness, so one stray background pixel cannot
-  // drag the colour. Taking a real sample keeps it a colour we actually saw.
-  std::array<cv::Vec3b, kMaxSamples> sorted = pending.samples;
-  const auto end = sorted.begin() + static_cast<std::ptrdiff_t>(pending.count);
-  std::sort(sorted.begin(), end, [](const cv::Vec3b& a, const cv::Vec3b& b) {
-    return Luminance(a) < Luminance(b);
-  });
-  const cv::Vec3b& bgr = sorted[pending.count / 2];
 
   const auto balance = [&gains](std::uint8_t value, int channel) {
     return static_cast<std::uint8_t>(
         std::clamp(value * gains[channel], 0.0, 255.0));
   };
-  return {pending.position, balance(bgr[2], 2), balance(bgr[1], 1),
-          balance(bgr[0], 0)};
+  for (const auto& [position, bgr] : sampled) {
+    new_points_.push_back(
+        {position, balance(bgr[2], 2), balance(bgr[1], 1), balance(bgr[0], 0)});
+  }
+}
+
+std::vector<ColorPoint> ColorCloud::TakeNew() {
+  return std::exchange(new_points_, {});
 }
 
 Eigen::Vector3d ColorCloud::WhiteBalanceGains() const {

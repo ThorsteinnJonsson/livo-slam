@@ -409,10 +409,6 @@ void LivoSlamNode::ReplayBag() {
   while (const auto group = buffer_.TryPopMeasureGroup()) {
     ProcessGroup(*group);
   }
-
-  if (color_cloud_) {
-    visualizer_.LogColorCloud(group_index_, color_cloud_->TakeNew(true));
-  }
 }
 
 void LivoSlamNode::WriteTrajectory(const Estimate& estimate) {
