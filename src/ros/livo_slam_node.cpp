@@ -75,7 +75,7 @@ LivoSlamNode::LivoSlamNode()
   }
 
   if (config_.viz.enabled && config_.viz.color_cloud) {
-    color_cloud_.emplace(config_.viz.color_cloud_voxel_size);
+    color_cloud_.emplace(config_.viz);
   }
 
   if (live) {
@@ -127,6 +127,10 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       declare_parameter<bool>("viz.color_cloud", viz_defaults.color_cloud);
   config.viz.color_cloud_voxel_size = declare_parameter<double>(
       "viz.color_cloud_voxel_size", viz_defaults.color_cloud_voxel_size);
+  config.viz.color_cloud_max_range = declare_parameter<double>(
+      "viz.color_cloud_max_range", viz_defaults.color_cloud_max_range);
+  config.viz.color_cloud_max_contrast = declare_parameter<double>(
+      "viz.color_cloud_max_contrast", viz_defaults.color_cloud_max_contrast);
   config.viz.grpc_url =
       declare_parameter<std::string>("viz.grpc_url", viz_defaults.grpc_url);
 
@@ -324,7 +328,7 @@ void LivoSlamNode::ProcessGroup(const MeasureGroup& group) {
     const Sophus::SE3d T_world_imu(result.estimate.state.rotation,
                                    result.estimate.state.position);
     color_cloud_->Add(result.cloud_imu.points, T_world_imu, config_.camera,
-                      result.color_image);
+                      result.color_image, result.estimate.state.inv_exposure);
     if (group_index_ % 10 == 0) {
       visualizer_.LogColorCloud(color_cloud_->TakeNew());
     }

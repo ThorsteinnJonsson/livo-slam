@@ -68,7 +68,8 @@
 
     viz.enabled: true
     viz.color_cloud: true
-    viz.color_cloud_voxel_size: 0.05
+    viz.color_cloud_voxel_size: 0.005
+    viz.color_cloud_max_range: 20.0
     viz.grpc_url: rerun+http://127.0.0.1:9877/proxy
 
     lidar.min_range: 0.8

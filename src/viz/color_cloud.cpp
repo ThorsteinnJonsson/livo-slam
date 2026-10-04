@@ -14,6 +14,30 @@ double Luminance(const cv::Vec3b& bgr) {
   return 0.114 * bgr[0] + 0.587 * bgr[1] + 0.299 * bgr[2];
 }
 
+// Blend the four pixels around the projection. Sampling the nearest one
+// quantizes every colour to a whole pixel, which is what smears fine detail.
+Eigen::Vector3d SamplePixel(const cv::Mat& image,
+                            const Eigen::Vector2d& pixel) {
+  const int column = static_cast<int>(std::floor(pixel.x()));
+  const int row = static_cast<int>(std::floor(pixel.y()));
+  const double du = pixel.x() - column;
+  const double dv = pixel.y() - row;
+
+  const auto& top_left = image.at<cv::Vec3b>(row, column);
+  const auto& top_right = image.at<cv::Vec3b>(row, column + 1);
+  const auto& bottom_left = image.at<cv::Vec3b>(row + 1, column);
+  const auto& bottom_right = image.at<cv::Vec3b>(row + 1, column + 1);
+
+  Eigen::Vector3d blended = Eigen::Vector3d::Zero();
+  for (int channel = 0; channel < 3; ++channel) {
+    blended[channel] = (1.0 - du) * (1.0 - dv) * top_left[channel] +
+                       du * (1.0 - dv) * top_right[channel] +
+                       (1.0 - du) * dv * bottom_left[channel] +
+                       du * dv * bottom_right[channel];
+  }
+  return blended;
+}
+
 double LocalContrast(const cv::Mat& image, const Eigen::Vector2d& pixel,
                      int radius) {
   const int center_column = static_cast<int>(pixel.x());
@@ -41,21 +65,32 @@ double LocalContrast(const cv::Mat& image, const Eigen::Vector2d& pixel,
 void ColorCloud::Add(const std::vector<Point>& points_imu,
                      const Sophus::SE3d& T_world_imu,
                      const CameraParams& camera_params,
-                     const cv::Mat& color_image) {
+                     const cv::Mat& color_image, double inv_exposure) {
   if (color_image.empty()) return;
+
+  // The estimated exposure drifts by a factor of ten over a run, so the same
+  // wall comes out a different brightness depending on when it was seen.
+  // Scaling by it puts every frame back on one scale.
+  exposure_sum_ += inv_exposure;
+  ++frame_count_;
+  const double reference = exposure_sum_ / static_cast<double>(frame_count_);
+  const double exposure_scale =
+      reference > 0.0 && inv_exposure > 0.0 ? inv_exposure / reference : 1.0;
 
   const Sophus::SE3d T_cam_imu = camera_params.T_imu_cam.inverse();
 
-  std::vector<std::pair<Eigen::Vector3d, cv::Vec3b>> sampled;
+  std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> sampled;
   for (const Point& point : points_imu) {
     const Eigen::Vector3d point_cam = T_cam_imu * point.position;
     if (point_cam.z() <= 0.0) continue;
+    // Far points are smaller than a pixel, so they add bulk but no detail.
+    if (max_range_ > 0.0 && point_cam.norm() > max_range_) continue;
 
     const std::optional<Eigen::Vector2d> pixel =
         Project(camera_params, point_cam);
-    if (!pixel || !InFrame(color_image, *pixel, kContrastRadius)) continue;
-    if (LocalContrast(color_image, *pixel, kContrastRadius) >
-        kMaxLocalContrast) {
+    if (!pixel || !InFrame(color_image, *pixel, 2)) continue;
+    if (max_contrast_ > 0.0 &&
+        LocalContrast(color_image, *pixel, 2) > max_contrast_) {
       continue;
     }
 
@@ -66,18 +101,17 @@ void ColorCloud::Add(const std::vector<Point>& points_imu,
         static_cast<std::int64_t>(std::floor(position.z() / voxel_size_))};
     if (!occupied_.insert(index).second) continue;
 
-    sampled.emplace_back(
-        position, color_image.at<cv::Vec3b>(static_cast<int>(pixel->y()),
-                                            static_cast<int>(pixel->x())));
+    sampled.emplace_back(position,
+                         SamplePixel(color_image, *pixel) * exposure_scale);
   }
 
   for (const auto& [position, bgr] : sampled) {
-    channel_sum_ += Eigen::Vector3d(bgr[0], bgr[1], bgr[2]);
+    channel_sum_ += bgr;
   }
   sample_count_ += static_cast<std::int64_t>(sampled.size());
   const Eigen::Vector3d gains = WhiteBalanceGains();
 
-  const auto balance = [&gains](std::uint8_t value, int channel) {
+  const auto balance = [&gains](double value, int channel) {
     return static_cast<std::uint8_t>(
         std::clamp(value * gains[channel], 0.0, 255.0));
   };

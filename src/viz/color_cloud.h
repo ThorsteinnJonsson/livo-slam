@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/config/camera_params.h"
+#include "core/config/viz_params.h"
 #include "core/types/cloud.h"
 #include "core/types/color_point.h"
 
@@ -17,21 +18,19 @@ namespace livo_slam {
 // coloured the first time they are seen. Visualization only.
 class ColorCloud {
  public:
-  explicit ColorCloud(double voxel_size) : voxel_size_(voxel_size) {}
+  explicit ColorCloud(const VizParams& params)
+      : voxel_size_(params.color_cloud_voxel_size),
+        max_range_(params.color_cloud_max_range),
+        max_contrast_(params.color_cloud_max_contrast) {}
 
   void Add(const std::vector<Point>& points_imu,
            const Sophus::SE3d& T_world_imu, const CameraParams& camera_params,
-           const cv::Mat& color_image);
+           const cv::Mat& color_image, double inv_exposure);
 
   // Points added since the last call, so each one is only ever sent once.
   std::vector<ColorPoint> TakeNew();
 
  private:
-  // A sample sitting on a strong edge is probably on the wrong side of it,
-  // which is how roofs end up taking the colour of the sky behind them.
-  static constexpr int kContrastRadius = 2;
-  static constexpr double kMaxLocalContrast = 40.0;
-
   struct VoxelIndex {
     std::int64_t x = 0;
     std::int64_t y = 0;
@@ -52,7 +51,11 @@ class ColorCloud {
   Eigen::Vector3d WhiteBalanceGains() const;
 
   double voxel_size_;
+  double max_range_;
+  double max_contrast_;
   Eigen::Vector3d channel_sum_ = Eigen::Vector3d::Zero();
+  double exposure_sum_ = 0.0;
+  std::int64_t frame_count_ = 0;
   std::int64_t sample_count_ = 0;
   std::unordered_set<VoxelIndex, VoxelHash> occupied_;
   std::vector<ColorPoint> new_points_;
