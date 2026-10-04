@@ -225,7 +225,7 @@ void Visualizer::LogColorCloud(std::int64_t batch,
 
   impl_->rec.log_static(
       "world/color_cloud/" + std::to_string(batch),
-      rerun::Points3D(positions).with_colors(colors).with_radii(0.03F));
+      rerun::Points3D(positions).with_colors(colors).with_radii(0.075F));
 }
 
 void Visualizer::LogMap(const std::vector<Plane>& planes) {
