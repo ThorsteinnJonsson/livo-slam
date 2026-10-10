@@ -22,9 +22,6 @@
 - (Done) Validate camera update
 - (Done) Test more datasets
 - (Done) Add real color to pointcloud
-- Limit patches to 30 per visual point
+- (Done) Limit patches to 30 per visual point
 - Implement slide-function in local map
-- Refactoring
-  - Helper for transforming points (instead of a for-loop everywhere)
-  - Less verbose parameter parsing from yaml
 - Update README and make public

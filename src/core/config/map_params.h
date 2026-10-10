@@ -21,6 +21,7 @@ struct VisualMapParams {
   double min_corner_score = 50.0;
   double min_seconds_between_patches = 2.0;
   double min_patch_pixel_distance = 40.0;
+  std::size_t max_patches_per_point = 30;
 };
 
 }  // namespace livo_slam
