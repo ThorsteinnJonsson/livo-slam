@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
@@ -14,6 +15,7 @@
 #include "core/config/pipeline_config.h"
 #include "core/pipeline/livo_pipeline.h"
 #include "core/pipeline/measurement_buffer.h"
+#include "viz/color_cloud.h"
 #include "viz/visualizer.h"
 
 namespace livo_slam {
@@ -47,6 +49,7 @@ class LivoSlamNode : public rclcpp::Node {
   MeasurementBuffer buffer_;
   LivoPipeline pipeline_;
   Visualizer visualizer_;
+  std::optional<ColorCloud> color_cloud_;
   std::int64_t group_index_ = 0;
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;

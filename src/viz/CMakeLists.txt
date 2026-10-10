@@ -1,4 +1,4 @@
-add_library(livo_slam_viz_lib STATIC visualizer.cpp)
+add_library(livo_slam_viz_lib STATIC visualizer.cpp color_cloud.cpp)
 
 target_include_directories(livo_slam_viz_lib PUBLIC ${PROJECT_SOURCE_DIR}/src)
 

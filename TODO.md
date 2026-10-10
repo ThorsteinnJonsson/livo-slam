@@ -21,7 +21,7 @@
 - (Done) Visualize visual points + camera stream
 - (Done) Validate camera update
 - (Done) Test more datasets
-- Add real color to pointcloud
+- (Done) Add real color to pointcloud
 - Limit patches to 30 per visual point
 - Implement slide-function in local map
 - Refactoring
