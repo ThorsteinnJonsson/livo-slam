@@ -16,8 +16,10 @@ The camera gives each map point its color. The yellow line is the path.
 | ----------------------------------------------------------------- | ------------------------------------------------------------- |
 | ![Oxford Spires street](docs/fast-livo-oxford-spires-color-1.png) | ![Oxford Spires from above](docs/fast-livo-oxford-spires.png) |
 | A street in Oxford Spires, with camera color.                     | The same sequence from above. The color shows the height.     |
-| ![NTU VIRAL eee_03](docs/fast-livo-ntu-eee-03.png)                |                                                               |
-| NTU VIRAL eee_03.                                                 |                                                               |
+
+![NTU VIRAL eee_03](docs/fast-livo-ntu-eee-03.png)
+
+NTU VIRAL eee_03.
 
 ## Sensors and data
 
