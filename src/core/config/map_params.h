@@ -14,6 +14,9 @@ struct VoxelMapParams {
   std::size_t max_points_per_voxel = 50;
   double max_plane_variance = 0.01;
   double max_match_distance = 0.5;
+  bool sliding_enabled = false;
+  double sliding_half_extent = 80.0;
+  double sliding_step = 8.0;
 };
 
 struct VisualMapParams {

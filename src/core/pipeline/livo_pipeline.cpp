@@ -169,7 +169,7 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
                                     config_.visual_map.max_patches_per_point);
 
       //   Map sliding/culling if moved far enough
-      //     TODO
+      local_map_.Slide(estimate_.state.position);
 
       // Process output for visualization. The deskewed cloud is in the IMU
       // frame, with each point already corrected to the group time.

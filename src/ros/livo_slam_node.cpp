@@ -193,6 +193,13 @@ PipelineConfig LivoSlamNode::ReadConfig() {
       "map.max_match_distance", map_defaults.max_match_distance);
 
   const VisualMapParams visual_map_defaults;
+  config.map.sliding_enabled = declare_parameter<bool>(
+      "map.sliding_enabled", map_defaults.sliding_enabled);
+  config.map.sliding_half_extent = declare_parameter<double>(
+      "map.sliding_half_extent", map_defaults.sliding_half_extent);
+  config.map.sliding_step =
+      declare_parameter<double>("map.sliding_step", map_defaults.sliding_step);
+
   config.visual_map.grid_size =
       static_cast<std::size_t>(declare_parameter<int64_t>(
           "visual_map.grid_size",

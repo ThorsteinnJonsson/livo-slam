@@ -55,6 +55,27 @@ void VoxelMap::InsertVisualPoints(
   }
 }
 
+void VoxelMap::Slide(const Eigen::Vector3d& position) {
+  if (!params_.sliding_enabled) {
+    return;
+  }
+  if (last_slide_position_ &&
+      (position - *last_slide_position_).norm() < params_.sliding_step) {
+    return;
+  }
+  last_slide_position_ = position;
+
+  const Eigen::Vector3i center =
+      voxel::VoxelIndex(position, params_.voxel_size);
+  const int half = static_cast<int>(
+      std::ceil(params_.sliding_half_extent / params_.voxel_size));
+
+  std::erase_if(voxels_, [&center, half](const auto& entry) {
+    const Eigen::Vector3i index = voxel::UnpackKey(entry.first);
+    return (index - center).cwiseAbs().maxCoeff() > half;
+  });
+}
+
 std::vector<Plane> VoxelMap::CollectPlanes() const {
   std::vector<Plane> planes;
   planes.reserve(voxels_.size());

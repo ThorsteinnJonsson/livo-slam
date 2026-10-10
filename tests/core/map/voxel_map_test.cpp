@@ -216,6 +216,47 @@ VisualPatch MakeVisualPatch(double inv_exposure) {
   return patch;
 }
 
+TEST(Slide, DoesNothingWhenDisabled) {
+  VoxelMap map(MakeParams());
+  map.InsertPoints(MakePoints({{0.5, 0.5, 0.5}, {50.5, 0.5, 0.5}}));
+
+  map.Slide({0.0, 0.0, 0.0});
+
+  EXPECT_EQ(map.VoxelCount(), 2U);
+}
+
+TEST(Slide, DropsVoxelsOutsideTheBox) {
+  VoxelMapParams params = MakeParams();
+  params.sliding_enabled = true;
+  params.sliding_half_extent = 10.0;
+  VoxelMap map(params);
+  map.InsertPoints(MakePoints(
+      {{0.5, 0.5, 0.5}, {5.5, 0.5, 0.5}, {50.5, 0.5, 0.5}, {0.5, 0.5, -40.5}}));
+  ASSERT_EQ(map.VoxelCount(), 4U);
+
+  map.Slide({0.0, 0.0, 0.0});
+
+  EXPECT_EQ(map.VoxelCount(), 2U);
+}
+
+TEST(Slide, WaitsUntilTheSensorHasMovedAStep) {
+  VoxelMapParams params = MakeParams();
+  params.sliding_enabled = true;
+  params.sliding_half_extent = 10.0;
+  params.sliding_step = 8.0;
+  VoxelMap map(params);
+  map.InsertPoints(MakePoints({{0.5, 0.5, 0.5}}));
+
+  map.Slide({0.0, 0.0, 0.0});
+  map.InsertPoints(MakePoints({{50.5, 0.5, 0.5}}));
+  // Only 1 m on, so the far voxel survives this call.
+  map.Slide({1.0, 0.0, 0.0});
+  EXPECT_EQ(map.VoxelCount(), 2U);
+
+  map.Slide({9.0, 0.0, 0.0});
+  EXPECT_EQ(map.VoxelCount(), 1U);
+}
+
 TEST(InsertVisualPoints, StoresAPointInItsVoxel) {
   VoxelMap map(MakeParams());
   map.InsertPoints(MakePlanarPoints());

@@ -74,11 +74,15 @@
     map.max_points_per_voxel: 50
     map.max_plane_variance: 0.01
     map.max_match_distance: 0.5
+    map.sliding_enabled: false
+    map.sliding_half_extent: 80.0
+    map.sliding_step: 8.0
 
     visual_map.grid_size: 30
     visual_map.min_corner_score: 0.0
     visual_map.min_seconds_between_patches: 2.0
     visual_map.min_patch_pixel_distance: 40.0
+    visual_map.max_patches_per_point: 30
 
     lidar_update.max_iterations: 5
     lidar_update.point_noise_std: 0.03
