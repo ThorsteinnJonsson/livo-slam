@@ -2,6 +2,7 @@
 
 #include <Eigen/Eigenvalues>
 #include <algorithm>
+#include <cmath>
 
 #include "core/config/map_params.h"
 #include "core/types/visual_point.h"
@@ -31,13 +32,35 @@ void VoxelOctree::InsertVisualPoint(const VisualPoint& visual_point) {
 }
 
 void VoxelOctree::AddVisualPatch(const Eigen::Vector3d& position,
-                                 const VisualPatch& visual_patch) {
+                                 const VisualPatch& visual_patch,
+                                 std::size_t max_patches) {
   auto found = std::find_if(
       visual_points_.begin(), visual_points_.end(),
       [&](const VisualPoint& p) { return p.position == position; });
-  if (found != visual_points_.end()) {
-    found->patches.push_back(visual_patch);
+  if (found == visual_points_.end()) {
+    return;
   }
+
+  found->patches.push_back(visual_patch);
+  if (max_patches == 0 || found->patches.size() <= max_patches) {
+    return;
+  }
+
+  // How square on the camera was to the surface when the patch was taken.
+  const auto viewed_head_on = [&found](const VisualPatch& patch) {
+    const Eigen::Vector3d view =
+        found->position - patch.T_world_camera.translation();
+    const double range = view.norm();
+    if (range <= 0.0) return 0.0;
+    return std::abs(found->normal.dot(view / range));
+  };
+
+  const auto worst = std::min_element(
+      found->patches.begin(), found->patches.end(),
+      [&viewed_head_on](const VisualPatch& a, const VisualPatch& b) {
+        return viewed_head_on(a) < viewed_head_on(b);
+      });
+  found->patches.erase(worst);
 }
 
 void VoxelOctree::Update(const VoxelMapParams& params) {

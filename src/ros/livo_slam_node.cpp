@@ -205,6 +205,10 @@ PipelineConfig LivoSlamNode::ReadConfig() {
   config.visual_map.min_patch_pixel_distance =
       declare_parameter<double>("visual_map.min_patch_pixel_distance",
                                 visual_map_defaults.min_patch_pixel_distance);
+  config.visual_map.max_patches_per_point =
+      static_cast<std::size_t>(declare_parameter<int64_t>(
+          "visual_map.max_patches_per_point",
+          static_cast<int64_t>(visual_map_defaults.max_patches_per_point)));
 
   const LidarUpdateParams update_defaults;
   config.lidar_update.max_iterations =

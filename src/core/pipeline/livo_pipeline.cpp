@@ -165,7 +165,8 @@ ProcessResult LivoPipeline::Process(const MeasureGroup& group) {
         }
       }
 
-      local_map_.InsertVisualPoints(new_visual_points, new_visual_patches);
+      local_map_.InsertVisualPoints(new_visual_points, new_visual_patches,
+                                    config_.visual_map.max_patches_per_point);
 
       //   Map sliding/culling if moved far enough
       //     TODO

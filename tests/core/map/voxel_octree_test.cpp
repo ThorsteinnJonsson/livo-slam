@@ -260,6 +260,16 @@ VisualPatch MakeVisualPatch(double inv_exposure) {
   return patch;
 }
 
+// A patch looking at the origin from `camera`, so the viewing angle against a
+// point's normal is what decides which one gets dropped.
+VisualPatch MakeVisualPatchFrom(double inv_exposure,
+                                const Eigen::Vector3d& camera) {
+  VisualPatch patch;
+  patch.inv_exposure = inv_exposure;
+  patch.T_world_camera = Sophus::SE3d(Eigen::Quaterniond::Identity(), camera);
+  return patch;
+}
+
 std::vector<const VisualPoint*> Collect(const VoxelOctree& node) {
   std::vector<const VisualPoint*> visual_points;
   node.CollectVisualPoints(visual_points);
@@ -303,7 +313,7 @@ TEST(AddVisualPatch, AppendsToTheMatchingPoint) {
   node.InsertVisualPoint(MakeVisualPoint({0.2, 0.2, 0.2}));
   node.InsertVisualPoint(MakeVisualPoint({0.8, 0.8, 0.8}));
 
-  node.AddVisualPatch({0.8, 0.8, 0.8}, MakeVisualPatch(0.7));
+  node.AddVisualPatch({0.8, 0.8, 0.8}, MakeVisualPatch(0.7), 0);
 
   const auto collected = Collect(node);
   ASSERT_EQ(collected.size(), 2U);
@@ -316,8 +326,8 @@ TEST(AddVisualPatch, AccumulatesPatchesOnOnePoint) {
   VoxelOctree node = MakeRoot();
   node.InsertVisualPoint(MakeVisualPoint({0.5, 0.5, 0.5}));
 
-  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.7));
-  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.6));
+  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.7), 0);
+  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.6), 0);
 
   const auto collected = Collect(node);
   ASSERT_EQ(collected[0]->patches.size(), 2U);
@@ -325,11 +335,56 @@ TEST(AddVisualPatch, AccumulatesPatchesOnOnePoint) {
   EXPECT_DOUBLE_EQ(collected[0]->patches[1].inv_exposure, 0.6);
 }
 
+TEST(AddVisualPatch, KeepsAtMostTheGivenNumberOfPatches) {
+  VoxelOctree node = MakeRoot();
+  VisualPoint point = MakeVisualPoint({0.5, 0.5, 0.5});
+  point.normal = {0.0, 0.0, 1.0};
+  node.InsertVisualPoint(point);
+
+  for (int i = 0; i < 5; ++i) {
+    node.AddVisualPatch({0.5, 0.5, 0.5},
+                        MakeVisualPatchFrom(0.1 * i, {0.5, 0.5, 1.5}), 3);
+  }
+
+  EXPECT_EQ(Collect(node)[0]->patches.size(), 3U);
+}
+
+TEST(AddVisualPatch, DropsTheMostObliquePatch) {
+  VoxelOctree node = MakeRoot();
+  VisualPoint point = MakeVisualPoint({0.5, 0.5, 0.5});
+  point.normal = {0.0, 0.0, 1.0};
+  node.InsertVisualPoint(point);
+
+  // Straight on, then almost edge on, then straight on again.
+  node.AddVisualPatch({0.5, 0.5, 0.5},
+                      MakeVisualPatchFrom(0.7, {0.5, 0.5, 1.5}), 2);
+  node.AddVisualPatch({0.5, 0.5, 0.5},
+                      MakeVisualPatchFrom(0.6, {1.5, 0.5, 0.51}), 2);
+  node.AddVisualPatch({0.5, 0.5, 0.5},
+                      MakeVisualPatchFrom(0.5, {0.5, 0.5, 2.5}), 2);
+
+  const auto collected = Collect(node);
+  ASSERT_EQ(collected[0]->patches.size(), 2U);
+  EXPECT_DOUBLE_EQ(collected[0]->patches[0].inv_exposure, 0.7);
+  EXPECT_DOUBLE_EQ(collected[0]->patches[1].inv_exposure, 0.5);
+}
+
+TEST(AddVisualPatch, ZeroKeepsEveryPatch) {
+  VoxelOctree node = MakeRoot();
+  node.InsertVisualPoint(MakeVisualPoint({0.5, 0.5, 0.5}));
+
+  for (int i = 0; i < 40; ++i) {
+    node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.1), 0);
+  }
+
+  EXPECT_EQ(Collect(node)[0]->patches.size(), 40U);
+}
+
 TEST(AddVisualPatch, DoesNothingWhenNoPointMatches) {
   VoxelOctree node = MakeRoot();
   node.InsertVisualPoint(MakeVisualPoint({0.2, 0.2, 0.2}));
 
-  node.AddVisualPatch({0.9, 0.9, 0.9}, MakeVisualPatch(0.7));
+  node.AddVisualPatch({0.9, 0.9, 0.9}, MakeVisualPatch(0.7), 0);
 
   const auto collected = Collect(node);
   ASSERT_EQ(collected.size(), 1U);
@@ -339,7 +394,7 @@ TEST(AddVisualPatch, DoesNothingWhenNoPointMatches) {
 TEST(AddVisualPatch, DoesNothingOnAnEmptyNode) {
   VoxelOctree node = MakeRoot();
 
-  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.7));
+  node.AddVisualPatch({0.5, 0.5, 0.5}, MakeVisualPatch(0.7), 0);
 
   EXPECT_TRUE(Collect(node).empty());
 }

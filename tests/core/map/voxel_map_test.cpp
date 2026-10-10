@@ -220,7 +220,7 @@ TEST(InsertVisualPoints, StoresAPointInItsVoxel) {
   VoxelMap map(MakeParams());
   map.InsertPoints(MakePlanarPoints());
 
-  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {});
+  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {}, 0);
 
   const auto collected = map.CollectVisualPoints(MakePlanarPoints());
   ASSERT_EQ(collected.size(), 1U);
@@ -233,7 +233,7 @@ TEST(InsertVisualPoints, SkipsPositionsWithNoVoxel) {
   ASSERT_EQ(map.VoxelCount(), 1U);
 
   // Nothing was ever inserted at (9, 9, 9), so there is no voxel to hold it.
-  map.InsertVisualPoints({MakeVisualPoint({9.0, 9.0, 9.0})}, {});
+  map.InsertVisualPoints({MakeVisualPoint({9.0, 9.0, 9.0})}, {}, 0);
 
   EXPECT_EQ(map.VoxelCount(), 1U);
   EXPECT_TRUE(map.CollectVisualPoints(MakePoints({{9.0, 9.0, 9.0}})).empty());
@@ -244,7 +244,8 @@ TEST(InsertVisualPoints, PointsGoToTheVoxelHoldingTheirPosition) {
   map.InsertPoints(MakePoints({{0.5, 0.5, 0.5}, {1.5, 0.5, 0.5}}));
 
   map.InsertVisualPoints(
-      {MakeVisualPoint({0.5, 0.5, 0.5}), MakeVisualPoint({1.5, 0.5, 0.5})}, {});
+      {MakeVisualPoint({0.5, 0.5, 0.5}), MakeVisualPoint({1.5, 0.5, 0.5})}, {},
+      0);
 
   EXPECT_EQ(map.CollectVisualPoints(MakePoints({{0.5, 0.5, 0.5}})).size(), 1U);
   EXPECT_EQ(map.CollectVisualPoints(MakePoints({{1.5, 0.5, 0.5}})).size(), 1U);
@@ -253,9 +254,9 @@ TEST(InsertVisualPoints, PointsGoToTheVoxelHoldingTheirPosition) {
 TEST(InsertVisualPoints, AppendsAPatchToAnExistingPoint) {
   VoxelMap map(MakeParams());
   map.InsertPoints(MakePlanarPoints());
-  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {});
+  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {}, 0);
 
-  map.InsertVisualPoints({}, {{{0.5, 0.5, 0.5}, MakeVisualPatch(0.7)}});
+  map.InsertVisualPoints({}, {{{0.5, 0.5, 0.5}, MakeVisualPatch(0.7)}}, 0);
 
   const auto collected = map.CollectVisualPoints(MakePlanarPoints());
   ASSERT_EQ(collected.size(), 1U);
@@ -266,10 +267,10 @@ TEST(InsertVisualPoints, AppendsAPatchToAnExistingPoint) {
 TEST(InsertVisualPoints, AddsPointsAndPatchesInOneCall) {
   VoxelMap map(MakeParams());
   map.InsertPoints(MakePlanarPoints());
-  map.InsertVisualPoints({MakeVisualPoint({0.2, 0.2, 0.5})}, {});
+  map.InsertVisualPoints({MakeVisualPoint({0.2, 0.2, 0.5})}, {}, 0);
 
   map.InsertVisualPoints({MakeVisualPoint({0.8, 0.8, 0.5})},
-                         {{{0.2, 0.2, 0.5}, MakeVisualPatch(0.7)}});
+                         {{{0.2, 0.2, 0.5}, MakeVisualPatch(0.7)}}, 0);
 
   const auto collected = map.CollectVisualPoints(MakePlanarPoints());
   ASSERT_EQ(collected.size(), 2U);
@@ -284,9 +285,9 @@ TEST(InsertVisualPoints, AddsPointsAndPatchesInOneCall) {
 TEST(InsertVisualPoints, IgnoresAPatchWithNoMatchingPoint) {
   VoxelMap map(MakeParams());
   map.InsertPoints(MakePlanarPoints());
-  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {});
+  map.InsertVisualPoints({MakeVisualPoint({0.5, 0.5, 0.5})}, {}, 0);
 
-  map.InsertVisualPoints({}, {{{0.2, 0.2, 0.5}, MakeVisualPatch(0.7)}});
+  map.InsertVisualPoints({}, {{{0.2, 0.2, 0.5}, MakeVisualPatch(0.7)}}, 0);
 
   const auto collected = map.CollectVisualPoints(MakePlanarPoints());
   ASSERT_EQ(collected.size(), 1U);
@@ -297,7 +298,7 @@ TEST(InsertVisualPoints, EmptyInputChangesNothing) {
   VoxelMap map(MakeParams());
   map.InsertPoints(MakePlanarPoints());
 
-  map.InsertVisualPoints({}, {});
+  map.InsertVisualPoints({}, {}, 0);
 
   EXPECT_TRUE(map.CollectVisualPoints(MakePlanarPoints()).empty());
 }

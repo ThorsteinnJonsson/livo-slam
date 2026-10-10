@@ -32,7 +32,8 @@ void VoxelMap::InsertPoints(const std::vector<Point>& new_points) {
 
 void VoxelMap::InsertVisualPoints(
     const std::vector<VisualPoint>& new_points,
-    const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches) {
+    const std::vector<std::pair<Eigen::Vector3d, VisualPatch>>& new_patches,
+    std::size_t max_patches_per_point) {
   // Insert new visual points
   for (const VisualPoint& point : new_points) {
     const auto voxel_it = voxels_.find(
@@ -50,7 +51,7 @@ void VoxelMap::InsertVisualPoints(
     if (voxel_it == voxels_.cend()) {
       continue;
     }
-    voxel_it->second.AddVisualPatch(position, patch);
+    voxel_it->second.AddVisualPatch(position, patch, max_patches_per_point);
   }
 }
 
