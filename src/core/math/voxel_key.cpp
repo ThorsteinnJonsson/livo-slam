@@ -15,4 +15,13 @@ std::int64_t PackKey(const Eigen::Vector3i& index) {
          (((index.z() + kBias) & kMask) << 42);
 }
 
+Eigen::Vector3i UnpackKey(std::int64_t key) {
+  constexpr std::int64_t kBias = 1 << 20;
+  constexpr std::int64_t kMask = 0x1FFFFF;
+
+  return {static_cast<int>((key & kMask) - kBias),
+          static_cast<int>(((key >> 21) & kMask) - kBias),
+          static_cast<int>(((key >> 42) & kMask) - kBias)};
+}
+
 }  // namespace livo_slam::voxel

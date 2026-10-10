@@ -36,6 +36,10 @@ class VoxelMap {
   // For visualization
   std::vector<Plane> CollectPlanes() const;
 
+  // Drops voxels outside a box around the sensor. Does nothing until the
+  // sensor has moved sliding_step since the last slide.
+  void Slide(const Eigen::Vector3d& position);
+
   std::size_t VoxelCount() const { return voxels_.size(); }
   bool Empty() const { return voxels_.empty(); }
 
@@ -48,5 +52,6 @@ class VoxelMap {
   VoxelMapParams params_;
 
   std::unordered_map<std::int64_t, VoxelOctree> voxels_;
+  std::optional<Eigen::Vector3d> last_slide_position_;
 };
 }  // namespace livo_slam

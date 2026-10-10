@@ -7,6 +7,20 @@
 namespace livo_slam::voxel {
 namespace {
 
+TEST(UnpackKey, RecoversTheIndex) {
+  for (const Eigen::Vector3i index :
+       {Eigen::Vector3i(0, 0, 0), Eigen::Vector3i(1, -2, 3),
+        Eigen::Vector3i(-1000, 2000, -3000)}) {
+    EXPECT_EQ(UnpackKey(PackKey(index)), index);
+  }
+}
+
+TEST(UnpackKey, RecoversTheIndexAtTheRangeLimits) {
+  const int limit = (1 << 20) - 1;
+  EXPECT_EQ(UnpackKey(PackKey({limit, -limit, limit})),
+            Eigen::Vector3i(limit, -limit, limit));
+}
+
 TEST(VoxelIndex, FloorsTowardsNegativeInfinity) {
   EXPECT_EQ(VoxelIndex({-0.4, -0.6, -1.4}, 1.0), Eigen::Vector3i(-1, -1, -2));
 }
